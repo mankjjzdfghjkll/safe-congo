@@ -91,7 +91,7 @@ class NotificationSystem:
             <html>
             <body style="font-family: Arial, sans-serif;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center;">
-                    <h2 style="color: white;">🛡️ SAFE CONGO</h2>
+                    <h2 style="color: white;"> SAFE CONGO</h2>
                     <p style="color: white;">Système de Surveillance Épidémiologique</p>
                 </div>
                 <div style="padding: 20px;">
@@ -207,13 +207,13 @@ class NotificationSystem:
     
     def send_alert_to_all_authorities(self, disease, current_cases, predicted_cases, growth_rate):
         """Envoie une alerte à toutes les autorités sanitaires"""
-        title = f"⚠️ ALERTE ÉPIDÉMIOLOGIQUE - {disease}"
+        title = f" ALERTE ÉPIDÉMIOLOGIQUE - {disease}"
         message = f"""
         Une augmentation significative a été détectée pour {disease}.
         
-        📊 Cas actuels: {current_cases:,}
-        📈 Cas prédits: {predicted_cases:,}
-        📈 Taux de croissance: {growth_rate:.1f}%
+         Cas actuels: {current_cases:,}
+         Cas prédits: {predicted_cases:,}
+         Taux de croissance: {growth_rate:.1f}%
         
         Action recommandée: Surveillance renforcée et mesures préventives.
         """
@@ -248,5 +248,5 @@ def get_notification_badge():
         count = len(notifications)
         
         if count > 0:
-            return f"🔔 {count}"
-    return "🔔"
+            return f" {count}"
+    return ""

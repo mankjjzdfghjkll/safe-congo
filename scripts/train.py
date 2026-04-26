@@ -22,7 +22,7 @@ from src.data_cleaner import DataCleaner
 
 def main():
     print("="*60)
-    print("🛡️ SAFE CONGO - Entraînement des Modèles IA")
+    print(" SAFE CONGO - Entraînement des Modèles IA")
     print("="*60)
     
     # Chemins
@@ -30,28 +30,28 @@ def main():
     data_file = base_dir / "data" / "drc-2023_sem08.xlsx"
     
     if not data_file.exists():
-        print(f"\n❌ Erreur: Fichier non trouvé: {data_file}")
+        print(f"\n Erreur: Fichier non trouvé: {data_file}")
         return
     
     # 1. Nettoyage des données
-    print("\n📊 Étape 1: Nettoyage des données...")
+    print("\n Étape 1: Nettoyage des données...")
     try:
         cleaner = DataCleaner(str(data_file))
         cleaner.load_data()
         cleaned_data = cleaner.clean_data()
         agg_data = cleaner.aggregate_by_week_disease()
         feature_data = cleaner.create_features_for_ml(agg_data)
-        print("✅ Nettoyage terminé!")
+        print(" Nettoyage terminé!")
     except Exception as e:
-        print(f"❌ Erreur: {e}")
+        print(f" Erreur: {e}")
         return
     
     if feature_data.empty:
-        print("❌ Pas assez de données pour l'entraînement")
+        print(" Pas assez de données pour l'entraînement")
         return
     
     # 2. Entraînement
-    print("\n🤖 Étape 2: Entraînement des modèles...")
+    print("\n Étape 2: Entraînement des modèles...")
     models = {}
     
     for disease in feature_data['MALADIE'].unique():
@@ -59,7 +59,7 @@ def main():
         total_cases = data['TOTALCAS'].sum()
         
         if total_cases < 50 or len(data) < 20:
-            print(f"⚠️ {disease}: {total_cases} cas, {len(data)} semaines - ignoré")
+            print(f" {disease}: {total_cases} cas, {len(data)} semaines - ignoré")
             continue
         
         # Features
@@ -92,18 +92,18 @@ def main():
             'total_cases': total_cases
         }
         
-        print(f"✅ {disease}: MAE={mae:.2f}, R²={r2:.3f}")
+        print(f" {disease}: MAE={mae:.2f}, R²={r2:.3f}")
     
     # 3. Sauvegarde
-    print("\n💾 Étape 3: Sauvegarde des modèles...")
+    print("\n Étape 3: Sauvegarde des modèles...")
     models_dir = base_dir / "models"
     models_dir.mkdir(exist_ok=True)
     
     joblib.dump(models, str(models_dir / "models.pkl"))
-    print(f"✅ {len(models)} modèles sauvegardés dans {models_dir / 'models.pkl'}")
+    print(f" {len(models)} modèles sauvegardés dans {models_dir / 'models.pkl'}")
     
     print("\n" + "="*60)
-    print("✅ Entraînement terminé avec succès!")
+    print(" Entraînement terminé avec succès!")
     print("="*60)
 
 

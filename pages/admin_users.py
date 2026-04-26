@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
 import sys
 from pathlib import Path
-from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.auth import AuthSystem, require_auth
@@ -122,6 +120,11 @@ CSS = """<style>
 .page-header h1{color:#fff;margin:0;font-size:1.8rem}
 .page-header p{color:rgba(255,255,255,.85);margin:6px 0 0}
 .content-card{background:#fff;border-radius:18px;padding:24px;box-shadow:0 3px 12px rgba(0,0,0,.07);margin-bottom:20px;animation:fadeIn .7s ease-out}
+.metric-card{background:#fff;border-radius:18px;padding:22px;text-align:center;transition:all .3s;box-shadow:0 3px 12px rgba(0,0,0,.07);border-left:4px solid;animation:fadeIn .6s ease-out}
+.metric-card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.metric-icon{font-size:2.2rem;margin-bottom:8px}
+.metric-value{font-size:1.9rem;font-weight:700;margin:6px 0}
+.metric-label{color:#666;font-size:.88rem;font-weight:500}
 .stButton>button{background:linear-gradient(135deg,#0066CC,#004D99);color:#fff;border:none;border-radius:12px;padding:10px 24px;font-weight:600;transition:all .3s}
 .stButton>button:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(0,102,204,.35)}
 .stTextInput>div>div>input{border-radius:12px;border:1px solid #e0e0e0;padding:12px 16px}
@@ -134,13 +137,6 @@ PROVINCES = [
     "Bas-Uele","Haut-Uele","Ituri","Nord-Kivu","Sud-Kivu",
     "Maniema","Tanganyika","Haut-Lomami","Lualaba","Haut-Katanga",
     "Lomami","Sankuru","Kasai","Kasai Central","Kasai Oriental",
-]
-MALADIES = [
-    "Paludisme","Cholera","Rougeole","Mpox","Ebola","Meningite",
-    "Fievre jaune","Rage","Typhofide","Peste","Trypanosomiase",
-    "Leishmaniose","Poliomyelite","Coqueluche","Tetanos",
-    "Hepatite A","Hepatite B","Hepatite E","Diarrhee","IRA",
-    "Malnutrition","Autre",
 ]
 
 
@@ -160,45 +156,8 @@ def nav_sidebar(user, auth):
             st.switch_page("app.py")
 
 
-def generate_alert(conn, cursor, user_id, disease, province, zone, week, year, total_cases):
-    cursor.execute(
-        "SELECT total_cases FROM epidemiological_data "
-        "WHERE disease=? AND province=? AND zone_sante=? "
-        "ORDER BY year DESC, week DESC LIMIT 1",
-        (disease, province, zone),
-    )
-    row = cursor.fetchone()
-    prev = row[0] if row else 0
-    if prev <= 0:
-        return None
-    growth = (total_cases - prev) / prev * 100
-    if growth < 10:
-        return None
-    level = "CRITIQUE" if growth > 50 else "HAUTE" if growth > 25 else "MODEREE"
-    predicted = int(total_cases * (1 + growth / 100))
-    msg = f"Augmentation de {growth:.1f}% par rapport a la semaine precedente."
-    cursor.execute(
-        "INSERT INTO alerts (disease,province,zone_sante,week,year,"
-        "current_cases,predicted_cases,growth_rate,alert_level,message)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?)",
-        (disease, province, zone, week, year, total_cases, predicted, growth, level, msg),
-    )
-    alert_id = cursor.lastrowid
-    cursor.execute(
-        "SELECT id FROM users WHERE role='autorite_sanitaire' AND province=? AND is_active=1",
-        (province,),
-    )
-    for (uid,) in cursor.fetchall():
-        cursor.execute(
-            "INSERT INTO notifications (user_id,alert_id,title,message) VALUES (?,?,?,?)",
-            (uid, alert_id, f"ALERTE {level} - {disease}", msg),
-        )
-    conn.commit()
-    return alert_id, level, growth
-
-
 def main():
-    st.set_page_config(page_title="Saisie Donnees - SAFE CONGO",
+    st.set_page_config(page_title="Utilisateurs - SAFE CONGO",
                        page_icon=None, layout="wide")
     st.markdown(CSS, unsafe_allow_html=True)
 
@@ -211,86 +170,105 @@ def main():
     nav_sidebar(user, auth)
 
     st.markdown(
-        '<div class="page-header"><h1>Saisie des Donnees Epidemiologiques</h1>'
-        "<p>Enregistrez les nouvelles observations et declenchez les alertes automatiquement.</p></div>",
+        '<div class="page-header"><h1>Gestion des Utilisateurs</h1>'
+        "<p>Administrez les comptes des autorites sanitaires.</p></div>",
         unsafe_allow_html=True,
     )
 
-    tab1, tab2 = st.tabs(["Saisie manuelle", "Historique & Export"])
+    users = auth.get_all_users()
+    admins    = [u for u in users if u["role"] == "admin"]
+    autorites = [u for u in users if u["role"] == "autorite_sanitaire"]
+    actifs    = [u for u in autorites if u["is_active"]]
+
+    c1, c2, c3 = st.columns(3)
+    for col, label, val, icon, color in [
+        (c1, "Total utilisateurs", len(users),    "&#x25CF;", "#0066CC"),
+        (c2, "Autorites actives",  len(actifs),   "&#x25B3;", "#00A86B"),
+        (c3, "Administrateurs",    len(admins),   "&#x25A0;", "#FFC107"),
+    ]:
+        with col:
+            st.markdown(
+                f'<div class="metric-card" style="border-left-color:{color}">'
+                f'<div class="metric-icon">{icon}</div>'
+                f'<div class="metric-value" style="color:{color}">{val}</div>'
+                f'<div class="metric-label">{label}</div></div>',
+                unsafe_allow_html=True,
+            )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["Liste des utilisateurs", "Ajouter une autorite"])
 
     with tab1:
         st.markdown('<div class="content-card">', unsafe_allow_html=True)
-        with st.form("data_form", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                disease  = st.selectbox("Maladie *", MALADIES)
-                province = st.selectbox("Province *", PROVINCES)
-                zone     = st.text_input("Zone de sante *", placeholder="ex: Goma")
-            with c2:
-                week   = st.number_input("Semaine *", 1, 53, datetime.now().isocalendar()[1])
-                year   = st.number_input("Annee *",  2020, 2030, datetime.now().year)
-                cases  = st.number_input("Cas *",    0, value=0)
-                deaths = st.number_input("Deces *",  0, value=0)
+        if users:
+            rows = []
+            for u in users:
+                rows.append({
+                    "Nom complet":  f"{u['nom']} {u['prenom']}",
+                    "Username":     u["username"],
+                    "Role":         u["role"],
+                    "Province":     u.get("province", "—"),
+                    "Zone":         u.get("zone_sante", "—"),
+                    "Email":        u.get("email", "—"),
+                    "Statut":       "Actif" if u["is_active"] else "Desactive",
+                    "Derniere connexion": u.get("last_login", "—"),
+                    "id":           u["id"],
+                })
+            df = pd.DataFrame(rows)
+            display_df = df.drop(columns=["id"])
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
 
-            letalite = (deaths / cases * 100) if cases > 0 else 0
-            st.caption(f"Taux de letalite calcule : {letalite:.2f}%")
-            submitted = st.form_submit_button("Enregistrer", use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        if submitted:
-            if disease and province and zone:
-                try:
-                    conn = sqlite3.connect(str(auth.db_path))
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "INSERT INTO epidemiological_data "
-                        "(disease,week,year,province,zone_sante,total_cases,total_deaths,"
-                        "incidence_rate,mortality_rate,entered_by)"
-                        " VALUES (?,?,?,?,?,?,?,?,?,?)",
-                        (disease, week, year, province, zone, cases, deaths,
-                         cases / 100000, letalite, user["id"]),
-                    )
-                    conn.commit()
-                    alert_result = generate_alert(conn, cursor, user["id"],
-                                                  disease, province, zone, week, year, cases)
-                    conn.close()
-                    st.success("Donnees enregistrees avec succes.")
-                    if alert_result:
-                        _, level, growth = alert_result
-                        st.warning(
-                            f"Alerte {level} generee : +{growth:.1f}% "
-                            f"detecte en {province} - {zone}."
-                        )
-                except Exception as e:
-                    st.error(f"Erreur lors de l'enregistrement : {e}")
+            st.markdown("---")
+            st.subheader("Desactiver un utilisateur")
+            non_admin_users = [u for u in users if u["username"] != "admin" and u["is_active"]]
+            if non_admin_users:
+                selected = st.selectbox(
+                    "Choisir un utilisateur",
+                    [u["username"] for u in non_admin_users],
+                )
+                if st.button("Desactiver", use_container_width=True):
+                    uid = next(u["id"] for u in non_admin_users if u["username"] == selected)
+                    ok, msg = auth.delete_user(uid)
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.error(msg)
             else:
-                st.warning("Veuillez remplir tous les champs obligatoires (*).")
+                st.info("Aucun utilisateur a desactiver.")
+        else:
+            st.info("Aucun utilisateur enregistre.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with tab2:
         st.markdown('<div class="content-card">', unsafe_allow_html=True)
-        try:
-            conn = sqlite3.connect(str(auth.db_path))
-            hist = pd.read_sql_query(
-                "SELECT disease AS Maladie, week AS Semaine, year AS Annee, "
-                "province AS Province, zone_sante AS Zone, "
-                "total_cases AS Cas, total_deaths AS Deces, "
-                "entry_date AS Date FROM epidemiological_data "
-                "ORDER BY entry_date DESC LIMIT 200",
-                conn,
-            )
-            conn.close()
-            if hist.empty:
-                st.info("Aucune donnee saisie pour l'instant.")
-            else:
-                st.dataframe(hist, use_container_width=True, hide_index=True)
-                csv = hist.to_csv(index=False).encode("utf-8")
-                st.download_button(
-                    "Telecharger CSV", csv,
-                    file_name=f"historique_{datetime.now().strftime('%Y%m%d')}.csv",
-                    mime="text/csv",
+        with st.form("add_user_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                n_username  = st.text_input("Nom d\'utilisateur *")
+                n_nom       = st.text_input("Nom *")
+                n_prenom    = st.text_input("Prenom *")
+                n_email     = st.text_input("Email *")
+            with c2:
+                n_password  = st.text_input("Mot de passe *", type="password")
+                n_telephone = st.text_input("Telephone *")
+                n_province  = st.selectbox("Province *", PROVINCES)
+                n_zone      = st.text_input("Zone de sante *")
+            add_sub = st.form_submit_button("Creer le compte", use_container_width=True)
+
+        if add_sub:
+            if all([n_username, n_password, n_nom, n_prenom, n_email, n_telephone, n_province, n_zone]):
+                ok, msg = auth.register_authority(
+                    n_username, n_password, n_nom, n_prenom,
+                    n_email, n_telephone, n_province, n_zone,
                 )
-        except Exception:
-            st.info("Aucune donnee disponible.")
+                if ok:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+            else:
+                st.warning("Veuillez remplir tous les champs obligatoires.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 

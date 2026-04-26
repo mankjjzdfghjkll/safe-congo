@@ -409,7 +409,7 @@ def login_page():
     with col2:
         st.markdown("""
         <div class="login-header">
-            <h1>🛡️ SAFE CONGO</h1>
+            <h1> SAFE CONGO</h1>
             <p class="subtitle">Système de Surveillance Épidémiologique</p>
         </div>
         """, unsafe_allow_html=True)
@@ -419,21 +419,21 @@ def login_page():
     with col1:
         st.markdown("""
         <div class="feature-card">
-            <div class="feature-icon">📊</div>
+            <div class="feature-icon"></div>
             <strong>Analyse en temps réel</strong>
         </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown("""
         <div class="feature-card">
-            <div class="feature-icon">🤖</div>
+            <div class="feature-icon"></div>
             <strong>Prédictions IA</strong>
         </div>
         """, unsafe_allow_html=True)
     with col3:
         st.markdown("""
         <div class="feature-card">
-            <div class="feature-icon">🚨</div>
+            <div class="feature-icon"></div>
             <strong>Alertes automatiques</strong>
         </div>
         """, unsafe_allow_html=True)
@@ -441,7 +441,7 @@ def login_page():
     st.markdown("<br>", unsafe_allow_html=True)
     
     # Tabs
-    tab1, tab2 = st.tabs(["🔐 Connexion", "📝 Inscription"])
+    tab1, tab2 = st.tabs([" Connexion", " Inscription"])
     
     with tab1:
         with st.form("login_form"):
@@ -542,7 +542,7 @@ def show_user_profile():
     if not user:
         return False
     
-    role_icon = "👑" if user['role'] == 'admin' else "🏥"
+    role_icon = "" if user['role'] == 'admin' else ""
     role_color = "#0066CC" if user['role'] == 'admin' else "#00A86B"
     
     st.markdown(f"""
@@ -559,9 +559,9 @@ def show_user_profile():
     """, unsafe_allow_html=True)
     
     if user['role'] == 'autorite_sanitaire' and user.get('province'):
-        st.info(f"📍 {user['province']} - {user.get('zone_sante', 'N/A')}")
+        st.info(f" {user['province']} - {user.get('zone_sante', 'N/A')}")
     
-    if st.button("🚪 Déconnexion", use_container_width=True):
+    if st.button(" Déconnexion", use_container_width=True):
         logout()
     
     return True
@@ -571,10 +571,10 @@ def show_admin_panel():
     """Affiche le panneau d'administration"""
     user = get_current_user()
     if not user or user['role'] != 'admin':
-        st.error("⛔ Accès réservé aux administrateurs")
+        st.error(" Accès réservé aux administrateurs")
         return
     
-    st.subheader("👑 Panneau d'Administration")
+    st.subheader(" Panneau d'Administration")
     
     auth = AuthSystem()
     stats = auth.get_stats()
@@ -591,7 +591,7 @@ def show_admin_panel():
     st.markdown("---")
     
     # Liste des utilisateurs
-    st.subheader("📋 Gestion des utilisateurs")
+    st.subheader(" Gestion des utilisateurs")
     users = auth.get_all_users()
     
     if users:
@@ -599,7 +599,7 @@ def show_admin_panel():
         st.dataframe(df[['username', 'role', 'nom', 'prenom', 'email', 'province', 'created_at']], use_container_width=True)
         
         # Supprimer un utilisateur
-        with st.expander("🗑️ Désactiver un utilisateur"):
+        with st.expander(" Désactiver un utilisateur"):
             user_to_delete = st.selectbox("Sélectionner un utilisateur", [u['username'] for u in users if u['username'] != 'admin'])
             if st.button("Désactiver", type="secondary"):
                 user_id = next((u['id'] for u in users if u['username'] == user_to_delete), None)
@@ -614,7 +614,7 @@ def show_admin_panel():
     st.markdown("---")
     
     # Notifications
-    st.subheader("🔔 Centre de notifications")
+    st.subheader(" Centre de notifications")
     notifs = auth.get_notifications(user['id'], unread_only=False)
     if notifs:
         for n in notifs[:10]:

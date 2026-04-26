@@ -184,4 +184,4 @@ class AlertSystem:
 if __name__ == "__main__":
     print("Module alert_system chargé avec succès!")
     alert_system = AlertSystem()
-    print(f"✅ AlertSystem initialisé")
+    print(f" AlertSystem initialisé")

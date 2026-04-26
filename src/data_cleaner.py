@@ -16,13 +16,13 @@ class DataCleaner:
         self.cleaned_data = None
         
     def load_data(self):
-        print("📂 Chargement des données...")
+        print(" Chargement des données...")
         self.raw_data = pd.read_excel(self.file_path, sheet_name=0)
-        print(f"✅ Données chargées: {self.raw_data.shape[0]} lignes")
+        print(f" Données chargées: {self.raw_data.shape[0]} lignes")
         return self.raw_data
     
     def clean_data(self):
-        print("\n🧹 Nettoyage des données...")
+        print("\n Nettoyage des données...")
         df = self.raw_data.copy()
         
         # Suppression des colonnes inutiles
@@ -62,7 +62,7 @@ class DataCleaner:
         df = df[df['TOTALCAS'] >= 0]
         
         self.cleaned_data = df
-        print(f"✅ Nettoyage terminé: {len(df)} lignes")
+        print(f" Nettoyage terminé: {len(df)} lignes")
         return df
     
     def aggregate_by_week_disease(self):
@@ -74,7 +74,7 @@ class DataCleaner:
         return agg
     
     def create_features_for_ml(self, agg_data):
-        print("\n🔧 Création des features...")
+        print("\n Création des features...")
         feature_data = []
         
         for disease in agg_data['MALADIE'].unique():
@@ -98,7 +98,7 @@ class DataCleaner:
         
         if feature_data:
             result = pd.concat(feature_data, ignore_index=True)
-            print(f"✅ {len(result)} lignes de features créées")
+            print(f" {len(result)} lignes de features créées")
             return result
         return pd.DataFrame()
 
@@ -110,4 +110,4 @@ if __name__ == "__main__":
     cleaner = DataCleaner(test_path)
     cleaner.load_data()
     cleaned = cleaner.clean_data()
-    print("✅ Module fonctionne correctement!")
+    print(" Module fonctionne correctement!")

@@ -24,7 +24,7 @@ MODELS_FILE = MODELS_DIR / "models.pkl"
 # ============================================
 UI_CONFIG = {
     'page_title': "SAFE CONGO - Surveillance Épidémiologique",
-    'page_icon': "🛡️",
+    'page_icon': "",
     'layout': "wide",
     'sidebar_state': "expanded",
     'primary_color': "#1a73e8",
@@ -79,4 +79,4 @@ MODELS_TO_COMPARE = [
     'KNN'
 ]
 
-print("✅ Configuration SAFE CONGO chargée avec succès!")
+print(" Configuration SAFE CONGO chargée avec succès!")

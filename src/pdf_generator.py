@@ -19,14 +19,14 @@ class BarrierMeasuresPDF:
         title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=24, textColor=colors.HexColor('#1a73e8'), alignment=TA_CENTER, spaceAfter=30)
         
         # En-tête
-        story.append(Paragraph("🛡️ SAFE CONGO", title_style))
+        story.append(Paragraph(" SAFE CONGO", title_style))
         story.append(Paragraph("Système de Surveillance Épidémiologique", styles['Heading2']))
         story.append(Spacer(1, 20))
         
         # Info alerte
         alert_color = colors.HexColor('#dc3545') if alert_level == 'CRITIQUE' else colors.HexColor('#fd7e14') if alert_level == 'ÉLEVÉ' else colors.HexColor('#ffc107')
         alert_style = ParagraphStyle('Alert', parent=styles['Normal'], textColor=alert_color, fontSize=16, alignment=TA_CENTER, spaceAfter=20)
-        story.append(Paragraph(f"⚠️ ALERTE {alert_level}", alert_style))
+        story.append(Paragraph(f" ALERTE {alert_level}", alert_style))
         story.append(Spacer(1, 10))
         
         # Détails épidémiologiques
@@ -59,18 +59,18 @@ class BarrierMeasuresPDF:
         story.append(Spacer(1, 20))
         
         # Mesures barrières
-        story.append(Paragraph("<b>📋 MESURES BARRIÈRES RECOMMANDÉES</b>", styles['Heading3']))
+        story.append(Paragraph("<b> MESURES BARRIÈRES RECOMMANDÉES</b>", styles['Heading3']))
         story.append(Spacer(1, 10))
         
         mesures = [
-            "1. 🧼 Lavez-vous fréquemment les mains à l'eau et au savon",
-            "2. 😷 Portez un masque dans les lieux publics",
-            "3. 📏 Respectez la distanciation sociale (1 mètre minimum)",
-            "4. 🤒 En cas de symptômes, consultez immédiatement un médecin",
-            "5. 🏠 Isolez les cas suspects",
-            "6. 📢 Sensibilisez la communauté",
-            "7. 🩺 Renforcez la surveillance dans la zone",
-            "8. 🚑 Préparez les structures de santé"
+            "1.  Lavez-vous fréquemment les mains à l'eau et au savon",
+            "2.  Portez un masque dans les lieux publics",
+            "3.  Respectez la distanciation sociale (1 mètre minimum)",
+            "4.  En cas de symptômes, consultez immédiatement un médecin",
+            "5.  Isolez les cas suspects",
+            "6.  Sensibilisez la communauté",
+            "7.  Renforcez la surveillance dans la zone",
+            "8.  Préparez les structures de santé"
         ]
         
         for mesure in mesures:
@@ -80,7 +80,7 @@ class BarrierMeasuresPDF:
         story.append(Spacer(1, 20))
         
         # Contact
-        story.append(Paragraph("<b>📞 Contacts utiles</b>", styles['Heading3']))
+        story.append(Paragraph("<b> Contacts utiles</b>", styles['Heading3']))
         story.append(Paragraph("Ministère de la Santé: +243 123 456 789", styles['Normal']))
         story.append(Paragraph("Centre d'Opérations d'Urgence: +243 987 654 321", styles['Normal']))
         story.append(Paragraph("Ligne verte: 111", styles['Normal']))

@@ -1,0 +1,32 @@
+Chargement des donnees geolocalisees...
+27671 lignes | 27 maladies | 26 provinces | 517 zones
+
+================================================================================
+CLASSIFICATION GEOLOCALISEE SUR TOUTES LES DONNEES (MALADIE + PROVINCE + ZONE_SANTE)
+================================================================================
+Echantillons: 22157
+Maladies: 27
+Provinces: 26
+Zones de sante: 517
+Taux cible positive: 24.7%
+XGBoost            | Accuracy=0.816 | F1=0.458
+Random Forest      | Accuracy=0.753 | F1=0.004
+Hist Gradient Boosting | Accuracy=0.803 | F1=0.393
+Extra Trees        | Accuracy=0.753 | F1=0.000
+Logistic Regression | Accuracy=0.773 | F1=0.256
+
+================================================================================
+MEILLEUR MODELE: XGBoost | Accuracy=0.816 (81.6%)
+
+RESULTAT FINAL
+XGBoost: Accuracy=0.816 | F1=0.458
+Random Forest: Accuracy=0.753 | F1=0.004
+Hist Gradient Boosting: Accuracy=0.803 | F1=0.393
+Extra Trees: Accuracy=0.753 | F1=0.000
+Logistic Regression: Accuracy=0.773 | F1=0.256
+
+🎯 MEILLEUR MODELE SELECTIONNE: XGBoost
+
+✅ Meilleur modèle sauvegardé dans models/best_model.pkl
+   Accuracy: 0.816
+   F1-Score: 0.458

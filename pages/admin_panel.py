@@ -8,13 +8,13 @@ auth = AuthSystem()
 user = require_auth(auth)
 
 if not user or user['role'] != 'admin':
-    st.error("⛔ Accès non autorisé")
+    st.error(" Accès non autorisé")
     st.stop()
 
-st.title("👑 Panneau d'Administration")
+st.title(" Panneau d'Administration")
 
 # Gestion des utilisateurs
-st.subheader("📋 Gestion des utilisateurs")
+st.subheader(" Gestion des utilisateurs")
 
 users = auth.get_all_users()
 if users:
@@ -41,7 +41,7 @@ if users:
                 st.error(msg)
 
 # Logs système
-st.subheader("📜 Logs système")
+st.subheader(" Logs système")
 logs = auth.get_user_logs(limit=100)
 if logs:
     logs_df = pd.DataFrame(logs)
