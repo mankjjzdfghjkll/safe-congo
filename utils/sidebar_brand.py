@@ -1,4 +1,8 @@
+from typing import Optional
+
 import streamlit as st
+import streamlit.components.v1 as components
+from utils.navigation import switch_to_home_page
 
 
 PUBLIC_SIDEBAR_BRAND = """
@@ -51,9 +55,139 @@ PUBLIC_SIDEBAR_BRAND = """
 """
 
 
-def render_public_sidebar() -> None:
+PUBLIC_SIDEBAR_THEME = """
+<style>
+[data-testid="stSidebarNav"],
+[data-testid="stSidebarNavItems"],
+[data-testid="stSidebarNavSeparator"],
+[data-testid="stSidebarNavViewButton"],
+[data-testid="stSidebarNavLinkContainer"],
+[data-testid="stSidebarNavLink"]{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  height:0!important;
+  min-height:0!important;
+  max-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  pointer-events:none!important;
+}
+[data-testid="stSidebar"]{
+  background:linear-gradient(180deg,#eef6ff 0%,#e6f2fd 52%,#f0f8ff 100%)!important;
+  border-right:1px solid rgba(117,171,215,.32)!important;
+  box-shadow:2px 0 18px rgba(10,60,140,.07)!important;
+}
+[data-testid="stSidebar"] *{color:#0a2c5a!important}
+[data-testid="stSidebar"] .stButton > button{
+  background:rgba(255,255,255,.72)!important;
+  border:1px solid rgba(151,195,228,.75)!important;
+  border-radius:16px!important;
+  min-height:48px!important;
+  box-shadow:0 8px 22px rgba(26,91,160,.08)!important;
+  color:#0a4a8a!important;
+  font-size:.86rem!important;
+  font-weight:700!important;
+  letter-spacing:.2px!important;
+  text-align:left!important;
+  justify-content:flex-start!important;
+  padding:0 16px!important;
+  transition:all .22s ease!important;
+}
+[data-testid="stSidebar"] .stButton > button:hover{
+  transform:translateX(4px)!important;
+  border-color:#0a84d0!important;
+  background:linear-gradient(135deg,#ffffff,#e8f4ff)!important;
+  box-shadow:0 12px 28px rgba(10,132,208,.14)!important;
+}
+[data-testid="stSidebar"] .stButton > button:focus-visible,
+[data-testid="stSidebar"] .stButton > button:active{
+  background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;
+  color:#ffffff!important;
+  border-color:#0a5fab!important;
+  box-shadow:0 0 0 3px rgba(26,162,226,.22),0 12px 28px rgba(10,95,171,.24)!important;
+  transform:translateX(2px)!important;
+}
+[data-testid="stSidebar"] .element-container:first-child{
+  margin-top:1.2rem!important;
+}
+</style>
+"""
+
+
+PUBLIC_SIDEBAR_NAV_CLEANUP = """
+<script>
+const selectors = [
+  '[data-testid="stSidebarNav"]',
+  '[data-testid="stSidebarNavItems"]',
+  '[data-testid="stSidebarNavSeparator"]',
+  '[data-testid="stSidebarNavViewButton"]',
+  '[data-testid="stSidebarNavLinkContainer"]',
+  '[data-testid="stSidebarNavLink"]'
+];
+
+function hideNativeSidebarNav() {
+  const doc = window.parent?.document || document;
+  selectors.forEach((selector) => {
+    doc.querySelectorAll(selector).forEach((node) => {
+      node.style.display = 'none';
+      node.style.visibility = 'hidden';
+      node.style.opacity = '0';
+      node.style.height = '0';
+      node.style.minHeight = '0';
+      node.style.maxHeight = '0';
+      node.style.margin = '0';
+      node.style.padding = '0';
+      node.style.overflow = 'hidden';
+      node.setAttribute('aria-hidden', 'true');
+    });
+  });
+}
+
+hideNativeSidebarNav();
+new MutationObserver(hideNativeSidebarNav).observe(window.parent?.document?.body || document.body, {
+  childList: true,
+  subtree: true,
+});
+</script>
+"""
+
+
+PUBLIC_NAV_ITEMS = [
+    ("notre_mission", "pages/notre_mission.py", "Perspective Strategique", "Notre mission souveraine"),
+    ("impact", "pages/impact.py", "Preuves & Resultats", "Impact national mesurable"),
+    ("fonctionnement", "pages/fonctionnement.py", "Mecanique Intelligente", "Comment SAFE CONGO orchestre l'alerte"),
+    ("contact", "pages/contact.py", "Alliance & Coordination", "Contacts et partenaires de confiance"),
+]
+
+
+def render_sidebar_active_button(button_index: int) -> None:
+    st.markdown(
+        f"""
+<style>
+[data-testid="stSidebar"] .stButton:nth-of-type({button_index}) > button{{
+  background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;
+  color:#ffffff!important;
+  border-color:#0a5fab!important;
+  box-shadow:0 0 0 3px rgba(26,162,226,.18),0 10px 24px rgba(10,95,171,.28)!important;
+}}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+
+
+def render_public_sidebar(active_page: Optional[str] = None, show_home_button: bool = True) -> None:
     with st.sidebar:
+        st.markdown(PUBLIC_SIDEBAR_THEME, unsafe_allow_html=True)
+        components.html(PUBLIC_SIDEBAR_NAV_CLEANUP, height=0)
         st.markdown(PUBLIC_SIDEBAR_BRAND, unsafe_allow_html=True)
         st.markdown("---")
-        if st.button("← Retour à l'accueil", use_container_width=True):
-            st.switch_page("app.py")
+
+        if show_home_button and st.button(
+            "Retour vers l'accueil central",
+            use_container_width=True,
+            key="sidebar_back_home",
+        ):
+            switch_to_home_page()

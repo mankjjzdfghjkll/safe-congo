@@ -4,6 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.auth import AuthSystem
+from utils.navigation import switch_to_home_page
 
 st.set_page_config(
     page_title="Accès - SAFE CONGO",
@@ -19,7 +20,17 @@ CSS = """
 #MainMenu,footer{visibility:hidden}
 [data-testid="stHeader"]{background:transparent!important}
 [data-testid="stSidebarNav"]{display:none}
-[data-testid="collapsedControl"]{display:none!important}
+[data-testid="collapsedControl"]{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  color:#0b4d95!important;
+  background:rgba(255,255,255,.96)!important;
+  border:1px solid rgba(11,77,149,.16)!important;
+  border-radius:14px!important;
+  box-shadow:0 10px 28px rgba(15,23,42,.12)!important;
+}
+[data-testid="collapsedControl"] svg{fill:#0b4d95!important}
 
 .stApp{background:linear-gradient(135deg,#eef6ff 0%,#e2f0fb 50%,#eef8ff 100%)!important}
 
@@ -123,6 +134,17 @@ CSS = """
 .ar-kicker{display:inline-block;padding:6px 12px;border-radius:999px;background:#eef7ff;border:1px solid #c8dff0;font-size:.68rem;font-weight:800;letter-spacing:1.7px;text-transform:uppercase;color:#1a6db5;margin-bottom:12px}
 .ar-title{font-family:'Sora',sans-serif;font-size:1.85rem;font-weight:800;color:#0a2040;letter-spacing:-.5px;margin-bottom:8px}
 .ar-sub{font-size:.9rem;color:#6a8da8;line-height:1.64;margin-bottom:28px}
+.auth-form-shell{background:linear-gradient(180deg,#fbfdff 0%,#f4faff 100%);border:1px solid #d8e9f6;border-radius:22px;padding:22px 20px 18px;box-shadow:0 10px 28px rgba(10,60,120,.05);margin-bottom:14px}
+.auth-form-topline{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.auth-form-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:#ffffff;border:1px solid #d7e8f5;font-size:.68rem;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:#0a5fab}
+.auth-form-chip-dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#0a5fab,#1aa2e2)}
+.auth-form-mini{font-size:.74rem;font-weight:700;color:#7a98b2}
+.auth-form-note{margin:-2px 0 18px;font-size:.82rem;line-height:1.65;color:#6f8ca6}
+.auth-form-helper{margin-top:12px;padding:12px 14px;border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#f8fcff 100%);border:1px dashed #c8dff0;font-size:.77rem;line-height:1.6;color:#67839c}
+.auth-section-note{margin-top:16px;padding:12px 14px;border-radius:14px;background:#f0f8ff;border:1px solid #c8dff0;font-size:.78rem;line-height:1.6;color:#5a8aaa}
+.auth-register-note{margin-bottom:16px;padding:13px 14px;border-radius:14px;background:linear-gradient(135deg,#eef7ff,#f7fbff);border:1px solid #d3e6f4;font-size:.8rem;line-height:1.65;color:#62819c}
+[data-testid="stForm"]{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);border:1px solid #d8e9f6;border-radius:22px;padding:18px 18px 10px;box-shadow:0 12px 28px rgba(10,60,120,.05);margin-bottom:12px}
+[data-testid="stForm"] [data-testid="stVerticalBlock"]{gap:.35rem}
 
 .no-account{background:linear-gradient(135deg,#f0f9ff 0%,#e8f4fd 100%);border:1px solid #c8dff0;border-radius:18px;padding:20px 22px;margin-top:22px}
 .nac-label{font-size:.7rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#5a9ac0;margin-bottom:8px}
@@ -164,11 +186,14 @@ SHIELD_SVG = """<svg width="44" height="52" viewBox="0 0 110 128" xmlns="http://
   <path d="M55 20 L80 32 L80 56 Q80 80 55 98 Q30 80 30 56 L30 32 Z" fill="none" stroke="rgba(255,255,255,.52)" stroke-width="1.8"/>
   <rect x="46" y="64" width="18" height="5" rx="2.2" fill="white"/>
   <rect x="52" y="57" width="6" height="19" rx="2.2" fill="white"/>
-  <polyline points="26,50 34,50 37,40 41,62 45,50 54,50" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+  <polyline points="16,50 24,50 27,40 31,62 35,50 44,50" fill="none" stroke="#FCD116" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
     <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" repeatCount="indefinite"/>
   </polyline>
-  <polyline points="56,50 65,50 68,40 72,62 76,50 84,50" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+  <polyline points="26,50 34,50 37,40 41,62 45,50 54,50" fill="none" stroke="#0055B8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
     <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin=".3s" repeatCount="indefinite"/>
+  </polyline>
+  <polyline points="56,50 65,50 68,40 72,62 76,50 84,50" fill="none" stroke="#CE1126" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+    <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin=".6s" repeatCount="indefinite"/>
   </polyline>
 </svg>"""
 
@@ -193,11 +218,14 @@ VISUAL_SVG = """<svg width="130" height="150" viewBox="0 0 110 128" xmlns="http:
   <path d="M55 20 L80 32 L80 56 Q80 80 55 98 Q30 80 30 56 L30 32 Z" fill="none" stroke="rgba(255,255,255,.44)" stroke-width="1.6"/>
   <rect x="46" y="64" width="18" height="5" rx="2.2" fill="white" opacity=".95"/>
   <rect x="52" y="57" width="6" height="19" rx="2.2" fill="white" opacity=".95"/>
-  <polyline points="26,50 34,50 37,40 41,62 45,50 54,50" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+  <polyline points="16,50 24,50 27,40 31,62 35,50 44,50" fill="none" stroke="#FCD116" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
     <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" repeatCount="indefinite"/>
   </polyline>
-  <polyline points="56,50 65,50 68,40 72,62 76,50 84,50" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+  <polyline points="26,50 34,50 37,40 41,62 45,50 54,50" fill="none" stroke="#0055B8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
     <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin=".3s" repeatCount="indefinite"/>
+  </polyline>
+  <polyline points="56,50 65,50 68,40 72,62 76,50 84,50" fill="none" stroke="#CE1126" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+    <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin=".6s" repeatCount="indefinite"/>
   </polyline>
 </svg>"""
 
@@ -271,16 +299,10 @@ def main():
 
     # ── RIGHT PANEL ──────────────────────────────────────────────────────
     with col_right:
-        st.markdown(
-            '<div style="background:#fff;border-radius:26px;padding:52px 46px;min-height:86vh;'
-            'box-shadow:0 22px 58px rgba(10,60,120,.10)">',
-            unsafe_allow_html=True,
-        )
-
         # back button
         if st.button("← Retour à l'accueil", key="auth_back"):
             st.session_state.auth_view = None
-            st.switch_page("app.py")
+            switch_to_home_page()
 
         # kicker
         mode = st.session_state.auth_view or "login"
@@ -294,10 +316,27 @@ def main():
                 unsafe_allow_html=True,
             )
 
+            st.markdown(
+                '<div class="auth-form-shell">'
+                '<div class="auth-form-topline">'
+                '<div class="auth-form-chip"><span class="auth-form-chip-dot"></span>Connexion securisee</div>'
+                '<div class="auth-form-mini">Acces reserve aux comptes autorises</div>'
+                '</div>'
+              '<div class="auth-form-note">Renseignez vos identifiants pour ouvrir votre espace de suivi epidemiologique.</div>'
+              '</div>',
+                unsafe_allow_html=True,
+            )
+
             with st.form("login_form_page"):
                 username = st.text_input("Nom d'utilisateur", placeholder="Votre identifiant")
                 password = st.text_input("Mot de passe", type="password", placeholder="Votre mot de passe")
-                submitted = st.form_submit_button("Se connecter →", use_container_width=True)
+                submitted = st.form_submit_button("Acceder a mon espace", use_container_width=True)
+
+            st.markdown(
+                '<div class="auth-form-helper">Utilisez l\'identifiant transmis lors de la creation du compte. En cas de perte d\'acces, passez par votre coordination ou l\'administration de la plateforme.</div>'
+              ,
+                unsafe_allow_html=True,
+            )
 
             if submitted:
                 if username and password:
@@ -351,6 +390,18 @@ def main():
                     unsafe_allow_html=True,
                 )
 
+                st.markdown(
+                    '<div class="auth-register-note">Chaque demande est rattachee a une province et a une zone de sante afin de garantir un acces adapte au bon niveau de responsabilite.</div>'
+                    '<div class="auth-form-shell">'
+                    '<div class="auth-form-topline">'
+                    '<div class="auth-form-chip"><span class="auth-form-chip-dot"></span>Nouvel acces</div>'
+                    '<div class="auth-form-mini">Informations verifiees avant activation</div>'
+                    '</div>'
+                  '<div class="auth-form-note">Completez ce formulaire avec vos informations professionnelles pour soumettre votre demande d\'acces.</div>'
+                  '</div>',
+                    unsafe_allow_html=True,
+                )
+
                 with st.form("register_form_page"):
                     c1, c2 = st.columns(2)
                     with c1:
@@ -364,7 +415,13 @@ def main():
                         r_telephone = st.text_input("Téléphone *")
                         r_province  = st.selectbox("Province *", PROVINCES)
                     r_zone = st.text_input("Zone de santé *", placeholder="Votre zone de santé")
-                    reg_submit = st.form_submit_button("Soumettre ma demande →", use_container_width=True)
+                    reg_submit = st.form_submit_button("Soumettre ma demande", use_container_width=True)
+
+                st.markdown(
+                    '<div class="auth-form-helper">Les champs marques d\'un asterisque sont obligatoires. Votre demande pourra etre activee apres verification des informations fournies.</div>'
+                  ,
+                    unsafe_allow_html=True,
+                )
 
                 if reg_submit:
                     if all([r_username, r_password, r_confirm, r_nom, r_prenom, r_email, r_telephone, r_province, r_zone]):
@@ -386,17 +443,10 @@ def main():
                         st.warning("Veuillez remplir tous les champs obligatoires (*).")
 
                 st.markdown(
-                    '<div style="margin-top:16px;padding:12px 14px;border-radius:12px;background:#f0f8ff;border:1px solid #c8dff0">'
-                    '<p style="font-size:.76rem;color:#5a8aaa;margin:0;line-height:1.6">'
-                    'Déjà inscrit ? Utilisez le bouton <strong>Retour</strong> ci-dessus puis connectez-vous.'
-                    '</p></div>',
-                    unsafe_allow_html=True,
+                  '<div class="auth-section-note">Deja inscrit ? Revenez simplement a la connexion pour acceder a votre espace des que votre compte est actif.</div>',
+                  unsafe_allow_html=True,
                 )
-
-        st.markdown('</div>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
     main()
-
-main()

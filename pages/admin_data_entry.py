@@ -1,297 +1,480 @@
-import streamlit as st
-import pandas as pd
 import sqlite3
 import sys
-from pathlib import Path
+import unicodedata
 from datetime import datetime
+from pathlib import Path
+from typing import List, Tuple
+
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from utils.admin_ui import (
+    aggregated_csv_frame,
+    alerts_frame,
+    apply_admin_theme,
+    make_plotly_layout,
+    panel_title,
+    recent_entries_frame,
+    render_admin_hero,
+    render_admin_sidebar,
+    render_kpi_cards,
+    section_label,
+)
 from utils.auth import AuthSystem, require_auth
-from utils.sidebar_brand import PUBLIC_SIDEBAR_BRAND
+from utils.navigation import switch_to_home_page
+from src.pdf_generator import BarrierMeasuresPDF
 
-SHIELD_SVG = PUBLIC_SIDEBAR_BRAND
-
-SHIELD_SVG = """<style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
-@keyframes floatUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-@keyframes textGlow{0%,100%{text-shadow:0 0 10px rgba(0,212,255,.4)}50%{text-shadow:0 0 20px rgba(0,212,255,.8),0 0 40px rgba(0,102,204,.6)}}
-.sidebar-logo-wrap{display:flex;flex-direction:column;align-items:center;padding:28px 0 16px;position:relative}
-.sidebar-logo-glow{position:absolute;width:110px;height:110px;top:20px;border-radius:50%;background:radial-gradient(circle,rgba(0,102,204,.35) 0%,transparent 70%);animation:floatUp 4s ease-in-out infinite}
-.sidebar-logo-svg{position:relative;z-index:2;animation:floatUp 4s ease-in-out infinite;filter:drop-shadow(0 0 14px rgba(0,212,255,.5)) drop-shadow(0 4px 12px rgba(0,0,0,.6))}
-.sidebar-brand{font-family:'Orbitron',sans-serif;font-size:1.05rem;font-weight:900;letter-spacing:3px;color:#fff!important;text-align:center;margin-top:12px;animation:textGlow 3s ease-in-out infinite;text-transform:uppercase}
-.sidebar-tagline{font-size:.65rem;letter-spacing:2px;text-align:center;color:rgba(0,212,255,.7)!important;text-transform:uppercase;margin-top:3px}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#080c18 0%,#0d1830 60%,#060b16 100%)!important;border-right:1px solid rgba(0,212,255,.15)!important}
-</style>
-<div class="sidebar-logo-wrap">
-    <div class="sidebar-logo-glow"></div>
-    <svg class="sidebar-logo-svg" width="80" height="95" viewBox="0 0 120 145" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <linearGradient id="sidebarShieldGrad" x1="0%" y1="0%" x2="100%" y2="120%">
-                <stop offset="0%" stop-color="#9BE9FF"/>
-                <stop offset="34%" stop-color="#1795FF"/>
-                <stop offset="70%" stop-color="#0058B8"/>
-                <stop offset="100%" stop-color="#051A46"/>
-            </linearGradient>
-            <linearGradient id="sidebarShieldGloss" x1="20%" y1="0%" x2="72%" y2="62%">
-                <stop offset="0%" stop-color="rgba(255,255,255,.46)"/>
-                <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
-            </linearGradient>
-            <linearGradient id="sidebarRingGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#FFF1A1"/>
-                <stop offset="45%" stop-color="#FFD45E"/>
-                <stop offset="100%" stop-color="#A86B0B"/>
-            </linearGradient>
-            <linearGradient id="sidebarWaveYellow" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#FFD447"/><stop offset="40%" stop-color="#FFF59D"/><stop offset="70%" stop-color="#FFCA28"/><stop offset="100%" stop-color="#FFD447"/><animateTransform attributeName="gradientTransform" type="translate" values="-0.8 0;0.8 0;-0.8 0" dur="3.2s" repeatCount="indefinite"/></linearGradient>
-            <linearGradient id="sidebarWaveBlue" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#0077C8"/><stop offset="38%" stop-color="#2DB6FF"/><stop offset="68%" stop-color="#0099E5"/><stop offset="100%" stop-color="#0077C8"/><animateTransform attributeName="gradientTransform" type="translate" values="0.8 0;-0.8 0;0.8 0" dur="3.4s" repeatCount="indefinite"/></linearGradient>
-            <linearGradient id="sidebarWaveRed" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#A90D1F"/><stop offset="42%" stop-color="#FF4D5F"/><stop offset="72%" stop-color="#CE1126"/><stop offset="100%" stop-color="#A90D1F"/><animateTransform attributeName="gradientTransform" type="translate" values="-0.6 0;0.6 0;-0.6 0" dur="2.9s" repeatCount="indefinite"/></linearGradient>
-            <filter id="sidebarShadow" x="-30%" y="-30%" width="170%" height="170%">
-                <feGaussianBlur in="SourceAlpha" stdDeviation="3.4" result="blur"/>
-                <feOffset dx="0" dy="5" result="offset"/>
-                <feFlood flood-color="rgba(5,22,58,.34)"/>
-                <feComposite in2="offset" operator="in"/>
-                <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <filter id="sidebarGlow" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="2.1" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-        </defs>
-        <ellipse cx="60" cy="70" rx="48" ry="48" fill="none" stroke="rgba(0,102,204,.12)" stroke-width="1" stroke-dasharray="3 7">
-            <animateTransform attributeName="transform" type="rotate" from="0 60 70" to="360 60 70" dur="18s" repeatCount="indefinite"/>
-        </ellipse>
-        <ellipse cx="60" cy="70" rx="55" ry="55" fill="none" stroke="rgba(0,212,255,.18)" stroke-width="1.2" stroke-dasharray="6 4">
-            <animateTransform attributeName="transform" type="rotate" from="0 60 70" to="-360 60 70" dur="22s" repeatCount="indefinite"/>
-        </ellipse>
-        <g>
-            <circle cx="60" cy="70" r="45" fill="rgba(255,255,255,.22)"/>
-            <circle cx="60" cy="70" r="44" fill="url(#sidebarShieldGrad)" filter="url(#sidebarShadow)"/>
-            <circle cx="60" cy="70" r="44" fill="url(#sidebarShieldGloss)" opacity=".5"/>
-            <circle cx="60" cy="70" r="48" fill="none" stroke="url(#sidebarRingGold)" stroke-width="2.4" opacity=".94"/>
-            <circle cx="60" cy="70" r="36" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1.1"/>
-        </g>
-        <g opacity=".56">
-            <line x1="60" y1="15" x2="60" y2="21" stroke="#6BC6FF" stroke-width="1.6" stroke-linecap="round"/>
-            <line x1="60" y1="119" x2="60" y2="125" stroke="#6BC6FF" stroke-width="1.6" stroke-linecap="round"/>
-            <line x1="7" y1="70" x2="13" y2="70" stroke="#6BC6FF" stroke-width="1.6" stroke-linecap="round"/>
-            <line x1="107" y1="70" x2="113" y2="70" stroke="#6BC6FF" stroke-width="1.6" stroke-linecap="round"/>
-        </g>
-        <g>
-            <animateTransform attributeName="transform" type="rotate" from="0 60 70" to="360 60 70" dur="14s" repeatCount="indefinite"/>
-            <circle cx="60" cy="23" r="2.5" fill="#00E1FF"/>
-            <circle cx="107" cy="70" r="1.8" fill="#9FE9FF" opacity=".88"/>
-            <circle cx="60" cy="117" r="2.1" fill="#64C8FF" opacity=".74"/>
-            <circle cx="13" cy="70" r="1.7" fill="#5FB8FF" opacity=".74"/>
-        </g>
-        <g>
-            <path d="M60 38 L79 49 L79 73 Q79 92 60 103 Q41 92 41 73 L41 49 Z" fill="rgba(4,21,60,.24)" transform="translate(1.5,4)"/>
-            <path d="M60 38 L79 49 L79 73 Q79 92 60 103 Q41 92 41 73 L41 49 Z" fill="rgba(255,255,255,.06)"/>
-            <path d="M60 38 L79 49 L79 73 Q79 92 60 103 Q41 92 41 73 L41 49 Z" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1"/>
-        </g>
-        <g filter="url(#sidebarGlow)">
-            <path d="M31 70 H44 L49 58 L55 83 L60 69 L68 69 L73 54 L79 80 L84 70 H89" fill="none" stroke="#00EEFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="140" stroke-dashoffset="140">
-                <animate attributeName="stroke-dashoffset" values="140;0;0;140" dur="4.2s" repeatCount="indefinite"/>
-            </path>
-        </g>
-        <g>
-            <circle cx="60" cy="51" r="5.4" fill="url(#sidebarWaveYellow)"/>
-            <path d="M60 58 C66 58 71 62 71 69 V79 C71 82 68.5 84 65.5 84 H54.5 C51.5 84 49 82 49 79 V69 C49 62 54 58 60 58 Z" fill="url(#sidebarWaveBlue)"/>
-            <rect x="57" y="58" width="6" height="26" rx="3" fill="url(#sidebarWaveRed)"/>
-        </g>
-        <circle cx="60" cy="70" r="28" fill="none" stroke="rgba(0,235,255,.26)" stroke-width="1.1">
-            <animate attributeName="r" values="28;44" dur="3.2s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values=".55;0" dur="3.2s" repeatCount="indefinite"/>
-        </circle>
-    </svg>
-    <div class="sidebar-brand">SAFE CONGO</div>
-    <div class="sidebar-tagline">Surveillance &#8226; RDC</div>
-</div>"""
-
-CSS = """<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-*{font-family:'Inter',sans-serif}
-#MainMenu,footer,header{visibility:hidden}
-[data-testid="stSidebarNav"]{display:none}
-@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes shimmer{0%{background-position:-1000px 0}100%{background-position:1000px 0}}
-@keyframes shieldPulse{0%,100%{filter:drop-shadow(0 6px 18px rgba(0,102,204,.6));transform:scale(1)}50%{filter:drop-shadow(0 10px 28px rgba(0,102,204,.9));transform:scale(1.06)}}
-.stApp{background:linear-gradient(135deg,#f0f2f5,#e8ecf1)}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#1a1a2e,#16213e)}
-[data-testid="stSidebar"] *{color:#fff!important}
-.page-header{background:linear-gradient(135deg,#0066CC,#004D99);border-radius:20px;padding:28px 36px;margin-bottom:28px;animation:fadeIn .6s ease-out;position:relative;overflow:hidden}
-.page-header::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);animation:shimmer 3s infinite}
-.page-header h1{color:#fff;margin:0;font-size:1.8rem}
-.page-header p{color:rgba(255,255,255,.85);margin:6px 0 0}
-.content-card{background:#fff;border-radius:18px;padding:24px;box-shadow:0 3px 12px rgba(0,0,0,.07);margin-bottom:20px;animation:fadeIn .7s ease-out}
-.stButton>button{background:linear-gradient(135deg,#0066CC,#004D99);color:#fff;border:none;border-radius:12px;padding:10px 24px;font-weight:600;transition:all .3s}
-.stButton>button:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(0,102,204,.35)}
-.stTextInput>div>div>input{border-radius:12px;border:1px solid #e0e0e0;padding:12px 16px}
-.stSelectbox>div>div{border-radius:12px}
-</style>"""
 
 PROVINCES = [
-    "Kinshasa","Kongo Central","Kwango","Kwilu","Mai-Ndombe",
-    "Equateur","Sud-Ubangi","Nord-Ubangi","Mongala","Tshopo",
-    "Bas-Uele","Haut-Uele","Ituri","Nord-Kivu","Sud-Kivu",
-    "Maniema","Tanganyika","Haut-Lomami","Lualaba","Haut-Katanga",
-    "Lomami","Sankuru","Kasai","Kasai Central","Kasai Oriental",
+    "Kinshasa", "Kongo Central", "Kwango", "Kwilu", "Mai-Ndombe", "Equateur", "Sud-Ubangi",
+    "Nord-Ubangi", "Mongala", "Tshopo", "Bas-Uele", "Haut-Uele", "Ituri", "Nord-Kivu",
+    "Sud-Kivu", "Maniema", "Tanganyika", "Haut-Lomami", "Lualaba", "Haut-Katanga",
+    "Lomami", "Sankuru", "Kasai", "Kasai Central", "Kasai Oriental",
 ]
+
 MALADIES = [
-    "Paludisme","Cholera","Rougeole","Mpox","Ebola","Meningite",
-    "Fievre jaune","Rage","Typhofide","Peste","Trypanosomiase",
-    "Leishmaniose","Poliomyelite","Coqueluche","Tetanos",
-    "Hepatite A","Hepatite B","Hepatite E","Diarrhee","IRA",
-    "Malnutrition","Autre",
+    "Paludisme", "Cholera", "Rougeole", "Mpox", "Ebola", "Meningite", "Fievre jaune",
+    "Rage", "Typhoide", "Peste", "Trypanosomiase", "Leishmaniose", "Poliomyelite",
+    "Coqueluche", "Tetanos", "Hepatite A", "Hepatite B", "Hepatite E", "Diarrhee", "IRA",
+    "Malnutrition", "Autre",
 ]
 
 
-SHIELD_SVG = PUBLIC_SIDEBAR_BRAND
-
-def nav_sidebar(user, auth):
-    with st.sidebar:
-        st.markdown(SHIELD_SVG, unsafe_allow_html=True)
-        st.markdown(f"**{user['full_name']}**  \n*Administrateur*")
-        st.markdown("---")
-        if st.button("  Tableau de bord",   use_container_width=True): st.switch_page("pages/admin_dashboard.py")
-        if st.button("  Saisie donnees",     use_container_width=True): st.switch_page("pages/admin_data_entry.py")
-        if st.button("  Utilisateurs",        use_container_width=True): st.switch_page("pages/admin_users.py")
-        st.markdown("---")
-        if st.button("  Deconnexion",         use_container_width=True):
-            st.session_state.user = None
-            st.switch_page("app.py")
+def _sorted_unique(values) -> List[str]:
+    cleaned = {
+        str(value).strip()
+        for value in values
+        if pd.notna(value) and str(value).strip() and str(value).strip().lower() != "nan"
+    }
+    return sorted(cleaned, key=lambda item: item.casefold())
 
 
-def generate_alert(conn, cursor, user_id, disease, province, zone, week, year, total_cases):
+@st.cache_data(show_spinner=False)
+def _reference_catalog() -> pd.DataFrame:
+    reference_df = aggregated_csv_frame().copy()
+    if reference_df.empty:
+        return pd.DataFrame(columns=["MALADIE", "PROVINCE", "ZONE_SANTE"])
+
+    rename_map = {}
+    for column in reference_df.columns:
+        normalized = column.strip().upper()
+        if normalized in {"MALADIE", "PROVINCE", "ZONE_SANTE"}:
+            rename_map[column] = normalized
+    reference_df = reference_df.rename(columns=rename_map)
+
+    for required in ["MALADIE", "PROVINCE", "ZONE_SANTE"]:
+        if required not in reference_df.columns:
+            reference_df[required] = None
+
+    return reference_df[["MALADIE", "PROVINCE", "ZONE_SANTE"]].drop_duplicates()
+
+
+def _disease_options(reference_df: pd.DataFrame, entries_df: pd.DataFrame) -> List[str]:
+    sources = list(MALADIES)
+    if "MALADIE" in reference_df.columns:
+        sources.extend(reference_df["MALADIE"].tolist())
+    if not entries_df.empty and "disease" in entries_df.columns:
+        sources.extend(entries_df["disease"].tolist())
+    return _sorted_unique(sources)
+
+
+def _province_options(reference_df: pd.DataFrame, entries_df: pd.DataFrame) -> List[str]:
+    sources = list(PROVINCES)
+    if "PROVINCE" in reference_df.columns:
+        sources.extend(reference_df["PROVINCE"].tolist())
+    if not entries_df.empty and "province" in entries_df.columns:
+        sources.extend(entries_df["province"].tolist())
+    return _sorted_unique(sources)
+
+
+def _zone_options(reference_df: pd.DataFrame, entries_df: pd.DataFrame, province: str) -> List[str]:
+    sources = []
+    if not reference_df.empty and province:
+        matches = reference_df.loc[reference_df["PROVINCE"].astype(str).str.casefold() == province.casefold(), "ZONE_SANTE"]
+        sources.extend(matches.tolist())
+    if not entries_df.empty and province:
+        matches = entries_df.loc[entries_df["province"].astype(str).str.casefold() == province.casefold(), "zone_sante"]
+        sources.extend(matches.tolist())
+    return _sorted_unique(sources)
+
+
+def _reference_lists(reference_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    if reference_df.empty:
+        empty_frame = pd.DataFrame()
+        return empty_frame, empty_frame, empty_frame
+
+    diseases_df = pd.DataFrame({"Maladie": _sorted_unique(reference_df.get("MALADIE", []))})
+    provinces_df = pd.DataFrame({"Province": _sorted_unique(reference_df.get("PROVINCE", []))})
+    zones_df = pd.DataFrame({"Zone de sante": _sorted_unique(reference_df.get("ZONE_SANTE", []))})
+    return diseases_df, provinces_df, zones_df
+
+
+def _filtered_zones(reference_df: pd.DataFrame, selected_province: str) -> pd.DataFrame:
+    if reference_df.empty:
+        return pd.DataFrame(columns=["Zone de sante"])
+
+    filtered_df = reference_df
+    if selected_province and selected_province != "Toutes les provinces":
+        filtered_df = filtered_df.loc[
+            filtered_df["PROVINCE"].astype(str).str.casefold() == selected_province.casefold()
+        ]
+    return pd.DataFrame({"Zone de sante": _sorted_unique(filtered_df.get("ZONE_SANTE", []))})
+
+
+def _reference_export_name(prefix: str, selected_province: str, extension: str) -> str:
+    suffix = "toutes_provinces" if not selected_province or selected_province == "Toutes les provinces" else _normalize_location(selected_province)
+    return f"{prefix}_{suffix}.{extension}"
+
+
+def _alert_destination_provinces(auth: AuthSystem, province_options: List[str]) -> List[str]:
+    authority_provinces = [authority.get("province") for authority in auth.get_all_authorities() if authority.get("province")]
+    return _sorted_unique(list(province_options) + authority_provinces)
+
+
+def _normalize_location(value: str) -> str:
+    if not value:
+        return ""
+    normalized = unicodedata.normalize("NFKD", str(value))
+    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
+    return "".join(ch for ch in ascii_only.lower() if ch.isalnum())
+
+
+def _recipient_ids_for_target(auth: AuthSystem, target_mode: str, province: str, target_province: str) -> tuple[List[int], str]:
+    authorities = auth.get_all_authorities()
+
+    if target_mode == "Toutes les provinces":
+        recipient_ids = [authority["id"] for authority in authorities]
+        return recipient_ids, "toutes les provinces"
+
+    destination_label = target_province if target_mode == "Province ciblee" and target_province else province
+    normalized_destination = _normalize_location(destination_label)
+    recipient_ids = [
+        authority["id"]
+        for authority in authorities
+        if _normalize_location(authority.get("province")) == normalized_destination
+    ]
+    return recipient_ids, destination_label
+
+
+def generate_alert(
+    auth: AuthSystem,
+    disease: str,
+    province: str,
+    zone: str,
+    week: int,
+    year: int,
+    total_cases: int,
+    target_mode: str,
+    target_province: str,
+):
+    conn = sqlite3.connect(str(auth.db_path))
+    cursor = conn.cursor()
     cursor.execute(
-        "SELECT total_cases FROM epidemiological_data "
-        "WHERE disease=? AND province=? AND zone_sante=? "
-        "ORDER BY year DESC, week DESC LIMIT 1",
-        (disease, province, zone),
+        """
+        SELECT total_cases, week, year
+        FROM epidemiological_data
+        WHERE disease=?
+          AND province=?
+          AND zone_sante=?
+          AND (year < ? OR (year = ? AND week < ?))
+        ORDER BY year DESC, week DESC
+        LIMIT 1
+        """,
+        (disease, province, zone, year, year, week),
     )
     row = cursor.fetchone()
-    prev = row[0] if row else 0
-    if prev <= 0:
-        return None
-    growth = (total_cases - prev) / prev * 100
-    if growth < 10:
-        return None
-    level = "CRITIQUE" if growth > 50 else "HAUTE" if growth > 25 else "MODEREE"
-    predicted = int(total_cases * (1 + growth / 100))
-    msg = f"Augmentation de {growth:.1f}% par rapport a la semaine precedente."
+    prev = int(row[0]) if row else None
+
+    if prev is None:
+        growth = 0.0
+        level = "NOUVELLE_DONNEE"
+        predicted = int(total_cases)
+        msg = f"Nouvelle saisie admin enregistree pour {disease} a {zone}, {province}, semaine {week}/{year}."
+    else:
+        growth = ((total_cases - prev) / prev * 100) if prev > 0 else (100.0 if total_cases > 0 else 0.0)
+        if growth > 50:
+            level = "CRITIQUE"
+        elif growth > 25:
+            level = "HAUTE"
+        elif growth >= 10:
+            level = "MODEREE"
+        else:
+            level = "INFO"
+
+        predicted = max(int(round(total_cases * (1 + max(growth, 0) / 100))), int(total_cases))
+        if growth >= 0:
+            msg = f"Saisie admin recensee avec une evolution de {growth:.1f}% par rapport a la periode precedente."
+        else:
+            msg = f"Saisie admin recensee avec un recul de {abs(growth):.1f}% par rapport a la periode precedente."
+
     cursor.execute(
-        "INSERT INTO alerts (disease,province,zone_sante,week,year,"
-        "current_cases,predicted_cases,growth_rate,alert_level,message)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+        """
+        INSERT INTO alerts (disease, province, zone_sante, week, year, current_cases, predicted_cases, growth_rate, alert_level, message)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
         (disease, province, zone, week, year, total_cases, predicted, growth, level, msg),
     )
     alert_id = cursor.lastrowid
-    cursor.execute(
-        "SELECT id FROM users WHERE role='autorite_sanitaire' AND province=? AND is_active=1",
-        (province,),
-    )
-    for (uid,) in cursor.fetchall():
+
+    recipient_ids, destination_label = _recipient_ids_for_target(auth, target_mode, province, target_province)
+
+    notification_message = f"{msg} Diffusion vers: {destination_label}. Observation source: {province} / {zone}."
+    for uid in recipient_ids:
         cursor.execute(
-            "INSERT INTO notifications (user_id,alert_id,title,message) VALUES (?,?,?,?)",
-            (uid, alert_id, f"ALERTE {level} - {disease}", msg),
+            "INSERT INTO notifications (user_id, alert_id, title, message) VALUES (?, ?, ?, ?)",
+            (uid, alert_id, f"ALERTE {level} - {disease}", notification_message),
         )
     conn.commit()
-    return alert_id, level, growth
+    conn.close()
+    return level, growth, len(recipient_ids), destination_label
 
 
-def main():
-    st.set_page_config(page_title="Saisie Donnees - SAFE CONGO",
-                       page_icon=None, layout="wide")
-    st.markdown(CSS, unsafe_allow_html=True)
+def _entry_mix_chart(entries_df: pd.DataFrame) -> go.Figure:
+    chart_df = entries_df.copy()
+    if chart_df.empty:
+        chart_df = pd.DataFrame({"disease": ["Aucune donnee"], "total_cases": [0]})
+    else:
+        chart_df = chart_df.groupby("disease", as_index=False)["total_cases"].sum().sort_values("total_cases", ascending=False).head(8)
+    fig = go.Figure(go.Bar(x=chart_df["disease"], y=chart_df["total_cases"], marker_color="#0a5fab"))
+    return make_plotly_layout(fig, "Maladies les plus saisies")
+
+
+def _province_chart(entries_df: pd.DataFrame) -> go.Figure:
+    province_df = entries_df.copy()
+    if province_df.empty:
+        province_df = pd.DataFrame({"province": ["Aucune donnee"], "total_cases": [0]})
+    else:
+        province_df = province_df.groupby("province", as_index=False)["total_cases"].sum().sort_values("total_cases", ascending=True).tail(8)
+    fig = go.Figure(go.Bar(x=province_df["total_cases"], y=province_df["province"], orientation="h", marker_color="#49acef"))
+    return make_plotly_layout(fig, "Charge recente par province")
+
+
+def main() -> None:
+    st.set_page_config(page_title="Saisie Donnees - SAFE CONGO", page_icon=None, layout="wide")
+    apply_admin_theme()
 
     auth = AuthSystem()
     user = require_auth(auth)
     if not user or user["role"] != "admin":
-        st.switch_page("app.py")
+        switch_to_home_page()
         return
 
-    nav_sidebar(user, auth)
-
-    st.markdown(
-        '<div class="page-header"><h1>Saisie des Donnees Epidemiologiques</h1>'
-        "<p>Enregistrez les nouvelles observations et declenchez les alertes automatiquement.</p></div>",
-        unsafe_allow_html=True,
+    render_admin_sidebar(user, active_item=2)
+    render_admin_hero(
+        "Saisie & intelligence epidemiologique",
+        "Un espace de production admin qui combine formulaire, verification, recentrage territorial et declenchement intelligent des alertes.",
+        ["Saisie haute confiance", "Alertes automatiques", "Traite prioritaire"],
     )
 
-    tab1, tab2 = st.tabs(["Saisie manuelle", "Historique & Export"])
+    entries_df = recent_entries_frame(auth.db_path)
+    alerts_df = alerts_frame(auth.db_path)
+    reference_df = _reference_catalog()
+    disease_options = _disease_options(reference_df, entries_df)
+    province_options = _province_options(reference_df, entries_df)
+    destination_options = _alert_destination_provinces(auth, province_options)
+    latest_week = f"S{datetime.now().isocalendar()[1]}-{datetime.now().year}"
+    render_kpi_cards(
+        [
+            {"label": "Saisies recentes", "value": str(len(entries_df)), "delta": "Fenetre de 200 lignes", "copy": "La page garde une vision immediate des entrees les plus fraiches pour detecter les anomalies de cadence.", "accent": "#0a5fab", "accent_soft": "#49acef", "pill": "rgba(10,95,171,.1)"},
+            {"label": "Alertes emises", "value": str(len(alerts_df)), "delta": "Signal compare au precedent", "copy": "Toute hausse significative est transformee en notification exploitable pour les autorites concernees.", "accent": "#d97706", "accent_soft": "#f9c74f", "pill": "rgba(217,119,6,.12)"},
+            {"label": "Semaine active", "value": latest_week, "delta": "Cadence courante", "copy": "Le repere hebdomadaire cadre la saisie et structure l'analyse longitudinale par territoire.", "accent": "#059669", "accent_soft": "#34d399", "pill": "rgba(5,150,105,.12)"},
+            {"label": "Provinces touchees", "value": str(entries_df["province"].nunique()) if not entries_df.empty else "0", "delta": "Couverture territoriale", "copy": "Le nombre de provinces remontees mesure la largeur de la capture sur la fenetre recente.", "accent": "#7c3aed", "accent_soft": "#a78bfa", "pill": "rgba(124,58,237,.12)"},
+        ]
+    )
 
-    with tab1:
-        st.markdown('<div class="content-card">', unsafe_allow_html=True)
-        with st.form("data_form", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                disease  = st.selectbox("Maladie *", MALADIES)
-                province = st.selectbox("Province *", PROVINCES)
-                zone     = st.text_input("Zone de sante *", placeholder="ex: Goma")
-            with c2:
-                week   = st.number_input("Semaine *", 1, 53, datetime.now().isocalendar()[1])
-                year   = st.number_input("Annee *",  2020, 2030, datetime.now().year)
-                cases  = st.number_input("Cas *",    0, value=0)
-                deaths = st.number_input("Deces *",  0, value=0)
+    diseases_reference_df, provinces_reference_df, _ = _reference_lists(reference_df)
+    reference_filter_options = ["Toutes les provinces"] + provinces_reference_df["Province"].tolist() if not provinces_reference_df.empty else ["Toutes les provinces"]
+    tab_form, tab_intel, tab_reference = st.tabs(["Nouvelle saisie", "Lecture recente", "Referentiel dataset"])
 
-            letalite = (deaths / cases * 100) if cases > 0 else 0
-            st.caption(f"Taux de letalite calcule : {letalite:.2f}%")
-            submitted = st.form_submit_button("Enregistrer", use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        if submitted:
-            if disease and province and zone:
-                try:
-                    conn = sqlite3.connect(str(auth.db_path))
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "INSERT INTO epidemiological_data "
-                        "(disease,week,year,province,zone_sante,total_cases,total_deaths,"
-                        "incidence_rate,mortality_rate,entered_by)"
-                        " VALUES (?,?,?,?,?,?,?,?,?,?)",
-                        (disease, week, year, province, zone, cases, deaths,
-                         cases / 100000, letalite, user["id"]),
+    with tab_form:
+        left_col, right_col = st.columns([1.15, 0.85], gap="large")
+        with left_col:
+            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+            panel_title("Formulaire admin prioritaire")
+            with st.form("admin_entry_form", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                with c1:
+                    disease = st.selectbox("Maladie", disease_options, accept_new_options=True)
+                    province = st.selectbox("Province", province_options, accept_new_options=True)
+                    zone = st.selectbox(
+                        "Zone de sante",
+                        _zone_options(reference_df, entries_df, province) or [""],
+                        index=None,
+                        placeholder="Choisir ou saisir une zone",
+                        accept_new_options=True,
                     )
-                    conn.commit()
-                    alert_result = generate_alert(conn, cursor, user["id"],
-                                                  disease, province, zone, week, year, cases)
-                    conn.close()
-                    st.success("Donnees enregistrees avec succes.")
-                    if alert_result:
-                        _, level, growth = alert_result
-                        st.warning(
-                            f"Alerte {level} generee : +{growth:.1f}% "
-                            f"detecte en {province} - {zone}."
-                        )
-                except Exception as e:
-                    st.error(f"Erreur lors de l'enregistrement : {e}")
-            else:
-                st.warning("Veuillez remplir tous les champs obligatoires (*).")
+                with c2:
+                    week = st.number_input("Semaine", min_value=1, max_value=53, value=datetime.now().isocalendar()[1])
+                    year = st.number_input("Annee", min_value=2020, max_value=2035, value=datetime.now().year)
+                    cases = st.number_input("Cas", min_value=0, value=0)
+                    deaths = st.number_input("Deces", min_value=0, value=0)
+                target_mode = st.radio("Diffuser l'alerte vers", ["Province de la saisie", "Province ciblee", "Toutes les provinces"], horizontal=True)
+                target_province = ""
+                if target_mode == "Province ciblee":
+                    target_province = st.selectbox("Province destinataire", destination_options, index=0 if destination_options else None, placeholder="Choisir la province qui recevra l'alerte")
+                submitted = st.form_submit_button("Enregistrer la saisie", use_container_width=True)
 
-    with tab2:
-        st.markdown('<div class="content-card">', unsafe_allow_html=True)
-        try:
-            conn = sqlite3.connect(str(auth.db_path))
-            hist = pd.read_sql_query(
-                "SELECT disease AS Maladie, week AS Semaine, year AS Annee, "
-                "province AS Province, zone_sante AS Zone, "
-                "total_cases AS Cas, total_deaths AS Deces, "
-                "entry_date AS Date FROM epidemiological_data "
-                "ORDER BY entry_date DESC LIMIT 200",
-                conn,
+            st.caption("Les suggestions de maladie, province et zone de sante sont alimentees par le dataset et les saisies deja en base.")
+
+            if submitted:
+                zone_value = (zone or "").strip()
+                if not disease or not province or not zone_value:
+                    st.warning("Renseignez la maladie, la province et la zone de sante.")
+                elif target_mode == "Province ciblee" and not target_province:
+                    st.warning("Choisissez la province destinataire de l'alerte.")
+                else:
+                    try:
+                        conn = sqlite3.connect(str(auth.db_path))
+                        cursor = conn.cursor()
+                        letalite = (deaths / cases * 100) if cases else 0
+                        cursor.execute(
+                            """
+                            INSERT INTO epidemiological_data
+                            (disease, week, year, province, zone_sante, total_cases, total_deaths, incidence_rate, mortality_rate, entered_by)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (disease, week, year, province, zone_value, cases, deaths, cases / 100000 if cases else 0, letalite, user["id"]),
+                        )
+                        conn.commit()
+                        conn.close()
+                        st.success("Saisie admin enregistree avec succes.")
+                        alert_result = generate_alert(auth, disease, province, zone_value, int(week), int(year), int(cases), target_mode, target_province)
+                        if alert_result:
+                            level, growth, recipient_count, destination_label = alert_result
+                            if recipient_count == 0:
+                                st.error(f"Alerte {level} creee, mais aucune autorite sanitaire active ne correspond a la destination {destination_label}. Activez un compte autorite ou choisissez une autre destination.")
+                            else:
+                                st.warning(f"Alerte {level} declenchee automatiquement avec une croissance de {growth:.1f}% et diffusee a {recipient_count} autorite(s) vers {destination_label}.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(f"Impossible d'enregistrer la saisie : {exc}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with right_col:
+            st.markdown(
+                """
+<div class="admin-panel">
+  <div class="admin-panel-title">Cadre de verification</div>
+  <div class="admin-grid-3">
+    <div class="admin-mini-card"><h4>Signal propre</h4><p>Verifier la coherence entre cas, deces et territoire avant validation pour proteger la fiabilite du tableau national.</p></div>
+        <div class="admin-mini-card"><h4>Diffusion ciblee</h4><p>L'admin choisit desormais si l'alerte doit partir a la province observee, a une autre province precise ou a toutes les autorites actives.</p></div>
+    <div class="admin-mini-card"><h4>Trace immediate</h4><p>La nouvelle ligne rejoint instantanement les vues de lecture recente et les indicateurs du dashboard executif.</p></div>
+  </div>
+</div>
+""",
+                unsafe_allow_html=True,
             )
-            conn.close()
-            if hist.empty:
-                st.info("Aucune donnee saisie pour l'instant.")
-            else:
-                st.dataframe(hist, use_container_width=True, hide_index=True)
-                csv = hist.to_csv(index=False).encode("utf-8")
-                st.download_button(
-                    "Telecharger CSV", csv,
-                    file_name=f"historique_{datetime.now().strftime('%Y%m%d')}.csv",
-                    mime="text/csv",
-                )
-        except Exception:
-            st.info("Aucune donnee disponible.")
+
+    with tab_intel:
+        section_label("Lecture de production")
+        chart_left, chart_right = st.columns(2, gap="large")
+        with chart_left:
+            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+            panel_title("Maladies les plus saisies")
+            st.plotly_chart(_entry_mix_chart(entries_df), use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        with chart_right:
+            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+            panel_title("Territoires les plus charges")
+            st.plotly_chart(_province_chart(entries_df), use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+        panel_title("Journal recent de production")
+        if entries_df.empty:
+            st.info("Aucune saisie recente disponible.")
+        else:
+            view_df = entries_df.rename(
+                columns={
+                    "disease": "Maladie",
+                    "province": "Province",
+                    "zone_sante": "Zone",
+                    "week": "Semaine",
+                    "year": "Annee",
+                    "total_cases": "Cas",
+                    "total_deaths": "Deces",
+                    "entry_date": "Horodatage",
+                }
+            )
+            st.dataframe(view_df.head(30), use_container_width=True, hide_index=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
+    with tab_reference:
+        section_label("Catalogue dataset")
+        selected_reference_province = st.selectbox("Filtrer les zones de sante par province", reference_filter_options, index=0)
+        filtered_zones_df = _filtered_zones(reference_df, selected_reference_province)
+        export_pdf = BarrierMeasuresPDF().generate_reference_catalog_pdf(
+            diseases_reference_df["Maladie"].tolist() if not diseases_reference_df.empty else [],
+            provinces_reference_df["Province"].tolist() if not provinces_reference_df.empty else [],
+            filtered_zones_df["Zone de sante"].tolist() if not filtered_zones_df.empty else [],
+            None if selected_reference_province == "Toutes les provinces" else selected_reference_province,
+        )
+        export_csv = pd.concat(
+            [
+                diseases_reference_df.assign(Categorie="Maladie", Valeur=diseases_reference_df.get("Maladie")),
+                provinces_reference_df.assign(Categorie="Province", Valeur=provinces_reference_df.get("Province")),
+                filtered_zones_df.assign(Categorie="Zone de sante", Valeur=filtered_zones_df.get("Zone de sante")),
+            ],
+            ignore_index=True,
+        )[["Categorie", "Valeur"]]
+        st.markdown(
+            f"""
+<div class="admin-panel">
+  <div class="admin-support-copy">Ce referentiel liste toutes les valeurs uniques detectees dans le dataset detaille utilise pour alimenter la saisie: <strong>{len(diseases_reference_df)}</strong> maladies, <strong>{len(provinces_reference_df)}</strong> provinces et <strong>{len(filtered_zones_df)}</strong> zones de sante pour le filtre courant.</div>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
 
-main()
+        export_col1, export_col2 = st.columns(2)
+        with export_col1:
+            st.download_button(
+                "Exporter le referentiel en PDF",
+                data=export_pdf,
+                file_name=_reference_export_name("referentiel_safe_congo", selected_reference_province, "pdf"),
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        with export_col2:
+            st.download_button(
+                "Exporter le referentiel en CSV",
+                data=export_csv.to_csv(index=False).encode("utf-8"),
+                file_name=_reference_export_name("referentiel_safe_congo", selected_reference_province, "csv"),
+                mime="text/csv",
+                use_container_width=True,
+            )
+
+        ref_col1, ref_col2, ref_col3 = st.columns(3, gap="large")
+        with ref_col1:
+            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+            panel_title("Toutes les maladies")
+            if diseases_reference_df.empty:
+                st.info("Aucune maladie detectee dans le dataset.")
+            else:
+                st.dataframe(diseases_reference_df, use_container_width=True, hide_index=True, height=520)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with ref_col2:
+            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+            panel_title("Toutes les provinces")
+            if provinces_reference_df.empty:
+                st.info("Aucune province detectee dans le dataset.")
+            else:
+                st.dataframe(provinces_reference_df, use_container_width=True, hide_index=True, height=520)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with ref_col3:
+            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+            panel_title("Toutes les zones de sante")
+            if filtered_zones_df.empty:
+                st.info("Aucune zone de sante detectee dans le dataset.")
+            else:
+                st.dataframe(filtered_zones_df, use_container_width=True, hide_index=True, height=520)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+
+if __name__ == "__main__":
+    main()

@@ -16,11 +16,10 @@ st.set_page_config(
 
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
 
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
 * { font-family: 'Manrope', sans-serif; box-sizing: border-box; }
-#MainMenu { visibility: hidden; }
-footer { visibility: hidden; }
+/* #MainMenu { visibility: hidden; } */
 [data-testid="stHeader"] { background: transparent !important; }
 [data-testid="collapsedControl"] {
   display: flex !important;
@@ -37,8 +36,53 @@ footer { visibility: hidden; }
 }
 [data-testid="stSidebarNav"] { display: none; }
 
+
 /* ─── MAIN BG LIGHT BLUE ────────────────────────────────────────────── */
-.stApp { background: linear-gradient(180deg, #eef6ff 0%, #e6f2fd 52%, #f0f8ff 100%) !important; }
+html, body, .stApp, .main, .block-container {
+  background: linear-gradient(180deg, #eef6ff 0%, #e6f2fd 52%, #f0f8ff 100%) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  box-sizing: border-box;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  overflow-y: auto !important;
+}
+.stApp:after, .main:after, .block-container:after, body:after, html:after {
+  display: none !important;
+  content: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Supprime l’espace vide au-dessus et en dessous */
+.block-container, .main, .stApp > div:first-child, .stApp > div:last-child {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* ─── GLOW BUTTON ANIMATION ─────────────────────────────────────────── */
+.stButton > button {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+.stButton > button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  box-shadow: 0 0 0 0 rgba(26,162,226,0.0);
+  transition: box-shadow .28s cubic-bezier(.22,1,.36,1);
+  z-index: -1;
+}
+.stButton > button:hover::after {
+  box-shadow: 0 0 16px 4px rgba(26,162,226,0.18), 0 0 32px 8px rgba(11,77,149,0.12);
+}
 
 :root {
     --primary: #0066CC;
@@ -118,8 +162,8 @@ footer { visibility: hidden; }
 /* stApp already set above */
 
 [data-testid="stSidebar"] {
-  background: #ffffff;
-  border-right: 1px solid #d0e8f8;
+  background: linear-gradient(180deg, #eef6ff 0%, #e6f2fd 52%, #f0f8ff 100%) !important;
+  border-right: 1px solid rgba(117,171,215,.32);
   box-shadow: 2px 0 18px rgba(10,60,140,.07);
 }
 [data-testid="stSidebar"] * { color: #0a2c5a !important; }
@@ -177,58 +221,6 @@ footer { visibility: hidden; }
     font-size: .64rem; letter-spacing: .8px; text-align: center;
     color: #7a9ab8 !important;
     text-transform: none; margin-top: 2px; font-weight: 600;
-}
-
-.expander-info {
-    font-size: .82rem; line-height: 1.7;
-    color: #4a6a8a !important;
-}
-.info-link {
-    display: block; color: #1a6db5 !important;
-    text-decoration: none; padding: 4px 0; font-size: .82rem;
-    transition: color .2s;
-}
-.info-link:hover { color: #0a84d0 !important; }
-
-/* ─── HERO SECTION ──────────────────────────────────────────────────────── */
-.hero-wrapper {
-    position: relative; overflow: hidden;
-    background: linear-gradient(135deg, #040812 0%, #0a1a3e 40%, #071230 100%);
-    border-radius: 28px; padding: 50px 40px 40px;
-    margin-bottom: 36px;
-    border: 1px solid rgba(0,212,255,.12);
-    box-shadow: 0 0 60px rgba(0,102,204,.2), inset 0 0 60px rgba(0,0,0,.3);
-    animation: fadeIn .8s ease-out;
-}
-.hero-bg-grid {
-    position: absolute; inset: 0;
-    background-image:
-        linear-gradient(rgba(0,212,255,.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,212,255,.04) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-}
-.hero-bg-radial {
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse at 50% 0%, rgba(0,102,204,.25) 0%, transparent 65%);
-    pointer-events: none;
-}
-.hero-content { position: relative; z-index: 2; text-align: center; }
-
-.hero-logo-container {
-    display: inline-block; position: relative;
-    margin-bottom: 24px;
-}
-
-.hero-title {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 3rem; font-weight: 900;
-    letter-spacing: 6px; text-transform: uppercase;
-    background: linear-gradient(135deg, #ffffff 0%, #a8d4ff 40%, #00D4FF 70%, #0066CC 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: textGlow 3s ease-in-out infinite, slideInUp .8s ease-out .2s both;
-    margin-bottom: 8px;
 }
 .hero-subtitle {
     font-size: 1rem; letter-spacing: 4px; text-transform: uppercase;
@@ -763,47 +755,7 @@ footer { visibility: hidden; }
   letter-spacing: 1.4px;
   text-transform: uppercase;
 }
-.global-footer {
-  max-width: 1120px;
-  margin: 18px auto 8px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #f8fcff 0%, #eef6ff 100%);
-  border: 1px solid rgba(71, 136, 194, .18);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.global-footer-left {
-  color: #3b5677 !important;
-  font-size: .82rem;
-  font-weight: 700;
-}
-.global-footer-right {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.global-footer-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid #dbeafe;
-  color: #0b4d95 !important;
-  font-size: .68rem;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-@media (max-width: 900px) {
-  .auth-feature-grid, .bridge-grid, .signal-strip, .entry-grid { grid-template-columns: 1fr; }
-  .bridge-head { flex-direction: column; align-items: center; }
-  .auth-shell-head, .auth-shell-statbox { grid-template-columns: 1fr; }
-  .auth-topline { flex-direction: column; }
-  .global-footer { justify-content: center; text-align: center; }
-}
+
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -1015,6 +967,7 @@ HERO_HTML = """<!DOCTYPE html>
 html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;overflow-x:hidden}
 /* ── ANIMATIONS ────────────────────────────────── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blockGlow{0%,100%{box-shadow:0 10px 38px rgba(26,162,226,.13);}50%{box-shadow:0 24px 64px rgba(26,162,226,.22);}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.18);opacity:1}}
@@ -1050,14 +1003,14 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .hero-visual{animation:float 5.5s ease-in-out infinite;filter:drop-shadow(0 18px 36px rgba(0,0,0,.16))}
 
 /* ── CARDS ──────────────────────────────────────── */
-.section-head{margin:0 0 14px}
+.section-head{margin:0 0 32px 0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);}
 .section-label{font-size:.7rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#3a7ebf;padding-left:2px}
-.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:20px}
-.card{background:#ffffff;border:1px solid #d0e8f8;border-radius:22px;padding:24px 22px;box-shadow:0 6px 26px rgba(10,60,120,.07);position:relative;overflow:hidden;transition:transform .28s,box-shadow .28s;animation:fadeUp .65s ease-out both}
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin:64px 0 64px 0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);}
+.card{background:#ffffff;border:1px solid #d0e8f8;border-radius:22px;padding:32px 28px;box-shadow:0 8px 32px rgba(10,60,120,.09);position:relative;overflow:hidden;transition:transform .28s,box-shadow .28s;animation:fadeUp .65s ease-out both}
 .card:nth-child(1){animation-delay:.08s}.card:nth-child(2){animation-delay:.16s}.card:nth-child(3){animation-delay:.24s}
 .card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:22px 22px 0 0}
 .c1::after{background:linear-gradient(90deg,#0a84d0,#38b6e8)}.c2::after{background:linear-gradient(90deg,#0b9e6e,#3ec99a)}.c3::after{background:linear-gradient(90deg,#f57c00,#ffb74d)}
-.card:hover{transform:translateY(-6px);box-shadow:0 14px 38px rgba(10,60,120,.13)}
+.card:hover{transform:translateY(-8px) scale(1.03);box-shadow:0 24px 64px rgba(26,162,226,.18),0 0 0 4px #e6f2fd;animation:blockGlow 1.8s infinite alternate;}
 .c-ico{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
 .ci-b{background:#e6f4fd}.ci-g{background:#e6f8f0}.ci-o{background:#fff3e0}
 .c-title{font-family:'Sora',sans-serif;font-size:.98rem;font-weight:800;color:#0a2040;margin-bottom:8px}
@@ -1066,36 +1019,19 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .ct-b{background:#e6f4fd;color:#1268b0}.ct-g{background:#e6f8f0;color:#0b7a52}.ct-o{background:#fff3e0;color:#c05800}
 
 /* ── STEPS ──────────────────────────────────────── */
-.steps-wrap{background:#ffffff;border:1px solid #d0e8f8;border-radius:22px;padding:28px 30px 30px;margin-bottom:20px;box-shadow:0 6px 26px rgba(10,60,120,.06);animation:fadeUp .7s ease-out .3s both}
-.steps-title{font-family:'Sora',sans-serif;font-size:1.25rem;font-weight:800;color:#0a2c5a;text-align:center;margin-bottom:6px}
-.steps-sub{font-size:.86rem;color:#7a9ab8;text-align:center;margin-bottom:26px}
-.steps-row{display:flex;align-items:flex-start;gap:0}
-.step{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center}
+.steps-wrap{background:#ffffff;border:1px solid #d0e8f8;border-radius:22px;padding:38px 38px 38px;margin:80px 0 0 0;box-shadow:0 8px 32px rgba(10,60,120,.09);animation:fadeUp 1.1s cubic-bezier(.22,1,.36,1);}
+.steps-title{font-family:'Sora',sans-serif;font-size:1.35rem;font-weight:800;color:#0a2c5a;text-align:center;margin-bottom:18px;}
+.steps-sub{font-size:.98rem;color:#7a9ab8;text-align:center;margin-bottom:44px;}
+.steps-row{display:flex;align-items:flex-start;gap:54px;}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 8px 32px rgba(26,162,226,.11);transition:box-shadow .22s,transform .18s;}
+.step:hover{box-shadow:0 16px 48px rgba(26,162,226,.18),0 0 0 4px #e6f2fd;transform:translateY(-4px) scale(1.03);animation:blockGlow 1.8s infinite alternate;}
 .step-line{flex:.42;height:2px;margin-top:23px;background:linear-gradient(90deg,#b8d8f0,#8ebfde)}
 .step-num{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#0a5fab,#1aa2e2);color:#fff;font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:11px;box-shadow:0 6px 18px rgba(10,95,171,.26)}
 .step-t{font-size:.9rem;font-weight:800;color:#0a2040;margin-bottom:5px}
 .step-c{font-size:.78rem;color:#7a9ab8;line-height:1.56;max-width:150px}
 
 /* ── FOOTER ─────────────────────────────────────── */
-.footer{background:#ffffff;border:1px solid #d0e8f8;border-radius:20px;padding:20px 26px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:center;box-shadow:0 4px 18px rgba(10,60,120,.05);animation:fadeUp .8s ease-out .42s both}
-.foot-brand{display:flex;align-items:center;gap:10px}
-.foot-shield{width:26px;height:30px}
-.foot-name{font-family:'Sora',sans-serif;font-size:.86rem;font-weight:800;letter-spacing:1.5px;color:#0a2c5a;text-transform:uppercase}
-.foot-copy{font-size:.7rem;color:#8ab0cc;margin-top:2px}
-.foot-links{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
-.foot-link{padding:6px 10px;border-radius:999px;background:#eef7ff;border:1px solid #c8e2f5;font-size:.7rem;font-weight:700;color:#1a6db5;white-space:nowrap}
-.foot-right{text-align:right}
-.foot-partners{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:6px}
-.foot-p{font-size:.67rem;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#5a91c0}
-.foot-year{font-size:.68rem;color:#b0c8da}
 
-@media(max-width:900px){
-  .hero-inner{grid-template-columns:1fr}.hero-visual{display:none}
-  .cards-grid{grid-template-columns:1fr}
-  .steps-row{flex-direction:column;align-items:center;gap:16px}.step-line{display:none}
-  .footer{grid-template-columns:1fr;text-align:center}.foot-partners,.foot-right{justify-content:center;text-align:center}
-  .nav-pills{display:none}.hero-title{font-size:2.4rem}.hero-title em{font-size:2rem}
-}
 </style></head><body>
 <div class="shell">
 
@@ -1218,66 +1154,141 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
   </div>
 
   <!-- CARDS -->
-  <div class="section-head"><div class="section-label">Capacites cles de la plateforme</div></div>
-  <div class="cards-grid">
-    <div class="card c1">
-      <div class="c-ico ci-b">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a84d0" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+  <div class="section-head" style="margin-bottom:0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);"><div class="section-label" style="font-size:1.1rem;letter-spacing:2.5px;color:#0a5fab;">Capacités clés de la plateforme</div></div>
+  <div class="cards-grid" style="margin-top:38px;gap:44px;">
+    <div class="card card-premium" style="background:linear-gradient(135deg,#fafdff 60%,#e6f2fd 100%);border-radius:36px;box-shadow:0 22px 70px 0 rgba(26,162,226,.13),0 0 0 10px #e6f2fd1a inset;border:2.5px solid #e0eaff;align-items:center;gap:28px;animation:fadeUp .7s cubic-bezier(.22,1,.36,1);position:relative;overflow:hidden;transition:box-shadow .22s,transform .22s;min-width:310px;max-width:400px;padding:38px 28px 32px 28px;">
+      <span class="c-tag-float" style="position:absolute;top:18px;right:18px;background:linear-gradient(90deg,#e6f2fd 60%,#fafdff 100%);color:#0a5fab;border:1.2px solid #c8e2f5;font-size:.89rem;font-weight:800;border-radius:999px;padding:6px 14px;box-shadow:0 2px 12px #e6f2fd80;z-index:2;">Surveillance</span>
+      <div style="display:flex;align-items:center;gap:18px;margin-top:18px;">
+        <svg width="54" height="54" viewBox="0 0 54 54" fill="none" style="background:linear-gradient(135deg,#e6f2fd,#fafdff);border-radius:16px;box-shadow:0 0 0 6px #e6f2fd;">
+          <circle cx="27" cy="27" r="20" stroke="#0a5fab" stroke-width="2.5" fill="#fafdff"/>
+          <path d="M37 37L27 27L20 34" stroke="#1aa2e2" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <animate attributeName="stroke-dasharray" values="0,40;40,0;0,40" dur="2.2s" repeatCount="indefinite"/>
+          </path>
         </svg>
+        <span style="font-size:1.19rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#0a5fab;font-family:'Sora',sans-serif;">Détection rapide</span>
       </div>
-      <div class="c-title">Detection rapide</div>
-      <div class="c-copy">Identification precoce des signaux d'alerte epidemiologique sur l'ensemble du territoire national.</div>
-      <span class="c-tag ct-b">Surveillance</span>
+      <div style="font-size:1.04rem;color:#4a6a8a;font-family:'Manrope',sans-serif;text-align:center;margin:12px 0 0 0;">Identification précoce des signaux d'alerte épidémiologique sur l'ensemble du territoire national.</div>
     </div>
-    <div class="card c2">
-      <div class="c-ico ci-g">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0b9e6e" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+    <div class="card card-premium" style="background:linear-gradient(135deg,#f8fcff 60%,#e6f8f0 100%);border-radius:36px;box-shadow:0 22px 70px 0 rgba(11,158,110,.13),0 0 0 10px #e6f8f01a inset;border:2.5px solid #b8e8d5;align-items:center;gap:28px;animation:fadeUp .8s .1s cubic-bezier(.22,1,.36,1);position:relative;overflow:hidden;transition:box-shadow .22s,transform .22s;min-width:310px;max-width:400px;padding:38px 28px 32px 28px;">
+      <span class="c-tag-float" style="position:absolute;top:18px;right:18px;background:linear-gradient(90deg,#e6f8f0 60%,#f8fcff 100%);color:#0b9e6e;border:1.2px solid #b8e8d5;font-size:.89rem;font-weight:800;border-radius:999px;padding:6px 14px;box-shadow:0 2px 12px #e6f8f080;z-index:2;">Analyse</span>
+      <div style="display:flex;align-items:center;gap:18px;margin-top:18px;">
+        <svg width="54" height="54" viewBox="0 0 54 54" fill="none" style="background:linear-gradient(135deg,#e6f8f0,#f8fcff);border-radius:16px;box-shadow:0 0 0 6px #e6f8f0;">
+          <rect x="12" y="12" width="30" height="30" rx="10" stroke="#0b9e6e" stroke-width="2.5" fill="#f8fcff"/>
+          <path d="M19 27h16M27 19v16" stroke="#1aa2e2" stroke-width="2.5"/>
         </svg>
+        <span style="font-size:1.19rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#0b9e6e;font-family:'Sora',sans-serif;">Analyse intelligente</span>
       </div>
-      <div class="c-title">Analyse intelligente</div>
-      <div class="c-copy">Traitement et visualisation des donnees sanitaires pour une lecture claire des tendances et risques.</div>
-      <span class="c-tag ct-g">Analyse</span>
+      <div style="font-size:1.04rem;color:#4a6a8a;font-family:'Manrope',sans-serif;text-align:center;margin:12px 0 0 0;">Traitement et visualisation des données sanitaires pour une lecture claire des tendances et risques.</div>
     </div>
-    <div class="card c3">
-      <div class="c-ico ci-o">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f57c00" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2 4 6v6c0 5.5 3.5 10.7 8 13 4.5-2.3 8-7.5 8-13V6l-8-4Z"/><path d="m9 12 2 2 4-4"/>
+    <div class="card card-premium" style="background:linear-gradient(135deg,#fff7f8 60%,#fff3e0 100%);border-radius:36px;box-shadow:0 22px 70px 0 rgba(245,124,0,.13),0 0 0 10px #fff3e01a inset;border:2.5px solid #ffd6b8;align-items:center;gap:28px;animation:fadeUp .8s .2s cubic-bezier(.22,1,.36,1);position:relative;overflow:hidden;transition:box-shadow .22s,transform .22s;min-width:310px;max-width:400px;padding:38px 28px 32px 28px;">
+      <span class="c-tag-float" style="position:absolute;top:18px;right:18px;background:linear-gradient(90deg,#fff7f8 60%,#fff3e0 100%);color:#f57c00;border:1.2px solid #ffd6b8;font-size:.89rem;font-weight:800;border-radius:999px;padding:6px 14px;box-shadow:0 2px 12px #fff3e080;z-index:2;">Pilotage</span>
+      <div style="display:flex;align-items:center;gap:18px;margin-top:18px;">
+        <svg width="54" height="54" viewBox="0 0 54 54" fill="none" style="background:linear-gradient(135deg,#fff7f8,#fff3e0);border-radius:16px;box-shadow:0 0 0 6px #fff3e0;">
+          <polygon points="27,12 14,20 14,34 27,42 40,34 40,20" stroke="#f57c00" stroke-width="2.5" fill="#fff7f8"/>
+          <path d="M23 30l4 4 8-8" stroke="#f57c00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <animate attributeName="stroke-dasharray" values="0,24;24,0;0,24" dur="2.2s" repeatCount="indefinite"/>
+          </path>
         </svg>
+        <span style="font-size:1.19rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#f57c00;font-family:'Sora',sans-serif;">Réponse coordonnée</span>
       </div>
-      <div class="c-title">Reponse coordonnee</div>
-      <div class="c-copy">Alertes prioritaires et outils de pilotage pour mobiliser rapidement les ressources de sante publique.</div>
-      <span class="c-tag ct-o">Pilotage</span>
+      <div style="font-size:1.04rem;color:#4a6a8a;font-family:'Manrope',sans-serif;text-align:center;margin:12px 0 0 0;">Alertes prioritaires et outils de pilotage pour mobiliser rapidement les ressources</div>
     </div>
+  </div>
+  <style>
+    .cards-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      margin: 36px 0 44px 0;
+      justify-content: center;
+      overflow-x: unset;
+      padding-bottom: 0;
+      scroll-behavior: unset;
+    }
+    .card {
+      min-width: 220px;
+      max-width: 340px;
+      flex: 1 1 280px;
+      background: linear-gradient(180deg,#fff 0%,#fafdff 100%);
+      border-radius: 28px;
+      box-shadow: 0 8px 32px rgba(10,95,171,.09);
+      border: 1.5px solid #e0eaff;
+      padding: 24px 14px 20px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      transition: box-shadow .18s, transform .18s;
+    }
+    .card:hover {
+      box-shadow: 0 16px 48px rgba(10,95,171,.16);
+      transform: translateY(-4px) scale(1.03);
+    }
+    .c-title {
+      font-size: 1.13rem;
+      font-weight: 900;
+      color: #0a2040;
+      font-family: 'Sora',sans-serif;
+      margin-bottom: 8px;
+      letter-spacing: -.5px;
+    }
+    .c-copy {
+      font-size: 0.97rem;
+      color: #4a6a8a;
+      font-family: 'Manrope',sans-serif;
+      margin-bottom: 14px;
+    }
+    .c-tag {
+      font-size: .89rem;
+      font-weight: 800;
+      border-radius: 999px;
+      padding: 6px 14px;
+      margin-top: auto;
+      letter-spacing: 1.1px;
+      background: #e6f2fd;
+      color: #0a5fab;
+      border: 1.2px solid #c8e2f5;
+    }
+    @media (max-width: 1100px) {
+      .cards-grid { gap: 14px; }
+      .card { min-width: 0; max-width: 99vw; padding: 12px 4px 12px 4px; }
+    }
+    @media (max-width: 900px) {
+      .cards-grid { flex-direction: column; align-items: center; gap: 12px; }
+      .card { width: 100%; min-width: 0; max-width: 600px; }
+    }
+    @media (max-width: 700px) {
+      .cards-grid { flex-direction: column; gap: 10px; }
+      .card { width: 100%; min-width: 0; max-width: 99vw; }
+    }
+  </style>
   </div>
 
   <!-- STEPS -->
-  <div class="steps-wrap">
-    <div class="steps-title">Du signal a la reponse</div>
-    <div class="steps-sub">Un processus structure pour agir efficacement sur le terrain</div>
-    <div class="steps-row">
-      <div class="step">
-        <div class="step-num">1</div>
+  <div class="steps-wrap" style="margin-top:64px;">
+    <div class="steps-title" style="font-size:1.5rem;letter-spacing:1.2px;">Du signal à la réponse</div>
+    <div class="steps-sub" style="font-size:1.08rem;margin-bottom:38px;">Un processus structuré pour agir efficacement sur le terrain</div>
+    <div class="steps-row" style="gap:38px;">
+      <div class="step" style="animation:fadeUp .7s .1s cubic-bezier(.22,1,.36,1);">
+        <div class="step-num" style="background:linear-gradient(135deg,#0a5fab,#1aa2e2);box-shadow:0 6px 18px rgba(10,95,171,.26);font-size:1.2rem;">1</div>
         <div class="step-t">Signalement</div>
-        <div class="step-c">Les autorites locales remontent les donnees de leur zone de sante.</div>
+        <div class="step-c">Les autorités locales remontent les données de leur zone de santé.</div>
       </div>
       <div class="step-line"></div>
-      <div class="step">
-        <div class="step-num">2</div>
+      <div class="step" style="animation:fadeUp .7s .2s cubic-bezier(.22,1,.36,1);">
+        <div class="step-num" style="background:linear-gradient(135deg,#0b9e6e,#3ec99a);box-shadow:0 6px 18px rgba(11,158,110,.18);font-size:1.2rem;">2</div>
         <div class="step-t">Analyse</div>
-        <div class="step-c">La plateforme detecte les anomalies et produit des visualisations.</div>
+        <div class="step-c">La plateforme détecte les anomalies et produit des visualisations.</div>
       </div>
       <div class="step-line"></div>
-      <div class="step">
-        <div class="step-num">3</div>
+      <div class="step" style="animation:fadeUp .7s .3s cubic-bezier(.22,1,.36,1);">
+        <div class="step-num" style="background:linear-gradient(135deg,#f57c00,#ffb74d);box-shadow:0 6px 18px rgba(245,124,0,.18);font-size:1.2rem;">3</div>
         <div class="step-t">Alerte</div>
-        <div class="step-c">Les responsables sont notifies avec les informations necessaires.</div>
+        <div class="step-c">Les responsables sont notifiés avec les informations nécessaires.</div>
       </div>
       <div class="step-line"></div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-t">Reponse</div>
+      <div class="step" style="animation:fadeUp .7s .4s cubic-bezier(.22,1,.36,1);">
+        <div class="step-num" style="background:linear-gradient(135deg,#0a5fab,#1aa2e2);box-shadow:0 6px 18px rgba(10,95,171,.26);font-size:1.2rem;">4</div>
+        <div class="step-t">Réponse</div>
         <div class="step-c">Coordination et mobilisation des ressources pour une intervention.</div>
       </div>
     </div>
@@ -1285,120 +1296,84 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 
   <!-- DRAPEAU RDC -->
   <!-- IMPACT SECTION -->
-  <div style="padding:100px 40px;background:linear-gradient(135deg,#eef6ff 0%,#f0f8ff 100%);border-top:2px solid rgba(26,162,226,.2);border-bottom:2px solid rgba(26,162,226,.2)">
-    <div style="max-width:1200px;margin:0 auto">
-      <div style="text-align:center;margin-bottom:80px">
-        <div style="font-size:32px;font-weight:700;color:#0a5fab;margin-bottom:12px;font-family:'Sora',sans-serif;letter-spacing:1px">Notre Impact pour la Sante Publique</div>
-        <div style="font-size:16px;color:#1aa2e2;font-family:'Manrope',sans-serif">Engagement continu vers une couverture sanitaire universelle en RDC</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:40px;margin-bottom:60px">
-        <div style="text-align:center;padding:30px;background:rgba(255,255,255,.8);border-radius:12px;border:1.5px solid rgba(10,85,184,.15);position:relative">
-          <div style="font-size:48px;font-weight:700;background:linear-gradient(135deg,#0055B8,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif">2,400+</div>
-          <div style="font-size:14px;color:#666;font-family:'Manrope',sans-serif;font-weight:600;letter-spacing:0.5px">STRUCTURES DE SANTE</div>
+  <div style="padding:110px 40px;background:linear-gradient(180deg,#eef6ff 0%,#f6fbff 46%,#edf6ff 100%);position:relative;overflow:hidden;border-top:1px solid rgba(26,162,226,.18);border-bottom:1px solid rgba(26,162,226,.14)">
+    <div style="position:absolute;inset:0;background:radial-gradient(circle at 10% 18%,rgba(0,85,184,.09),transparent 20%),radial-gradient(circle at 88% 24%,rgba(252,209,22,.12),transparent 18%),radial-gradient(circle at 50% 100%,rgba(26,162,226,.08),transparent 28%);pointer-events:none"></div>
+    <div style="max-width:1200px;margin:0 auto;position:relative;z-index:1">
+      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:end;margin-bottom:44px">
+        <div>
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:999px;background:rgba(255,255,255,.8);border:1px solid rgba(10,95,171,.10);box-shadow:0 6px 18px rgba(10,60,120,.05);font-size:.72rem;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:#0a5fab;font-family:'Sora',sans-serif;margin-bottom:18px">
+            <span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#0055B8,#1aa2e2)"></span>
+            Impact national
+          </div>
+          <div style="font-size:38px;font-weight:800;color:#0a2040;margin-bottom:14px;font-family:'Sora',sans-serif;letter-spacing:-1px;line-height:1.08">
+            Notre Impact pour la <span style="background:linear-gradient(135deg,#0a5fab,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Sante Publique</span>
+          </div>
+          <div style="font-size:16px;color:#587691;font-family:'Manrope',sans-serif;line-height:1.8;max-width:650px">Engagement continu vers une couverture sanitaire universelle en RDC, avec des donnees fiables, des signaux precoces et une coordination rapide entre les acteurs sanitaires.</div>
         </div>
-        <div style="text-align:center;padding:30px;background:rgba(255,255,255,.8);border-radius:12px;border:1.5px solid rgba(206,17,38,.15);position:relative">
-          <div style="font-size:48px;font-weight:700;background:linear-gradient(135deg,#CE1126,#FF5555);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif">85M+</div>
-          <div style="font-size:14px;color:#666;font-family:'Manrope',sans-serif;font-weight:600;letter-spacing:0.5px">PERSONNES SURVEILLEES</div>
-        </div>
-        <div style="text-align:center;padding:30px;background:rgba(255,255,255,.8);border-radius:12px;border:1.5px solid rgba(252,209,22,.15);position:relative">
-          <div style="font-size:48px;font-weight:700;background:linear-gradient(135deg,#FCD116,#FFE55C);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif">98%</div>
-          <div style="font-size:14px;color:#666;font-family:'Manrope',sans-serif;font-weight:600;letter-spacing:0.5px">DONNEES TRACEES</div>
-        </div>
-      </div>
-      <div style="text-align:center;padding:40px;background:rgba(26,162,226,.08);border-radius:16px;border-left:4px solid #0055B8">
-        <div style="font-size:18px;color:#0a5fab;font-family:'Sora',sans-serif;font-weight:600;margin-bottom:8px">Mission Sanitaire</div>
-        <div style="font-size:14px;color:#666;font-family:'Manrope',sans-serif;line-height:1.6">Assurer une surveillance epidemiologique en temps reel, detecter rapidement les foyers de maladie et coordonner les interventions pour proteger la sante de tous les Congolais.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CTA STRATEGIQUE AVANT FOOTER -->
-  <div style="padding:80px 40px;position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(10,85,184,.06) 0%,rgba(26,162,226,.04) 50%,rgba(10,85,184,.04) 100%)">
-    <div style="position:absolute;top:0;left:0;right:0;bottom:0;background-image:radial-gradient(circle at 20% 30%,rgba(10,85,184,.08) 0%,transparent 40%),radial-gradient(circle at 80% 70%,rgba(26,162,226,.08) 0%,transparent 40%);pointer-events:none"></div>
-    
-    <div style="max-width:900px;margin:0 auto;position:relative;z-index:1;text-align:center">
-      <!-- Indicateur top -->
-      <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:24px;padding:9px 18px;border-radius:999px;background:#fff;border:1px solid #d4e8f5;box-shadow:0 3px 12px rgba(10,60,120,.08)">
-        <div style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#0a5fab,#1aa2e2);animation:pulse 2s ease-in-out infinite"></div>
-        <span style="font-size:.75rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#0a5fab;font-family:'Sora',sans-serif">Plateforme Active 24/7</span>
-      </div>
-
-      <!-- Titre principal -->
-      <h2 style="font-size:2.8rem;font-weight:800;color:#0a2040;font-family:'Sora',sans-serif;margin:0 0 16px;line-height:1.15;letter-spacing:-0.5px">
-        Rejoignez la <span style="background:linear-gradient(135deg,#0055B8,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">surveillance nationale</span>
-      </h2>
-
-      <!-- Sous-titre -->
-      <p style="font-size:1.05rem;color:#4a6d8a;line-height:1.8;max-width:650px;margin:0 auto 40px;font-family:'Manrope',sans-serif">
-        Accédez à la plateforme pour surveiller, analyser et coordonner les réponses aux menaces sanitaires.
-      </p>
-
-      <!-- Confiance indicators -->
-      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:50px">
-        <div style="display:flex;align-items:center;gap:7px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid #d4e8f5;font-size:.78rem;font-weight:700;color:#3a6080;box-shadow:0 2px 8px rgba(10,60,120,.06)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0a84d0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          2,400+ structures
-        </div>
-        <div style="display:flex;align-items:center;gap:7px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid #d4e8f5;font-size:.78rem;font-weight:700;color:#3a6080;box-shadow:0 2px 8px rgba(10,60,120,.06)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0a84d0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          85M+ personnes
-        </div>
-        <div style="display:flex;align-items:center;gap:7px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid #d4e8f5;font-size:.78rem;font-weight:700;color:#3a6080;box-shadow:0 2px 8px rgba(10,60,120,.06)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0a84d0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          98% données tracées
+        <div style="justify-self:end;width:100%;max-width:360px;padding:22px 24px;border-radius:24px;background:linear-gradient(145deg,#0c4e91,#1176c0);box-shadow:0 20px 48px rgba(10,95,171,.22);border:1px solid rgba(255,255,255,.10)">
+          <div style="font-size:.72rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.7);font-family:'Sora',sans-serif;margin-bottom:10px">Vision terrain</div>
+          <div style="font-size:1rem;font-weight:700;color:#ffffff;font-family:'Sora',sans-serif;line-height:1.5;margin-bottom:10px">Une veille epidemiologique utile, lisible et actionnable au niveau national.</div>
+          <div style="font-size:.82rem;color:rgba(255,255,255,.76);line-height:1.65;font-family:'Manrope',sans-serif">Le systeme transforme les signaux sanitaires en decisions plus rapides pour les zones de sante, les provinces et la coordination centrale.</div>
         </div>
       </div>
 
-      <!-- Placeholder pour les boutons Streamlit (mis en Python) -->
-      <div id="cta-buttons-python-zone" style="min-height:50px"></div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-bottom:28px">
+        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#f6fbff 100%);border:1px solid rgba(10,95,171,.10);box-shadow:0 18px 40px rgba(10,60,120,.08)">
+          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#0055B8,#1aa2e2)"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(0,85,184,.10),rgba(26,162,226,.16));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a5fab" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15h3"/><path d="M7 11h6"/><path d="M7 7h10"/></svg>
+            </div>
+            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#84a7c5;font-family:'Sora',sans-serif">Couverture</div>
+          </div>
+          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#0055B8,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1">2,400+</div>
+          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Structures de sante</div>
+          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">Un reseau de structures suivies pour alimenter une surveillance nationale plus precise et continue.</div>
+        </div>
 
-      <!-- Trust line -->
-      <div style="margin-top:48px;padding-top:32px;border-top:1px solid rgba(10,85,184,.12)">
-        <p style="font-size:.82rem;color:#5a7a99;font-family:'Manrope',sans-serif;letter-spacing:.3px">
-          ✓ Sécurité de grade gouvernemental &nbsp;•&nbsp; ✓ Support 24/7 &nbsp;•&nbsp; ✓ Zéro coût initial
-        </p>
-      </div>
-    </div>
-  </div>
+        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#fff7f8 100%);border:1px solid rgba(206,17,38,.10);box-shadow:0 18px 40px rgba(10,60,120,.08)">
+          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#CE1126,#ff6b78)"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(206,17,38,.10),rgba(255,107,120,.14));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#CE1126" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4.97-4.22 8-7.44 8-11a4 4 0 0 0-7-2.65A4 4 0 0 0 4 10c0 3.56 3.03 6.78 8 11Z"/></svg>
+            </div>
+            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#d18a92;font-family:'Sora',sans-serif">Population</div>
+          </div>
+          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#CE1126,#ff6b78);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1">85M+</div>
+          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Personnes surveillees</div>
+          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">Une capacite de suivi a grande echelle pour mieux anticiper les foyers et proteger les populations.</div>
+        </div>
 
-  <!-- FOOTER -->
-  <div class="footer">
-    <div class="foot-brand">
-      <svg class="foot-shield" viewBox="0 0 110 128" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="ff1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#38b6e8"/><stop offset="100%" stop-color="#0a5fab"/>
-          </linearGradient>
-        </defs>
-        <path d="M55 8 L92 24 L92 58 Q92 92 55 116 Q18 92 18 58 L18 24 Z" fill="url(#ff1)"/>
-        <rect x="46" y="64" width="18" height="5" rx="2" fill="white" opacity=".9"/>
-        <rect x="52" y="57" width="6" height="19" rx="2" fill="white" opacity=".9"/>
-      </svg>
-      <div>
-        <div class="foot-name">SAFE CONGO</div>
-        <div class="foot-copy">Surveillance Epidemiologique Nationale</div>
+        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#fffdf4 100%);border:1px solid rgba(252,209,22,.18);box-shadow:0 18px 40px rgba(10,60,120,.08)">
+          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#FCD116,#ffe47a)"></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(252,209,22,.18),rgba(255,228,122,.18));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c58d00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>
+            </div>
+            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#c2a14d;font-family:'Sora',sans-serif">Qualite</div>
+          </div>
+          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#c58d00,#FCD116);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1">98%</div>
+          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Donnees tracees</div>
+          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">Une circulation fiable de l'information sanitaire pour soutenir des analyses solides et des actions rapides.</div>
+        </div>
       </div>
-    </div>
-    <div class="foot-links">
-      <span class="foot-link">Notre Mission</span>
-      <span class="foot-link">Impact</span>
-      <span class="foot-link">Fonctionnement</span>
-      <span class="foot-link">Contact</span>
-    </div>
-    <div class="foot-right">
-      <div class="foot-partners">
-        <span class="foot-p">RDC</span>
-        <span class="foot-p">OMS</span>
-        <span class="foot-p">UNICEF</span>
-        <span class="foot-p">Africa CDC</span>
+
+      <div style="display:grid;grid-template-columns:1.08fr .92fr;gap:22px;align-items:stretch">
+        <div style="padding:30px 30px 28px;border-radius:26px;background:linear-gradient(135deg,#ffffff 0%,#f7fbff 100%);border:1px solid rgba(10,95,171,.10);box-shadow:0 16px 36px rgba(10,60,120,.07)">
+          <div style="font-size:.74rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#0a84d0;font-family:'Sora',sans-serif;margin-bottom:12px">Mission Sanitaire</div>
+          <div style="font-size:24px;font-weight:800;color:#0a2040;font-family:'Sora',sans-serif;line-height:1.25;margin-bottom:12px">Transformer les donnees sanitaires en action concrete sur le terrain.</div>
+          <div style="font-size:14px;color:#65839c;font-family:'Manrope',sans-serif;line-height:1.8;max-width:700px">Assurer une surveillance epidemiologique en temps reel, detecter rapidement les foyers de maladie et coordonner les interventions pour proteger la sante de tous les Congolais.</div>
+        </div>
+        <div style="padding:26px 26px 24px;border-radius:26px;background:linear-gradient(160deg,#0c4e91,#1581cb);border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 42px rgba(10,95,171,.22)">
+          <div style="font-size:.72rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.68);font-family:'Sora',sans-serif;margin-bottom:10px">Lecture rapide</div>
+          <div style="font-size:1.35rem;font-weight:800;color:#ffffff;font-family:'Sora',sans-serif;line-height:1.35;margin-bottom:16px">Une plateforme qui renforce la reactivite nationale face aux menaces sanitaires.</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <span style="padding:8px 11px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12);font-size:.72rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#ffffff">Surveillance continue</span>
+            <span style="padding:8px 11px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12);font-size:.72rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#ffffff">Coordination rapide</span>
+            <span style="padding:8px 11px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12);font-size:.72rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#ffffff">Couverture nationale</span>
+          </div>
+        </div>
       </div>
-      <div class="foot-year">&copy; 2026 SAFE CONGO &mdash; Tous droits reserves</div>
     </div>
   </div>
 
@@ -1410,15 +1385,15 @@ def sidebar_info():
         st.markdown(SHIELD_SIDEBAR, unsafe_allow_html=True)
         st.markdown("---")
 
-        st.markdown('<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Navigation</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Parcours editorial</p>', unsafe_allow_html=True)
 
-        if st.button("&#9670; Notre Mission",    use_container_width=True, key="nav_mission"):
+        if st.button("Perspective strategique", use_container_width=True, key="nav_mission"):
             st.switch_page("pages/notre_mission.py")
-        if st.button("&#9650; Impact & Chiffres", use_container_width=True, key="nav_impact"):
+        if st.button("Impact national mesurable", use_container_width=True, key="nav_impact"):
             st.switch_page("pages/impact.py")
-        if st.button("&#9654; Comment ca fonctionne", use_container_width=True, key="nav_fonc"):
+        if st.button("Mecanique intelligente", use_container_width=True, key="nav_fonc"):
             st.switch_page("pages/fonctionnement.py")
-        if st.button("&#9993; Contact & Partenaires", use_container_width=True, key="nav_contact"):
+        if st.button("Alliance & coordination", use_container_width=True, key="nav_contact"):
             st.switch_page("pages/contact.py")
 
         st.markdown("---")
@@ -1441,328 +1416,78 @@ def show_login(auth):
     if "auth_view" not in st.session_state:
         st.session_state.auth_view = None
 
-    components.html(HERO_HTML, height=1720, scrolling=False)
 
-    # ── CTA BUTTONS (strategic placement, styled to match hero CTA section) ─────
-    st.markdown("""
-<style>
 
-.cta-section{
-  background:linear-gradient(135deg,#f0f8ff 0%,#e6f2fd 45%,#eef6ff 100%);
-  border:1px solid #c8dff0;border-radius:32px;
-  padding:60px 48px 52px;text-align:center;position:relative;overflow:hidden;
-  margin:0 auto 32px;max-width:860px;
-}
-.cta-section::before{
-  content:'';position:absolute;inset:0;border-radius:32px;
-  background:radial-gradient(ellipse at 50% -10%,rgba(10,95,171,.08),transparent 60%);
-  pointer-events:none;
-}
-.cta-dots{
-  position:absolute;inset:0;border-radius:32px;
-  background-image:radial-gradient(circle,rgba(10,95,171,.07) 1px,transparent 1px);
-  background-size:22px 22px;pointer-events:none;
-}
+    # Bloc test AVANT le composant principal
+    # Réduire la hauteur de l'iframe pour laisser de la place en bas
+    components.html(HERO_HTML, height=1500, scrolling=False)
 
-.cta-badge{
-  display:inline-flex;align-items:center;gap:7px;
-  padding:7px 16px;border-radius:999px;
-  background:rgba(10,95,171,.08);border:1px solid rgba(10,95,171,.18);
-  font-size:.7rem;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;
-  color:#0a5fab;margin-bottom:20px;
-}
-.cta-badge-dot{
-  width:7px;height:7px;border-radius:50%;
-  background:linear-gradient(135deg,#0a5fab,#1aa2e2);
-  animation:ctaFloat 2s ease-in-out infinite;
-}
-.cta-headline{
-  font-family:'Sora',sans-serif;font-size:2.4rem;font-weight:800;
-  letter-spacing:-1px;line-height:1.1;
-  color:#0a2040;margin-bottom:12px;
-}
-.cta-headline em{
-  font-style:normal;
-  background:linear-gradient(135deg,#0a5fab,#1aa2e2);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-}
-.cta-sub{
-  font-size:.96rem;color:#4a6d8a;line-height:1.7;
-  max-width:500px;margin:0 auto 36px;
-}
-
-.cta-trust{
-  display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:36px;
-}
-.cta-trust-item{
-  display:flex;align-items:center;gap:7px;
-  padding:8px 14px;border-radius:999px;
-  background:#fff;border:1px solid #d4e8f5;
-  font-size:.76rem;font-weight:700;color:#3a6080;
-  box-shadow:0 2px 8px rgba(10,60,120,.06);
-}
-.cta-trust-item svg{width:14px;height:14px;stroke:#0a84d0;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-
-.cta-buttons{
-  display:flex;justify-content:center;align-items:center;gap:16px;flex-wrap:wrap;
-}
-.cta-btn-primary{
-  display:inline-flex;align-items:center;gap:10px;
-  padding:16px 36px;border-radius:16px;
-  background:linear-gradient(135deg,#0a5fab,#1aa2e2);
-  color:#fff;font-family:'Sora',sans-serif;font-weight:800;font-size:1rem;
-  letter-spacing:.3px;text-decoration:none;cursor:pointer;
-  border:none;outline:none;
-  box-shadow:0 8px 28px rgba(10,95,171,.32);
-  transition:all .25s cubic-bezier(.34,1.56,.64,1);
-  animation:ctaGlow 3s ease-in-out infinite;
-  position:relative;overflow:hidden;
-}
-.cta-btn-primary::after{
-  content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
-  animation:ctaShimmer 3s 1s infinite;
-}
-.cta-btn-primary:hover{
-  transform:translateY(-3px) scale(1.03);
-  box-shadow:0 14px 36px rgba(10,95,171,.4);
-}
-.cta-btn-primary svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-
-.cta-btn-outline{
-  display:inline-flex;align-items:center;gap:10px;
-  padding:15px 34px;border-radius:16px;
-  background:#fff;
-  color:#0a5fab;font-family:'Sora',sans-serif;font-weight:800;font-size:1rem;
-  letter-spacing:.3px;text-decoration:none;cursor:pointer;
-  border:2px solid #b8d8f0;outline:none;
-  box-shadow:0 4px 18px rgba(10,60,120,.08);
-  transition:all .25s cubic-bezier(.34,1.56,.64,1);
-}
-.cta-btn-outline:hover{
-  border-color:#0a84d0;
-  background:linear-gradient(135deg,#eef7ff,#e2f0fb);
-  transform:translateY(-3px);
-  box-shadow:0 10px 28px rgba(10,95,171,.16);
-}
-.cta-btn-outline svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-
-.cta-or{
-  font-size:.78rem;font-weight:700;color:#94afc8;letter-spacing:1.2px;
-}
-
-.cta-note{
-  margin-top:28px;font-size:.76rem;color:#8aa8c0;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-}
-.cta-note svg{width:13px;height:13px;stroke:#8aa8c0;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-</style>
-
-<div class="cta-section">
-  <div class="cta-dots"></div>
-
-  <div class="cta-badge">
-    <div class="cta-badge-dot"></div>
-    Plateforme nationale active
-  </div>
-
-  <div class="cta-headline">
-    Prêt à rejoindre<br>la veille <em>sanitaire nationale</em> ?
-  </div>
-  <div class="cta-sub">
-    Connectez-vous à votre espace ou créez un accès pour surveiller, analyser et agir sur les alertes épidémiologiques de votre province.
-  </div>
-
-  <div class="cta-trust">
-    <div class="cta-trust-item">
-      <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.7-7 10-4-2.3-7-5.5-7-10V6l7-3Z"/><path d="m9.5 12 1.8 1.8 3.2-3.6"/></svg>
-      Accès sécurisé &amp; chiffré
+    # Bloc Accès rapide juste après le HERO
+    st.markdown('''
+    <div style="margin: 0 auto; max-width: 600px; padding: 0 0 28px 0;">
+      <div style="background: rgba(255,255,255,0.98); border-radius: 32px; box-shadow: 0 8px 32px rgba(10,95,171,.09); border: 1.5px solid #e0eaff; padding: 36px 32px 28px 32px; position: relative; overflow: hidden; animation: fadeIn .8s; display: flex; flex-direction: column; align-items: center;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="background:linear-gradient(135deg,#fafdff,#e6f2fd);border-radius:8px;"><rect x="4" y="4" width="24" height="24" rx="8" fill="#fafdff" stroke="#0a5fab" stroke-width="1.5"/><path d="M10 18v-2a6 6 0 1 1 12 0v2" stroke="#1aa2e2" stroke-width="1.5" fill="none"/><circle cx="16" cy="12" r="3" stroke="#1aa2e2" stroke-width="1.5" fill="#e6f2fd"/></svg>
+          <span style="font-size: 1.45rem; font-weight: 900; color: #0a2040; font-family: Sora,sans-serif; letter-spacing: -.5px;">Accès rapide</span>
+        </div>
+        <div style="font-size: 1.04rem; color: #4a6a8a; font-family: Manrope,sans-serif; margin-bottom: 22px; text-align:center;">Connexion et inscription rapides pour les autorités sanitaires.</div>
+      </div>
     </div>
-    <div class="cta-trust-item">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      26 provinces couvertes
-    </div>
-    <div class="cta-trust-item">
-      <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-      Données en temps réel
-    </div>
-    <div class="cta-trust-item">
-      <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      Rôles et droits personnalisés
+    ''', unsafe_allow_html=True)
+
+    _, login_col, register_col, _ = st.columns([0.45, 1, 1, 0.45], gap="medium")
+    with login_col:
+      if st.button("Se connecter", use_container_width=True, key="open_login_middle"):
+        st.session_state.auth_view = "login"
+        st.switch_page("pages/auth.py")
+    with register_col:
+      if st.button("Créer un accès", use_container_width=True, key="open_register_middle"):
+        st.session_state.auth_view = "register"
+        st.switch_page("pages/auth.py")
+
+    # Bloc IMPACT (rendu via components.html pour compatibilité totale)
+    IMPACT_HTML = """
+  <div class='impact-premium' style='margin-top:18px; padding: 0 0 54px 0; background: rgba(255,255,255,0.92); border-radius: 38px; box-shadow: 0 8px 40px rgba(26,162,226,.10), 0 0 0 6px #e6f2fd inset; border: 2px solid #e6f2fd; max-width: 1100px; margin-left: auto; margin-right: auto; position: relative; overflow: hidden; animation: fadeIn .8s;'>
+    <div style="padding: 54px 36px 34px 36px; background: rgba(255,255,255,0.98); border-radius: 28px; box-shadow: 0 4px 18px rgba(26,162,226,.08), 0 0 0 4px #e6f2fd inset; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 32px;">
+      <div style="font-size:2.5rem; font-weight:900; color:#0a5fab; font-family:'Sora',sans-serif; letter-spacing:-1.1px; text-align:center; text-shadow:0 2px 12px #e6f2fd;">SAFE CONGO</div>
+      <div style="font-size:1.18rem; color:#1a3d5c; font-family:'Manrope',sans-serif; text-align:center; max-width:700px; font-weight:600;">Le réseau digital qui anticipe, protège et connecte tous les acteurs de la santé publique en RDC.<br><span style='color:#1876c2;font-weight:800;'>Pour une veille, une action et une solidarité sans front</span></div>
+      <div style="display: flex; flex-direction: row; justify-content: center; align-items: flex-start; gap: 48px; margin-top: 24px;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;min-width:160px;background:linear-gradient(135deg,#fafdff 60%,#e6f2fd 100%);border-radius:18px;padding:14px 8px 14px 8px;box-shadow:0 1px 8px #e6f2fd;">
+          <svg width="56" height="56" viewBox="0 0 64 64" fill="none" style="background:linear-gradient(135deg,#e6f2fd,#fafdff);border-radius:14px;box-shadow:0 0 0 3px #e6f2fd;">
+            <rect x="14" y="14" width="36" height="36" rx="12" fill="#fafdff"/>
+            <path d="M32 20a12 12 0 1 1 0 24a12 12 0 1 1 0-24z" stroke="#0a5fab" stroke-width="2.2" fill="none"/>
+            <circle cx="32" cy="32" r="4" fill="#1aa2e2"/>
+          </svg>
+          <div style="font-size:1.08rem;font-weight:800;color:#0a5fab;font-family:'Sora',sans-serif;letter-spacing:.4px;">Veille active</div>
+          <div style="font-size:.97rem;color:#1876c2;font-family:'Manrope',sans-serif;text-align:center;max-width:160px;">Surveillance continue, détection précoce et analyse intelligente des signaux sanitaires.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;min-width:160px;background:linear-gradient(135deg,#f8fcff 60%,#e6f8f0 100%);border-radius:18px;padding:14px 8px 14px 8px;box-shadow:0 1px 8px #e6f8f0;">
+          <svg width="56" height="56" viewBox="0 0 64 64" fill="none" style="background:linear-gradient(135deg,#e6f8f0,#f8fcff);border-radius:14px;box-shadow:0 0 0 3px #e6f8f0;">
+            <rect x="14" y="14" width="36" height="36" rx="12" fill="#f8fcff"/>
+            <path d="M32 24l8 8-8 8-8-8z" stroke="#1aa2e2" stroke-width="2.2" fill="#e6f8f0"/>
+          </svg>
+          <div style="font-size:1.08rem;font-weight:800;color:#1aa2e2;font-family:'Sora',sans-serif;letter-spacing:.4px;">Réponse rapide</div>
+          <div style="font-size:.97rem;color:#1876c2;font-family:'Manrope',sans-serif;text-align:center;max-width:160px;">Mobilisation immédiate et coordination efficace pour chaque alerte sanitaire.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;min-width:160px;background:linear-gradient(135deg,#fafdff 60%,#e6f2fd 100%);border-radius:18px;padding:14px 8px 14px 8px;box-shadow:0 1px 8px #e6f2fd;">
+          <svg width="56" height="56" viewBox="0 0 64 64" fill="none" style="background:linear-gradient(135deg,#e6f2fd,#fafdff);border-radius:14px;box-shadow:0 0 0 3px #e6f2fd;">
+            <rect x="14" y="14" width="36" height="36" rx="12" fill="#fafdff"/>
+            <path d="M24 40c0-8 16-8 16 0" stroke="#0a5fab" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <circle cx="32" cy="28" r="4" fill="#1aa2e2"/>
+          </svg>
+          <div style="font-size:1.08rem;font-weight:800;color:#0a5fab;font-family:'Sora',sans-serif;letter-spacing:.4px;">Collaboration enrichie</div>
+          <div style="font-size:.97rem;color:#1876c2;font-family:'Manrope',sans-serif;text-align:center;max-width:160px;">Partage d’informations, entraide et synergie nationale pour une santé publique renforcée.</div>
+        </div>
+      </div>
     </div>
   </div>
+  """
+    components.html(IMPACT_HTML, height=1400, scrolling=False)
 
-  <div class="cta-buttons" id="cta-btns-html">
-    <!-- buttons injected by Streamlit below -->
-  </div>
 
-  <div class="cta-note">
-    <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.7-7 10-4-2.3-7-5.5-7-10V6l7-3Z"/></svg>
-    Plateforme réservée aux agents de santé autorisés · République Démocratique du Congo
-  </div>
-</div>
-""", unsafe_allow_html=True)
 
-    # ── CTA buttons (Streamlit handles routing) ────────────────────────
-    st.markdown("""
-<style>
-/* Styles pour les nouveaux boutons CTA centrés */
-[data-testid="column"] .stButton > button {
-  border-radius: 14px !important;
-  padding: 18px 40px !important;
-  font-family: 'Sora', sans-serif !important;
-  font-weight: 800 !important;
-  font-size: 1.02rem !important;
-  letter-spacing: .3px !important;
-  width: 100% !important;
-  transition: all .3s cubic-bezier(.34,1.56,.64,1) !important;
-  min-height: 50px !important;
-}
 
-/* Bouton gauche - Connexion (bleu gradient) */
-[data-testid="column"]:nth-of-type(2) .stButton > button {
-  background: linear-gradient(135deg,#0a5fab 0%,#1aa2e2 100%) !important;
-  color: #fff !important;
-  border: 2px solid transparent !important;
-  box-shadow: 0 10px 32px rgba(10,95,171,.3) !important;
-}
 
-[data-testid="column"]:nth-of-type(2) .stButton > button:hover {
-  transform: translateY(-4px) !important;
-  box-shadow: 0 16px 48px rgba(10,95,171,.42) !important;
-  background: linear-gradient(135deg,#0a4fa0 0%,#1a94d0 100%) !important;
-}
-
-/* Bouton droite - S'inscrire (blanc avec bordure) */
-[data-testid="column"]:nth-of-type(3) .stButton > button {
-  background: #ffffff !important;
-  color: #0a5fab !important;
-  border: 2px solid #0a5fab !important;
-  box-shadow: 0 8px 24px rgba(10,60,120,.12) !important;
-}
-
-[data-testid="column"]:nth-of-type(3) .stButton > button:hover {
-  transform: translateY(-4px) !important;
-  background: linear-gradient(135deg,#f0f8ff,#e8f3ff) !important;
-  box-shadow: 0 14px 36px rgba(10,95,171,.22) !important;
-  border-color: #1aa2e2 !important;
-}
-
-/* Override default stButton for CTA zone */
-.cta-streamlit-btns .stButton > button {
-  border-radius: 16px !important;
-  padding: 15px 32px !important;
-  font-family: 'Sora', sans-serif !important;
-  font-weight: 800 !important;
-  font-size: .97rem !important;
-  letter-spacing: .3px !important;
-  width: auto !important;
-  min-width: 200px !important;
-  transition: all .25s cubic-bezier(.34,1.56,.64,1) !important;
-}
-.cta-streamlit-btns [data-testid="column"]:first-child .stButton > button {
-  background: linear-gradient(135deg,#0a5fab,#1aa2e2) !important;
-  color: #fff !important;
-  border: none !important;
-  box-shadow: 0 8px 28px rgba(10,95,171,.32) !important;
-}
-.cta-streamlit-btns [data-testid="column"]:first-child .stButton > button:hover {
-  transform: translateY(-3px) scale(1.03) !important;
-  box-shadow: 0 14px 36px rgba(10,95,171,.42) !important;
-}
-.cta-streamlit-btns [data-testid="column"]:last-child .stButton > button {
-  background: #ffffff !important;
-  color: #0a5fab !important;
-  border: 2px solid #b8d8f0 !important;
-  box-shadow: 0 4px 18px rgba(10,60,120,.08) !important;
-}
-.cta-streamlit-btns [data-testid="column"]:last-child .stButton > button:hover {
-  border-color: #0a84d0 !important;
-  background: linear-gradient(135deg,#eef7ff,#e2f0fb) !important;
-  transform: translateY(-3px) !important;
-  box-shadow: 0 10px 28px rgba(10,95,171,.18) !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-    _, col_cta, _ = st.columns([0.8, 2.4, 0.8])
-    with col_cta:
-        st.markdown("""
-<style>
-.cta-hero-section {
-  background: linear-gradient(135deg, rgba(10,85,184,.08) 0%, rgba(26,162,226,.04) 50%, rgba(10,85,184,.05) 100%);
-  border: 2px solid rgba(10,85,184,.15);
-  border-radius: 28px;
-  padding: 50px 40px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(10px);
-  margin: 30px 0;
-}
-.cta-hero-section::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(10,85,184,.08), transparent 70%);
-  pointer-events: none;
-}
-.cta-hero-title {
-  font-size: 26px;
-  font-weight: 800;
-  color: #0a5fab;
-  font-family: 'Sora', sans-serif;
-  margin-bottom: 16px;
-  letter-spacing: -0.5px;
-  position: relative;
-  z-index: 1;
-}
-.cta-hero-title em {
-  font-style: normal;
-  color: #1aa2e2;
-}
-.cta-hero-desc {
-  font-size: 14px;
-  color: #4a6d8a;
-  font-family: 'Manrope', sans-serif;
-  line-height: 1.8;
-  margin-bottom: 32px;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-  position: relative;
-  z-index: 1;
-}
-.cta-hero-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  position: relative;
-  z-index: 1;
-  flex-wrap: wrap;
-}
-</style>
-
-<div class="cta-hero-section">
-  <div class="cta-hero-title">Rejoignez la <em>surveillance nationale</em></div>
-  <div class="cta-hero-desc">Accédez à la plateforme pour surveiller, analyser et coordonner les réponses aux menaces sanitaires.</div>
-  <div class="cta-hero-buttons" id="cta-buttons-container">
-    <!-- Boutons injectés ci-dessous -->
-  </div>
-</div>
-""", unsafe_allow_html=True)
-        
-        st.markdown('<div style="margin-top: 20px;"></div>', unsafe_allow_html=True)
-        
-        b_left, b_right = st.columns(2, gap="small")
-        with b_left:
-            if st.button("🔐 Se connecter", use_container_width=True, key="open_login_new", help="Accès aux agents autorisés"):
-                st.session_state.auth_view = "login"
-                st.switch_page("pages/auth.py")
-        with b_right:
-            if st.button("✦ Créer un accès", use_container_width=True, key="open_register_new", help="Inscription pour autorités"):
-                st.session_state.auth_view = "register"
-                st.switch_page("pages/auth.py")
 
     current_view = st.session_state.auth_view
     if current_view is None:
@@ -1773,6 +1498,7 @@ def show_login(auth):
 
 def main():
     from utils.auth import AuthSystem
+
 
     if "user" not in st.session_state:
         st.session_state.user = None
@@ -1792,5 +1518,28 @@ def main():
         st.switch_page("pages/authority_dashboard.py")
 
 
+def run_hidden_navigation() -> None:
+    from utils.navigation import register_navigation_pages
+
+    nav_pages = {
+      "home": st.Page("pages/home.py", title="Accueil", url_path="", default=True),
+        "auth": st.Page("pages/auth.py", title="Authentification", url_path="auth"),
+        "mission": st.Page("pages/notre_mission.py", title="Notre mission", url_path="notre-mission"),
+        "impact": st.Page("pages/impact.py", title="Impact", url_path="impact"),
+        "fonctionnement": st.Page("pages/fonctionnement.py", title="Fonctionnement", url_path="fonctionnement"),
+        "contact": st.Page("pages/contact.py", title="Contact", url_path="contact"),
+        "admin_dashboard": st.Page("pages/admin_dashboard.py", title="Admin dashboard", url_path="admin-dashboard"),
+        "admin_data_entry": st.Page("pages/admin_data_entry.py", title="Admin data entry", url_path="admin-data-entry"),
+        "admin_users": st.Page("pages/admin_users.py", title="Admin users", url_path="admin-users"),
+        "admin_panel": st.Page("pages/admin_panel.py", title="Admin panel", url_path="admin-panel"),
+        "authority_dashboard": st.Page("pages/authority_dashboard.py", title="Authority dashboard", url_path="authority-dashboard"),
+        "authority_alerts": st.Page("pages/authority_alerts.py", title="Authority alerts", url_path="authority-alerts"),
+    }
+    register_navigation_pages(nav_pages)
+    st.session_state["_nav_pages"] = nav_pages
+    current_page = st.navigation(list(nav_pages.values()), position="hidden")
+    current_page.run()
+
+
 if __name__ == "__main__":
-    main()
+    run_hidden_navigation()

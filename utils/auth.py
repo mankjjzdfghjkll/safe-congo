@@ -2,7 +2,6 @@
 import streamlit as st
 import sqlite3
 import hashlib
-from datetime import datetime
 from pathlib import Path
 import time
 import pandas as pd
@@ -24,7 +23,7 @@ class AuthSystem:
         """Initialise la base de données SQLite"""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         
-        for attempt in range(5):
+        for _ in range(5):
             try:
                 conn = self._get_connection()
                 cursor = conn.cursor()
@@ -165,7 +164,7 @@ class AuthSystem:
                 }
             conn.close()
             return None
-        except Exception as e:
+        except Exception:
             return None
     
     def register_authority(self, username, password, nom, prenom, email, telephone, province, zone_sante):
@@ -321,198 +320,18 @@ class AuthSystem:
 # ============ FONCTIONS STREAMLIT ============
 
 def login_page():
-    """Affiche la page de login stylisée"""
-    
-    st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
-    * {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    .login-container {
-        max-width: 500px;
-        margin: 0 auto;
-        padding: 40px;
-        background: white;
-        border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-    }
-    
-    .login-header {
-        text-align: center;
-        margin-bottom: 40px;
-    }
-    
-    .login-header h1 {
-        font-size: 2.5em;
-        margin: 0;
-        background: linear-gradient(135deg, #0066CC 0%, #004D99 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    
-    .login-header .subtitle {
-        color: #666;
-        margin-top: 10px;
-    }
-    
-    .feature-card {
-        background: #f8f9fa;
-        border-radius: 16px;
-        padding: 20px;
-        text-align: center;
-        transition: transform 0.3s;
-    }
-    
-    .feature-card:hover {
-        transform: translateY(-5px);
-    }
-    
-    .feature-icon {
-        font-size: 2.5em;
-        margin-bottom: 10px;
-    }
-    
-    .stButton > button {
-        background: linear-gradient(135deg, #0066CC 0%, #004D99 100%);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        padding: 12px 24px;
-        font-weight: 600;
-        transition: all 0.3s;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 20px rgba(0,102,204,0.3);
-    }
-    
-    .stTextInput > div > div > input {
-        border-radius: 12px;
-        border: 1px solid #e0e0e0;
-        padding: 12px 16px;
-    }
-    
-    .stTextInput > div > div > input:focus {
-        border-color: #0066CC;
-        box-shadow: 0 0 0 2px rgba(0,102,204,0.1);
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # En-tête
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-        <div class="login-header">
-            <h1> SAFE CONGO</h1>
-            <p class="subtitle">Système de Surveillance Épidémiologique</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Features
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon"></div>
-            <strong>Analyse en temps réel</strong>
-        </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon"></div>
-            <strong>Prédictions IA</strong>
-        </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon"></div>
-            <strong>Alertes automatiques</strong>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Tabs
-    tab1, tab2 = st.tabs([" Connexion", " Inscription"])
-    
-    with tab1:
-        with st.form("login_form"):
-            username = st.text_input("Nom d'utilisateur", placeholder="Entrez votre nom d'utilisateur")
-            password = st.text_input("Mot de passe", type="password", placeholder="Entrez votre mot de passe")
-            
-            if st.form_submit_button("Se connecter", use_container_width=True):
-                if username and password:
-                    return {'action': 'login', 'username': username, 'password': password}
-                else:
-                    st.error("Veuillez remplir tous les champs")
-    
-    with tab2:
-        with st.form("register_form"):
-            st.markdown("**Créer un compte autorité sanitaire**")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                username = st.text_input("Nom d'utilisateur *")
-                nom = st.text_input("Nom *")
-                prenom = st.text_input("Prénom *")
-                email = st.text_input("Email *")
-            with col2:
-                password = st.text_input("Mot de passe *", type="password")
-                confirm = st.text_input("Confirmer *", type="password")
-                telephone = st.text_input("Téléphone *")
-                province = st.selectbox("Province *", ["Kinshasa", "Kongo Central", "Kasaï", "Nord-Kivu", "Sud-Kivu", "Haut-Katanga", "Lualaba", "Maniema", "Ituri"])
-                zone_sante = st.text_input("Zone de santé *")
-            
-            if st.form_submit_button("S'inscrire", use_container_width=True):
-                if all([username, password, confirm, nom, prenom, email, telephone, province, zone_sante]):
-                    if password != confirm:
-                        st.error("Les mots de passe ne correspondent pas")
-                    elif len(password) < 6:
-                        st.error("Mot de passe trop court (min 6 caractères)")
-                    else:
-                        return {'action': 'register', 'username': username, 'password': password,
-                                'nom': nom, 'prenom': prenom, 'email': email, 'telephone': telephone,
-                                'province': province, 'zone_sante': zone_sante}
-                else:
-                    st.error("Veuillez remplir tous les champs obligatoires")
-    
+    """Redirige vers la page d'authentification moderne."""
+    st.switch_page("pages/auth.py")
     return None
 
 
 def require_auth(auth):
-    """Vérifie l'authentification et affiche la page de login"""
+    """Vérifie l'authentification et redirige vers la page de login moderne."""
     if 'user' not in st.session_state:
         st.session_state.user = None
     
     if st.session_state.user is None:
-        result = login_page()
-        if result:
-            if result['action'] == 'login':
-                user = auth.authenticate(result['username'], result['password'])
-                if user:
-                    st.session_state.user = user
-                    st.rerun()
-                else:
-                    st.error("Identifiants incorrects")
-            elif result['action'] == 'register':
-                success, msg = auth.register_authority(
-                    result['username'], result['password'], result['nom'], result['prenom'],
-                    result['email'], result['telephone'], result['province'], result['zone_sante']
-                )
-                if success:
-                    st.success(msg)
-                    st.info("Vous pouvez maintenant vous connecter")
-                    st.rerun()
-                else:
-                    st.error(msg)
+        st.switch_page("pages/auth.py")
         return None
     return st.session_state.user
 
