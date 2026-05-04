@@ -86,11 +86,12 @@ class DataCleaner:
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).clip(lower=0)
 
         # — Suppression des doublons exacts (même semaine / maladie / zone)
-        key_cols = [c for c in ["DEBUTSEM", "MALADIE", "ZONE_SANTE", "PROVINCE"] if c in df.columns]
+        # Les noms de colonnes réels dans le fichier sont ZS (zone de santé) et PROV (province)
+        key_cols = [c for c in ["DEBUTSEM", "MALADIE", "ZS", "PROV", "ZONE_SANTE", "PROVINCE"] if c in df.columns]
         dupes = df.duplicated(subset=key_cols).sum()
         if dupes:
             print(f"  Doublons supprimés : {dupes}")
-        df.drop_duplicates(subset=key_cols, inplace=True)
+            df.drop_duplicates(subset=key_cols, inplace=True)
 
         # — Filtrage lignes négatives résiduelles
         df = df[df["TOTALCAS"] >= 0]
