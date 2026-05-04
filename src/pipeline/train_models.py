@@ -496,7 +496,7 @@ def _run_legacy_regression_training() -> bool:
         return False
 
     try:
-        from src.data_cleaner import DataCleaner
+        from src.pipeline.data_cleaner import DataCleaner
 
         cleaner = DataCleaner(str(data_path))
         cleaner.load_data()
