@@ -320,8 +320,15 @@ class DiseasePredictor:
         y_test_real = np.expm1(y_log_test)   # échelle réelle
         confusion_info = _build_confusion_artifact(y_test_real, y_pred)
 
+        # --- Réentraînement final sur 100% des données
+        # Les métriques ci-dessus (R², MAE, CV) ont servi à valider et choisir
+        # le meilleur algorithme. Maintenant on réentraîne sur tout pour maximiser
+        # l'information disponible dans le modèle de production.
+        final_model = self._build_best_model(best_model_name)
+        final_model.fit(X[selected_features], y_log)
+
         self.best_models[disease_name] = {
-            "model": best_model,
+            "model": final_model,          # modèle final entraîné sur 100%
             "features": features,
             "best_model_name": best_model_name,
             "log_transform": True,          # flag : prédictions = expm1(model.predict(X))
@@ -342,8 +349,9 @@ class DiseasePredictor:
         }
 
         print(f"\n   Meilleur modele: {best_model_name}")
-        print(f"      R2: {self.best_models[disease_name]['test_r2']:.3f}")
-        print(f"      MAE: {self.best_models[disease_name]['test_mae']:.2f} cas (echelle reelle)")
+        print(f"      R2 (validation 20%): {self.best_models[disease_name]['test_r2']:.3f}")
+        print(f"      MAE (validation 20%): {self.best_models[disease_name]['test_mae']:.2f} cas")
+        print(f"      Modele final reentraine sur 100% des donnees")
         print("      Matrice de confusion (niveaux de cas):")
         print(confusion_info["dataframe"].to_string())
 
