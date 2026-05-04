@@ -42,6 +42,8 @@ def main():
         agg_data = cleaner.aggregate_by_week_disease()
         agg_data = cleaner.remove_outliers(agg_data)
         agg_data = cleaner.handle_sparse_series(agg_data)
+        # Export CSV lisible du dataset nettoyé (avant feature engineering)
+        cleaner.export_clean_dataset(agg_data, str(base_dir / "data" / "processed" / "dataset_propre.csv"))
         feature_data = cleaner.create_features_for_ml(agg_data)
         feature_data = cleaner.encode_disease_labels(feature_data)
         print(" Nettoyage terminé!")

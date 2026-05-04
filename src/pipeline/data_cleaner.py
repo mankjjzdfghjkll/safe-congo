@@ -277,6 +277,60 @@ class DataCleaner:
 
 
 # ------------------------------------------------------------------
+# 8. EXPORT DATASET LISIBLE (pour analyse humaine)
+# ------------------------------------------------------------------
+    def export_clean_dataset(self, agg_data: pd.DataFrame,
+                             output_path: str = "data/processed/dataset_propre.csv") -> pd.DataFrame:
+        """
+        Exporte le dataset agrégé et nettoyé sous une forme facile à lire.
+
+        Colonnes produites (en français clair) :
+        ──────────────────────────────────────────────────────────────────
+        Semaine          — Étiquette lisible ex. "2023-S08"
+        Date_debut       — Date ISO du premier jour de la semaine
+        Mois             — 1–12
+        Trimestre        — Q1–Q4
+        Maladie          — Nom normalisé de la maladie
+        Total_cas        — Nombre total de cas signalés (après nettoyage)
+        Total_deces      — Nombre total de décès signalés
+        Taux_letalite_pct — (décès / cas) × 100, arrondi à 2 décimales
+        ──────────────────────────────────────────────────────────────────
+        Le fichier est trié par Maladie puis par Date pour une lecture
+        chronologique immédiate.
+        """
+        df = agg_data.copy()
+
+        # Étiquette de semaine "AAAA-S##"
+        df["Semaine"] = df["DEBUTSEM"].dt.strftime("%Y-S%W")
+        df["Date_debut"] = df["DEBUTSEM"].dt.strftime("%Y-%m-%d")
+        df["Mois"] = df["DEBUTSEM"].dt.month
+        df["Trimestre"] = "Q" + df["DEBUTSEM"].dt.quarter.astype(str)
+
+        # Taux de létalité (protégé contre division par zéro)
+        df["Taux_letalite_pct"] = (
+            (df["TOTALDECES"] / df["TOTALCAS"].replace(0, np.nan)) * 100
+        ).fillna(0).round(2)
+
+        readable = df.rename(columns={
+            "MALADIE":    "Maladie",
+            "TOTALCAS":   "Total_cas",
+            "TOTALDECES": "Total_deces",
+        })[[
+            "Semaine", "Date_debut", "Mois", "Trimestre",
+            "Maladie", "Total_cas", "Total_deces", "Taux_letalite_pct",
+        ]].sort_values(["Maladie", "Date_debut"]).reset_index(drop=True)
+
+        from pathlib import Path
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        readable.to_csv(out, index=False, encoding="utf-8-sig")
+        print(f"\nDataset propre exporté → {out}")
+        print(f"  {len(readable):,} lignes | {readable['Maladie'].nunique()} maladies "
+              f"| {readable['Semaine'].nunique()} semaines")
+        return readable
+
+
+# ------------------------------------------------------------------
 # TEST DIRECT
 # ------------------------------------------------------------------
 if __name__ == "__main__":

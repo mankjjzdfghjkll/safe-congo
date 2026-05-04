@@ -8,7 +8,6 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import confusion_matrix, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
@@ -264,23 +263,31 @@ class DiseasePredictor:
             print("   Ignore: donnees insuffisantes")
             return False
 
-        # --- Sélection de features (importance Random Forest)
-        selected_features = self._select_features(X, y, features)
-        if len(selected_features) < len(features):
-            print(f"   Features: {len(features)} → {len(selected_features)} retenues")
-        X = X[selected_features]
-        features = selected_features
+        # --- Transformation log1p du target
+        # Les cas épidémiques ont une distribution très asymétrique.
+        # log1p stabilise la variance et améliore tous les modèles.
+        # Les métriques finales sont calculées après décodage expm1 (échelle réelle).
+        y_log = np.log1p(y)
 
         train_size = int(len(X) * 0.8)
         X_train, X_test = X.iloc[:train_size], X.iloc[train_size:]
-        y_train, y_test = y.iloc[:train_size], y.iloc[train_size:]
+        y_log_train = y_log.iloc[:train_size]
+        y_log_test  = y_log.iloc[train_size:]
 
         if len(X_test) == 0:
             print("   Ignore: pas de donnees de test")
             return False
 
-        print("\n   Comparaison des modeles:")
-        comparison = self.compare_models(X_train, y_train, X_test, y_test, disease_name)
+        # --- Sélection de features sur X_train UNIQUEMENT (pas de leakage)
+        selected_features = self._select_features(X_train, y_log_train, features)
+        if len(selected_features) < len(features):
+            print(f"   Features: {len(features)} → {len(selected_features)} retenues")
+        X_train   = X_train[selected_features]
+        X_test    = X_test[selected_features]
+        features  = selected_features
+
+        print("\n   Comparaison des modeles (espace log):")
+        comparison = self.compare_models(X_train, y_log_train, X_test, y_log_test, disease_name)
 
         for name, metrics in comparison.items():
             if "error" not in metrics:
@@ -298,23 +305,30 @@ class DiseasePredictor:
 
         best_model = self._build_best_model(best_model_name)
 
-        # --- Walk-forward cross-validation
-        cv_scores = self._walk_forward_score(self._build_best_model(best_model_name), X, y)
+        # --- Walk-forward CV en espace log (sans leakage temporel)
+        X_full_sel = X[selected_features]
+        cv_scores = self._walk_forward_score(
+            self._build_best_model(best_model_name), X_full_sel, y_log
+        )
         print(f"   Walk-forward CV ({cv_scores['cv_folds']} folds) → "
-              f"R²={cv_scores['cv_r2']:.3f} | MAE={cv_scores['cv_mae']:.2f}")
+              f"R²={cv_scores['cv_r2']:.3f} | MAE={cv_scores['cv_mae']:.4f} (log)")
 
-        best_model.fit(X_train, y_train)
-        y_pred = best_model.predict(X_test)
-        confusion_info = _build_confusion_artifact(y_test, y_pred)
+        # Entraînement final en espace log + décodage vers l'échelle réelle
+        best_model.fit(X_train, y_log_train)
+        y_pred_log  = best_model.predict(X_test)
+        y_pred      = np.expm1(y_pred_log)   # échelle réelle
+        y_test_real = np.expm1(y_log_test)   # échelle réelle
+        confusion_info = _build_confusion_artifact(y_test_real, y_pred)
 
         self.best_models[disease_name] = {
             "model": best_model,
             "features": features,
             "best_model_name": best_model_name,
-            "test_mae": mean_absolute_error(y_test, y_pred),
-            "test_rmse": np.sqrt(mean_squared_error(y_test, y_pred)),
-            "test_r2": r2_score(y_test, y_pred),
-            "test_mape": np.mean(np.abs((y_test - y_pred) / (y_test + 1))) * 100,
+            "log_transform": True,          # flag : prédictions = expm1(model.predict(X))
+            "test_mae": mean_absolute_error(y_test_real, y_pred),
+            "test_rmse": np.sqrt(mean_squared_error(y_test_real, y_pred)),
+            "test_r2": r2_score(y_test_real, y_pred),
+            "test_mape": np.mean(np.abs((y_test_real - y_pred) / (y_test_real + 1))) * 100,
             "total_cases": total_cases,
             "n_weeks": n_weeks,
             "comparison": comparison,
@@ -329,7 +343,7 @@ class DiseasePredictor:
 
         print(f"\n   Meilleur modele: {best_model_name}")
         print(f"      R2: {self.best_models[disease_name]['test_r2']:.3f}")
-        print(f"      MAE: {self.best_models[disease_name]['test_mae']:.2f}")
+        print(f"      MAE: {self.best_models[disease_name]['test_mae']:.2f} cas (echelle reelle)")
         print("      Matrice de confusion (niveaux de cas):")
         print(confusion_info["dataframe"].to_string())
 
@@ -608,6 +622,9 @@ def _run_legacy_regression_training() -> bool:
         agg = cleaner.aggregate_by_week_disease()
         agg = cleaner.remove_outliers(agg)          # IQR capping
         agg = cleaner.handle_sparse_series(agg)     # supprime maladies creuses
+        # Export CSV lisible (humainement compréhensible) avant feature engineering
+        processed_dir = root / "data" / "processed"
+        cleaner.export_clean_dataset(agg, str(processed_dir / "dataset_propre.csv"))
         features = cleaner.create_features_for_ml(agg)
         features = cleaner.encode_disease_labels(features)  # encode MALADIE
 
