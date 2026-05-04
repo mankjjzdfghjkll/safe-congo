@@ -106,7 +106,7 @@ class DataCleaner:
 # Test direct du module
 if __name__ == "__main__":
     print("Test du module data_cleaner...")
-    test_path = "data/drc-2023_sem08.xlsx"
+    test_path = "data/raw/drc-2023_sem08.xlsx"
     cleaner = DataCleaner(test_path)
     cleaner.load_data()
     cleaned = cleaner.clean_data()

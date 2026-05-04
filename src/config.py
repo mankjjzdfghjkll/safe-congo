@@ -10,14 +10,24 @@ BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
 DB_DIR = BASE_DIR / "database"
 MODELS_DIR = BASE_DIR / "models"
+LOGS_DIR = BASE_DIR / "logs"
 
 # Création des dossiers
-for d in [DATA_DIR, DB_DIR, MODELS_DIR]:
+for d in [
+    DATA_DIR,
+    DATA_DIR / "raw",
+    DATA_DIR / "processed",
+    DB_DIR,
+    MODELS_DIR,
+    MODELS_DIR / "trained",
+    MODELS_DIR / "evaluation",
+    LOGS_DIR,
+]:
     d.mkdir(parents=True, exist_ok=True)
 
-DATA_FILE = DATA_DIR / "drc-2023_sem08.xlsx"
+DATA_FILE = DATA_DIR / "raw" / "drc-2023_sem08.xlsx"
 DB_FILE = DB_DIR / "users.db"
-MODELS_FILE = MODELS_DIR / "models.pkl"
+MODELS_FILE = MODELS_DIR / "trained" / "models.pkl"
 
 # ============================================
 # CONFIGURATION DE L'INTERFACE UTILISATEUR

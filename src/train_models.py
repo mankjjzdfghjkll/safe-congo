@@ -247,7 +247,7 @@ class DiseasePredictor:
         print("=" * 60)
         return self.best_models
 
-    def export_confusion_matrices(self, output_dir="models/confusion_matrices"):
+    def export_confusion_matrices(self, output_dir="models/evaluation"):
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
@@ -289,7 +289,7 @@ class DiseasePredictor:
 
         return exported_files
 
-    def export_combined_confusion_matrix_image(self, output_dir="models/confusion_matrices"):
+    def export_combined_confusion_matrix_image(self, output_dir="models/evaluation"):
         try:
             import matplotlib.pyplot as plt
         except ModuleNotFoundError as exc:
@@ -369,7 +369,7 @@ class DiseasePredictor:
         plt.close(fig)
         return output_file
 
-    def save_models(self, path="models/models.pkl"):
+    def save_models(self, path="models/trained/models.pkl"):
         path_obj = Path(path)
         path_obj.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(
@@ -382,7 +382,7 @@ class DiseasePredictor:
         )
         print(f"Modeles sauvegardes: {path_obj}")
 
-    def load_models(self, path="models/models.pkl"):
+    def load_models(self, path="models/trained/models.pkl"):
         try:
             data = joblib.load(path)
             self.best_models = data.get("best_models", {})
@@ -465,7 +465,7 @@ class DiseasePredictor:
 def _print_reference_benchmark() -> bool:
     """Affiche le benchmark de reference (XGBoost 81.6%) s'il est disponible."""
     root = Path(__file__).resolve().parent.parent
-    log_path = root / "train_run.log"
+    log_path = root / "logs" / "train_run.log"
 
     if not log_path.exists():
         default_text = _default_reference_benchmark_text()
@@ -489,7 +489,7 @@ def _print_reference_benchmark() -> bool:
 def _run_legacy_regression_training() -> bool:
     """Execute le pipeline de regression par maladie et exporte les matrices."""
     root = Path(__file__).resolve().parent.parent
-    data_path = root / "data" / "drc-2023_sem08.xlsx"
+    data_path = root / "data" / "raw" / "drc-2023_sem08.xlsx"
 
     if not data_path.exists():
         print(f"Fichier de donnees non trouve: {data_path}")
@@ -506,8 +506,8 @@ def _run_legacy_regression_training() -> bool:
 
         predictor = DiseasePredictor()
         predictor.train_all_diseases(features)
-        predictor.save_models(str(root / "models" / "models.pkl"))
-        exported = predictor.export_confusion_matrices(str(root / "models" / "confusion_matrices"))
+        predictor.save_models(str(root / "models" / "trained" / "models.pkl"))
+        exported = predictor.export_confusion_matrices(str(root / "models" / "evaluation"))
         predictor.print_comparison_table()
 
         if exported:

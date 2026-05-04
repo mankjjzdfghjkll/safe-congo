@@ -185,7 +185,7 @@ def make_plotly_layout(fig: go.Figure, title: Optional[str] = None) -> go.Figure
 def load_historical_province(province: str) -> pd.DataFrame:
     root = Path(__file__).parent.parent
     for name in ["donnees_agregees_nettoyees.csv", "aggregated_data_clean.csv", "aggregated_data.csv"]:
-        candidate = root / "data" / name
+        candidate = root / "data" / "processed" / name
         if candidate.exists():
             try:
                 frame = pd.read_csv(candidate)

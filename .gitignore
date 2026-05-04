@@ -24,7 +24,6 @@ Thumbs.db
 desktop.ini
 
 # Logs & crash dumps
-*.log
 hs_err_pid*.log
 
 # Streamlit

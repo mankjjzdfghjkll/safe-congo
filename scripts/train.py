@@ -27,7 +27,7 @@ def main():
     
     # Chemins
     base_dir = Path(__file__).parent.parent
-    data_file = base_dir / "data" / "drc-2023_sem08.xlsx"
+    data_file = base_dir / "data" / "raw" / "drc-2023_sem08.xlsx"
     
     if not data_file.exists():
         print(f"\n Erreur: Fichier non trouvé: {data_file}")
@@ -96,8 +96,8 @@ def main():
     
     # 3. Sauvegarde
     print("\n Étape 3: Sauvegarde des modèles...")
-    models_dir = base_dir / "models"
-    models_dir.mkdir(exist_ok=True)
+    models_dir = base_dir / "models" / "trained"
+    models_dir.mkdir(parents=True, exist_ok=True)
     
     joblib.dump(models, str(models_dir / "models.pkl"))
     print(f" {len(models)} modèles sauvegardés dans {models_dir / 'models.pkl'}")

@@ -225,9 +225,9 @@ def users_frame(auth) -> pd.DataFrame:
 def aggregated_csv_frame() -> pd.DataFrame:
     root = Path(__file__).parent.parent
     for candidate in [
-        root / "data" / "aggregated_data_clean.csv",
-        root / "data" / "donnees_agregees_nettoyees.csv",
-        root / "data" / "aggregated_data.csv",
+        root / "data" / "processed" / "aggregated_data_clean.csv",
+        root / "data" / "processed" / "donnees_agregees_nettoyees.csv",
+        root / "data" / "processed" / "aggregated_data.csv",
     ]:
         if candidate.exists():
             try:
