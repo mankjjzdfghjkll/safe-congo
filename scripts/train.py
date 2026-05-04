@@ -38,10 +38,12 @@ def main():
     try:
         cleaner = DataCleaner(str(data_file))
         cleaner.load_data()
-        cleaned_data = cleaner.clean_data()
+        cleaner.clean_data()
         agg_data = cleaner.aggregate_by_week_disease()
         agg_data = cleaner.remove_outliers(agg_data)
+        agg_data = cleaner.handle_sparse_series(agg_data)
         feature_data = cleaner.create_features_for_ml(agg_data)
+        feature_data = cleaner.encode_disease_labels(feature_data)
         print(" Nettoyage terminé!")
     except Exception as e:
         print(f" Erreur: {e}")

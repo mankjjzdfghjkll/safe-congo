@@ -8,8 +8,10 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import confusion_matrix, mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -115,8 +117,59 @@ class DiseasePredictor:
         self.comparison_results = {}
 
     def get_features(self, df):
-        feature_cols = [c for c in df.columns if c not in ["DEBUTSEM", "MALADIE", "TOTALCAS", "TOTALDECES"]]
+        # Exclure colonnes non-features + MALADIE_LABEL (texte)
+        exclude = {"DEBUTSEM", "MALADIE", "MALADIE_LABEL", "TOTALCAS", "TOTALDECES"}
+        feature_cols = [c for c in df.columns if c not in exclude]
         return df[feature_cols], df["TOTALCAS"], feature_cols
+
+    @staticmethod
+    def _select_features(X_train: pd.DataFrame, y_train: pd.Series,
+                         feature_cols: list) -> list:
+        """
+        Sélection de features via importance Random Forest.
+        Garde uniquement les features dont l'importance dépasse le seuil moyen.
+        Garantit un minimum de 5 features pour éviter la sous-représentation.
+        """
+        if len(feature_cols) <= 5:
+            return feature_cols
+        selector = RandomForestRegressor(
+            n_estimators=50, random_state=42, n_jobs=-1
+        )
+        selector.fit(X_train, y_train)
+        importances = pd.Series(selector.feature_importances_, index=feature_cols)
+        threshold = importances.mean()
+        selected = importances[importances >= threshold].index.tolist()
+        if len(selected) < 5:
+            selected = importances.nlargest(5).index.tolist()
+        return selected
+
+    @staticmethod
+    def _walk_forward_score(model, X: pd.DataFrame, y: pd.Series,
+                            n_splits: int = 5) -> dict:
+        """
+        Walk-forward validation (TimeSeriesSplit).
+        Retourne les métriques moyennées sur tous les folds.
+        Respecte l'ordre temporel — aucune fuite de données.
+        """
+        tscv = TimeSeriesSplit(n_splits=n_splits)
+        maes, r2s = [], []
+        for train_idx, test_idx in tscv.split(X):
+            Xtr, Xte = X.iloc[train_idx], X.iloc[test_idx]
+            ytr, yte = y.iloc[train_idx], y.iloc[test_idx]
+            if len(Xtr) < 5 or len(Xte) < 2:
+                continue
+            try:
+                model.fit(Xtr, ytr)
+                ypred = model.predict(Xte)
+                maes.append(mean_absolute_error(yte, ypred))
+                r2s.append(r2_score(yte, ypred))
+            except Exception:
+                continue
+        return {
+            "cv_mae": float(np.mean(maes)) if maes else np.nan,
+            "cv_r2": float(np.mean(r2s)) if r2s else np.nan,
+            "cv_folds": len(maes),
+        }
 
     def compare_models(self, X_train, y_train, X_test, y_test, disease_name):
         """Compare plusieurs modeles et retourne les performances."""
@@ -211,9 +264,16 @@ class DiseasePredictor:
             print("   Ignore: donnees insuffisantes")
             return False
 
+        # --- Sélection de features (importance Random Forest)
+        selected_features = self._select_features(X, y, features)
+        if len(selected_features) < len(features):
+            print(f"   Features: {len(features)} → {len(selected_features)} retenues")
+        X = X[selected_features]
+        features = selected_features
+
         train_size = int(len(X) * 0.8)
-        X_train, X_test = X[:train_size], X[train_size:]
-        y_train, y_test = y[:train_size], y[train_size:]
+        X_train, X_test = X.iloc[:train_size], X.iloc[train_size:]
+        y_train, y_test = y.iloc[:train_size], y.iloc[train_size:]
 
         if len(X_test) == 0:
             print("   Ignore: pas de donnees de test")
@@ -237,6 +297,12 @@ class DiseasePredictor:
                 best_model_name = name
 
         best_model = self._build_best_model(best_model_name)
+
+        # --- Walk-forward cross-validation
+        cv_scores = self._walk_forward_score(self._build_best_model(best_model_name), X, y)
+        print(f"   Walk-forward CV ({cv_scores['cv_folds']} folds) → "
+              f"R²={cv_scores['cv_r2']:.3f} | MAE={cv_scores['cv_mae']:.2f}")
+
         best_model.fit(X_train, y_train)
         y_pred = best_model.predict(X_test)
         confusion_info = _build_confusion_artifact(y_test, y_pred)
@@ -257,6 +323,8 @@ class DiseasePredictor:
                 "thresholds": confusion_info["thresholds"],
                 "matrix": confusion_info["matrix"],
             },
+            "cv_r2": cv_scores["cv_r2"],
+            "cv_mae": cv_scores["cv_mae"],
         }
 
         print(f"\n   Meilleur modele: {best_model_name}")
@@ -538,8 +606,10 @@ def _run_legacy_regression_training() -> bool:
         cleaner.load_data()
         cleaner.clean_data()
         agg = cleaner.aggregate_by_week_disease()
-        agg = cleaner.remove_outliers(agg)  # IQR capping avant feature engineering
+        agg = cleaner.remove_outliers(agg)          # IQR capping
+        agg = cleaner.handle_sparse_series(agg)     # supprime maladies creuses
         features = cleaner.create_features_for_ml(agg)
+        features = cleaner.encode_disease_labels(features)  # encode MALADIE
 
         predictor = DiseasePredictor()
         predictor.train_all_diseases(features)

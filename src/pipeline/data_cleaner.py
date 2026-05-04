@@ -5,6 +5,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import LabelEncoder
 
 warnings.filterwarnings("ignore")
 
@@ -42,6 +43,8 @@ class DataCleaner:
         self.file_path = file_path
         self.raw_data: pd.DataFrame | None = None
         self.cleaned_data: pd.DataFrame | None = None
+        self.label_encoder: LabelEncoder = LabelEncoder()
+        self._disease_labels_fitted: bool = False
 
     # ------------------------------------------------------------------
     # 1. CHARGEMENT
@@ -141,7 +144,73 @@ class DataCleaner:
         return result
 
     # ------------------------------------------------------------------
-    # 5. FEATURE ENGINEERING (sans data leakage)
+    # 5. GESTION DES SÉRIES CREUSES (zéros consécutifs = absence de rapport)
+    # ------------------------------------------------------------------
+    def handle_sparse_series(self, agg_data: pd.DataFrame,
+                             max_zero_ratio: float = 0.7) -> pd.DataFrame:
+        """
+        Supprime les maladies dont plus de `max_zero_ratio` des semaines
+        sont à zéro cas — ce sont des absences de signalement, pas de
+        vraies observations, et elles faussent les modèles.
+        Interpole linéairement les petites séquences de zéros isolés (≤2 semaines)
+        pour les maladies conservées.
+        """
+        print("\nGestion des séries creuses...")
+        result = agg_data.copy()
+        diseases_before = result["MALADIE"].nunique()
+        removed = []
+
+        for disease in result["MALADIE"].unique():
+            mask = result["MALADIE"] == disease
+            series = result.loc[mask, "TOTALCAS"]
+            zero_ratio = (series == 0).mean()
+
+            if zero_ratio > max_zero_ratio:
+                result = result[~mask]
+                removed.append(disease)
+            else:
+                # Interpolation des petits trous (zéros isolés ≤ 2 semaines)
+                idx = result[result["MALADIE"] == disease].index
+                vals = result.loc[idx, "TOTALCAS"].replace(0, np.nan)
+                vals_interp = vals.interpolate(method="linear", limit=2)
+                # Ne pas remplacer les zéros en début/fin de série
+                result.loc[idx, "TOTALCAS"] = vals_interp.fillna(0)
+
+        if removed:
+            print(f"  Maladies trop creuses supprimées ({len(removed)}) : "
+                  f"{', '.join(removed)}")
+        print(f"  {diseases_before} → {result['MALADIE'].nunique()} maladies conservées")
+        return result
+
+    # ------------------------------------------------------------------
+    # 6. ENCODAGE DES VARIABLES CATÉGORIELLES
+    # ------------------------------------------------------------------
+    def encode_disease_labels(self, feature_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Encode la colonne MALADIE en entier numérique via LabelEncoder.
+        Conserve MALADIE_LABEL (original) pour la lisibilité et ajoute
+        MALADIE_CODE (entier) pour les modèles qui en ont besoin.
+        Le LabelEncoder est mémorisé pour décodage ultérieur.
+        """
+        df = feature_data.copy()
+        if "MALADIE" not in df.columns:
+            return df
+
+        df["MALADIE_LABEL"] = df["MALADIE"]  # garder le nom lisible
+        df["MALADIE_CODE"] = self.label_encoder.fit_transform(df["MALADIE"])
+        self._disease_labels_fitted = True
+        print(f"\nEncodage MALADIE : {df['MALADIE'].nunique()} classes "
+              f"→ codes 0–{df['MALADIE_CODE'].max()}")
+        return df
+
+    def decode_disease_label(self, code: int) -> str:
+        """Convertit un code numérique en nom de maladie."""
+        if not self._disease_labels_fitted:
+            return str(code)
+        return self.label_encoder.inverse_transform([code])[0]
+
+    # ------------------------------------------------------------------
+    # 7. FEATURE ENGINEERING (sans data leakage)
     # ------------------------------------------------------------------
     def create_features_for_ml(self, agg_data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -218,7 +287,9 @@ if __name__ == "__main__":
     cleaner.clean_data()
     agg = cleaner.aggregate_by_week_disease()
     agg = cleaner.remove_outliers(agg)
+    agg = cleaner.handle_sparse_series(agg)
     features = cleaner.create_features_for_ml(agg)
+    features = cleaner.encode_disease_labels(features)
     print(f"\nFeatures shape: {features.shape}")
     print(f"Colonnes: {list(features.columns)}")
     print("Module fonctionne correctement!")
