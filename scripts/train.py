@@ -40,6 +40,7 @@ def main():
         cleaner.load_data()
         cleaned_data = cleaner.clean_data()
         agg_data = cleaner.aggregate_by_week_disease()
+        agg_data = cleaner.remove_outliers(agg_data)
         feature_data = cleaner.create_features_for_ml(agg_data)
         print(" Nettoyage terminé!")
     except Exception as e:

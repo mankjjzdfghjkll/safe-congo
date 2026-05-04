@@ -11,6 +11,8 @@ from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import confusion_matrix, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.neighbors import KNeighborsRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 
 warnings.filterwarnings("ignore")
@@ -118,13 +120,32 @@ class DiseasePredictor:
 
     def compare_models(self, X_train, y_train, X_test, y_test, disease_name):
         """Compare plusieurs modeles et retourne les performances."""
+        # SVR et KNN nécessitent un scaling — on les encapsule dans un Pipeline
         models = {
-            "Linear Regression": LinearRegression(),
-            "Ridge Regression": Ridge(alpha=1.0),
-            "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42),
-            "Gradient Boosting": GradientBoostingRegressor(n_estimators=100, random_state=42),
-            "KNN": KNeighborsRegressor(n_neighbors=5),
-            "SVR": SVR(kernel="rbf"),
+            "Linear Regression": Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", LinearRegression()),
+            ]),
+            "Ridge Regression": Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", Ridge(alpha=0.5)),
+            ]),
+            "Random Forest": RandomForestRegressor(
+                n_estimators=200, max_depth=10, min_samples_leaf=2,
+                random_state=42, n_jobs=-1,
+            ),
+            "Gradient Boosting": GradientBoostingRegressor(
+                n_estimators=200, learning_rate=0.05, max_depth=4,
+                subsample=0.8, random_state=42,
+            ),
+            "KNN": Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", KNeighborsRegressor(n_neighbors=5, weights="distance")),
+            ]),
+            "SVR": Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", SVR(kernel="rbf", C=10, epsilon=0.1)),
+            ]),
         }
 
         results = {}
@@ -145,18 +166,33 @@ class DiseasePredictor:
 
     def _build_best_model(self, model_name):
         if model_name == "Linear Regression":
-            return LinearRegression()
+            return Pipeline([("scaler", StandardScaler()), ("model", LinearRegression())])
         if model_name == "Ridge Regression":
-            return Ridge(alpha=1.0)
+            return Pipeline([("scaler", StandardScaler()), ("model", Ridge(alpha=0.5))])
         if model_name == "Random Forest":
-            return RandomForestRegressor(n_estimators=100, random_state=42)
+            return RandomForestRegressor(
+                n_estimators=200, max_depth=10, min_samples_leaf=2,
+                random_state=42, n_jobs=-1,
+            )
         if model_name == "Gradient Boosting":
-            return GradientBoostingRegressor(n_estimators=100, random_state=42)
+            return GradientBoostingRegressor(
+                n_estimators=200, learning_rate=0.05, max_depth=4,
+                subsample=0.8, random_state=42,
+            )
         if model_name == "KNN":
-            return KNeighborsRegressor(n_neighbors=5)
+            return Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", KNeighborsRegressor(n_neighbors=5, weights="distance")),
+            ])
         if model_name == "SVR":
-            return SVR(kernel="rbf")
-        return RandomForestRegressor(n_estimators=100, random_state=42)
+            return Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", SVR(kernel="rbf", C=10, epsilon=0.1)),
+            ])
+        return RandomForestRegressor(
+            n_estimators=200, max_depth=10, min_samples_leaf=2,
+            random_state=42, n_jobs=-1,
+        )
 
     def train_for_disease(self, disease_data, disease_name):
         total_cases = disease_data["TOTALCAS"].sum()
@@ -502,6 +538,7 @@ def _run_legacy_regression_training() -> bool:
         cleaner.load_data()
         cleaner.clean_data()
         agg = cleaner.aggregate_by_week_disease()
+        agg = cleaner.remove_outliers(agg)  # IQR capping avant feature engineering
         features = cleaner.create_features_for_ml(agg)
 
         predictor = DiseasePredictor()

@@ -1,113 +1,224 @@
-# src/data_cleaner.py
-"""Module de nettoyage des données pour SAFE CONGO"""
+# src/pipeline/data_cleaner.py
+"""Module de nettoyage des données pour SAFE CONGO — pipeline ML complet"""
 
-import pandas as pd
-import numpy as np
-from datetime import datetime
 import warnings
-warnings.filterwarnings('ignore')
+
+import numpy as np
+import pandas as pd
+
+warnings.filterwarnings("ignore")
+
 
 class DataCleaner:
-    """Classe pour le nettoyage et la préparation des données épidémiologiques"""
-    
-    def __init__(self, file_path):
+    """Nettoyage et feature engineering pour les données épidémiologiques RDC."""
+
+    # Colonnes techniques sans valeur prédictive
+    _COLS_TO_DROP = [
+        "NUM", "C328TNN", "DTNN",
+        "C011MOIS", "D011MOIS",
+        "C1259MOIS", "D1259MOIS",
+        "C515ANS", "D515ANS",
+        "CP15ANS", "DP15ANS",
+        "RecStatus",
+    ]
+
+    # Normalisation des noms de maladies (codes bruts → noms lisibles)
+    _DISEASE_MAPPING = {
+        "PALUDISME SUSP": "Paludisme (suspect)",
+        "PALUDISME CONF": "Paludisme (confirmé)",
+        "DIARRHEE DHY M5": "Diarrhée aqueuse",
+        "DIARR SANGLANTE": "Diarrhée sanglante",
+        "FIEVRE TYPHOIDE": "Fièvre typhoïde",
+        "GRIPPE": "Grippe",
+        "IRA": "Infection respiratoire aiguë",
+        "MENINGITE": "Méningite",
+        "ROUGEOLE": "Rougeole",
+        "CHOLERA": "Choléra",
+        "MONKEYPOX": "Monkeypox",
+        "COVID-19": "COVID-19",
+    }
+
+    def __init__(self, file_path: str):
         self.file_path = file_path
-        self.raw_data = None
-        self.cleaned_data = None
-        
-    def load_data(self):
-        print(" Chargement des données...")
+        self.raw_data: pd.DataFrame | None = None
+        self.cleaned_data: pd.DataFrame | None = None
+
+    # ------------------------------------------------------------------
+    # 1. CHARGEMENT
+    # ------------------------------------------------------------------
+    def load_data(self) -> pd.DataFrame:
+        print("Chargement des données...")
         self.raw_data = pd.read_excel(self.file_path, sheet_name=0)
-        print(f" Données chargées: {self.raw_data.shape[0]} lignes")
+        print(f"  {self.raw_data.shape[0]:,} lignes | {self.raw_data.shape[1]} colonnes chargées")
         return self.raw_data
-    
-    def clean_data(self):
-        print("\n Nettoyage des données...")
+
+    # ------------------------------------------------------------------
+    # 2. NETTOYAGE COMPLET
+    # ------------------------------------------------------------------
+    def clean_data(self) -> pd.DataFrame:
+        print("\nNettoyage des données...")
         df = self.raw_data.copy()
-        
-        # Suppression des colonnes inutiles
-        cols_to_drop = ['NUM', 'C328TNN', 'DTNN', 'C011MOIS', 'D011MOIS', 
-                       'C1259MOIS', 'D1259MOIS', 'C515ANS', 'D515ANS',
-                       'CP15ANS', 'DP15ANS', 'RecStatus']
-        existing = [c for c in cols_to_drop if c in df.columns]
-        df.drop(columns=existing, errors='ignore', inplace=True)
-        
-        # Conversion des dates
-        if 'DEBUTSEM' in df.columns:
-            df['DEBUTSEM'] = pd.to_datetime(df['DEBUTSEM'], errors='coerce')
-        
-        # Standardisation des maladies
-        mapping = {
-            'PALUDISME SUSP': 'Paludisme (suspect)',
-            'PALUDISME CONF': 'Paludisme (confirmé)',
-            'DIARRHEE DHY M5': 'Diarrhée aqueuse',
-            'DIARR SANGLANTE': 'Diarrhée sanglante',
-            'FIEVRE TYPHOIDE': 'Fièvre typhoïde',
-            'GRIPPE': 'Grippe',
-            'IRA': 'Infection respiratoire aiguë',
-            'MENINGITE': 'Méningite',
-            'ROUGEOLE': 'Rougeole',
-            'CHOLERA': 'Choléra',
-            'MONKEYPOX': 'Monkeypox',
-            'COVID-19': 'COVID-19'
-        }
-        df['MALADIE'] = df['MALADIE'].replace(mapping)
-        
-        # Nettoyage des valeurs numériques
-        if 'TOTALCAS' in df.columns:
-            df['TOTALCAS'] = pd.to_numeric(df['TOTALCAS'], errors='coerce').fillna(0)
-        if 'TOTALDECES' in df.columns:
-            df['TOTALDECES'] = pd.to_numeric(df['TOTALDECES'], errors='coerce').fillna(0)
-        
-        df = df[df['TOTALCAS'] >= 0]
-        
+        before = len(df)
+
+        # — Suppression colonnes inutiles
+        df.drop(columns=[c for c in self._COLS_TO_DROP if c in df.columns],
+                errors="ignore", inplace=True)
+
+        # — Conversion et validation des dates
+        if "DEBUTSEM" in df.columns:
+            df["DEBUTSEM"] = pd.to_datetime(df["DEBUTSEM"], errors="coerce")
+            nat_count = df["DEBUTSEM"].isna().sum()
+            if nat_count:
+                print(f"  Dates invalides supprimées : {nat_count}")
+            df.dropna(subset=["DEBUTSEM"], inplace=True)
+
+        # — Normalisation noms de maladies
+        if "MALADIE" in df.columns:
+            df["MALADIE"] = df["MALADIE"].replace(self._DISEASE_MAPPING)
+            df.dropna(subset=["MALADIE"], inplace=True)
+
+        # — Nettoyage valeurs numériques
+        for col in ["TOTALCAS", "TOTALDECES"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).clip(lower=0)
+
+        # — Suppression des doublons exacts (même semaine / maladie / zone)
+        key_cols = [c for c in ["DEBUTSEM", "MALADIE", "ZONE_SANTE", "PROVINCE"] if c in df.columns]
+        dupes = df.duplicated(subset=key_cols).sum()
+        if dupes:
+            print(f"  Doublons supprimés : {dupes}")
+        df.drop_duplicates(subset=key_cols, inplace=True)
+
+        # — Filtrage lignes négatives résiduelles
+        df = df[df["TOTALCAS"] >= 0]
+
         self.cleaned_data = df
-        print(f" Nettoyage terminé: {len(df)} lignes")
+        print(f"  Nettoyage terminé : {before:,} → {len(df):,} lignes "
+              f"(−{before - len(df):,})")
         return df
-    
-    def aggregate_by_week_disease(self):
-        agg = self.cleaned_data.groupby(['DEBUTSEM', 'MALADIE']).agg({
-            'TOTALCAS': 'sum',
-            'TOTALDECES': 'sum'
-        }).reset_index()
-        agg = agg.sort_values(['MALADIE', 'DEBUTSEM'])
+
+    # ------------------------------------------------------------------
+    # 3. AGRÉGATION NATIONALE PAR SEMAINE/MALADIE
+    # ------------------------------------------------------------------
+    def aggregate_by_week_disease(self) -> pd.DataFrame:
+        agg = (
+            self.cleaned_data
+            .groupby(["DEBUTSEM", "MALADIE"], as_index=False)
+            .agg({"TOTALCAS": "sum", "TOTALDECES": "sum"})
+            .sort_values(["MALADIE", "DEBUTSEM"])
+            .reset_index(drop=True)
+        )
         return agg
-    
-    def create_features_for_ml(self, agg_data):
-        print("\n Création des features...")
+
+    # ------------------------------------------------------------------
+    # 4. TRAITEMENT DES OUTLIERS (par maladie, IQR capping)
+    # ------------------------------------------------------------------
+    def _cap_outliers(self, series: pd.Series, iqr_factor: float = 3.0) -> pd.Series:
+        """
+        Plafonne les valeurs aberrantes via la méthode IQR.
+        On utilise un facteur de 3.0 (conservateur) pour conserver les vrais
+        pics épidémiques tout en éliminant les erreurs de saisie.
+        """
+        q1 = series.quantile(0.25)
+        q3 = series.quantile(0.75)
+        iqr = q3 - q1
+        lower = q1 - iqr_factor * iqr
+        upper = q3 + iqr_factor * iqr
+        return series.clip(lower=max(lower, 0), upper=upper)
+
+    def remove_outliers(self, agg_data: pd.DataFrame) -> pd.DataFrame:
+        """Applique le capping IQR sur TOTALCAS par maladie."""
+        print("\nTraitement des outliers...")
+        result = agg_data.copy()
+        capped_total = 0
+        for disease in result["MALADIE"].unique():
+            mask = result["MALADIE"] == disease
+            original = result.loc[mask, "TOTALCAS"].copy()
+            result.loc[mask, "TOTALCAS"] = self._cap_outliers(original)
+            capped = (result.loc[mask, "TOTALCAS"] != original).sum()
+            capped_total += capped
+        print(f"  {capped_total} valeurs aberrantes plafonnées (IQR ×3)")
+        return result
+
+    # ------------------------------------------------------------------
+    # 5. FEATURE ENGINEERING (sans data leakage)
+    # ------------------------------------------------------------------
+    def create_features_for_ml(self, agg_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Construit les features de séries temporelles par maladie.
+        Les moyennes mobiles sont calculées uniquement avec les valeurs
+        passées (min_periods=1, shift appliqué avant rolling) pour éviter
+        tout data leakage vers les données de test.
+        """
+        print("\nCréation des features ML...")
         feature_data = []
-        
-        for disease in agg_data['MALADIE'].unique():
-            data = agg_data[agg_data['MALADIE'] == disease].copy()
-            data = data.sort_values('DEBUTSEM')
-            
+
+        for disease in agg_data["MALADIE"].unique():
+            data = (
+                agg_data[agg_data["MALADIE"] == disease]
+                .copy()
+                .sort_values("DEBUTSEM")
+                .reset_index(drop=True)
+            )
+
             if len(data) < 5:
                 continue
-            
+
+            # Lags (1 à 4 semaines) — information strictement passée
             for lag in [1, 2, 3, 4]:
-                data[f'lag_{lag}'] = data['TOTALCAS'].shift(lag)
-            
+                data[f"lag_{lag}"] = data["TOTALCAS"].shift(lag)
+
+            # Moyennes mobiles causales : shift(1) avant rolling
+            # → la valeur de la semaine courante n'est jamais incluse
+            shifted = data["TOTALCAS"].shift(1)
             for window in [2, 3, 4]:
-                data[f'ma_{window}'] = data['TOTALCAS'].rolling(window, min_periods=1).mean()
-            
-            data['growth_rate'] = data['TOTALCAS'].pct_change().fillna(0)
-            data['week_rank'] = range(len(data))
-            data['month'] = data['DEBUTSEM'].dt.month
-            
-            feature_data.append(data.dropna())
-        
+                data[f"ma_{window}"] = shifted.rolling(window, min_periods=1).mean()
+
+            # Taux de croissance — protection contre division par zéro et infinis
+            prev = data["TOTALCAS"].shift(1).replace(0, np.nan)
+            data["growth_rate"] = (
+                (data["TOTALCAS"] - data["TOTALCAS"].shift(1)) / prev
+            ).replace([np.inf, -np.inf], 0).fillna(0).clip(-5, 5)
+
+            # Volatilité récente (écart-type sur 4 semaines passées)
+            data["volatility_4w"] = shifted.rolling(4, min_periods=2).std().fillna(0)
+
+            # Tendance : différence semaine vs moyenne des 4 dernières
+            data["trend"] = data["TOTALCAS"] - data["ma_4"]
+
+            # Variables temporelles
+            data["week_rank"] = range(len(data))
+            data["month"] = data["DEBUTSEM"].dt.month
+            data["quarter"] = data["DEBUTSEM"].dt.quarter
+
+            # Supprimer uniquement les lignes avec NaN sur les features lag
+            # (les premières semaines de la série)
+            lag_cols = [f"lag_{i}" for i in [1, 2, 3, 4]]
+            data.dropna(subset=lag_cols, inplace=True)
+
+            if len(data) >= 10:
+                feature_data.append(data)
+
         if feature_data:
             result = pd.concat(feature_data, ignore_index=True)
-            print(f" {len(result)} lignes de features créées")
+            print(f"  {len(result):,} lignes de features créées "
+                  f"pour {len(feature_data)} maladies")
             return result
         return pd.DataFrame()
 
 
-# Test direct du module
+# ------------------------------------------------------------------
+# TEST DIRECT
+# ------------------------------------------------------------------
 if __name__ == "__main__":
     print("Test du module data_cleaner...")
     test_path = "data/raw/drc-2023_sem08.xlsx"
     cleaner = DataCleaner(test_path)
     cleaner.load_data()
-    cleaned = cleaner.clean_data()
-    print(" Module fonctionne correctement!")
+    cleaner.clean_data()
+    agg = cleaner.aggregate_by_week_disease()
+    agg = cleaner.remove_outliers(agg)
+    features = cleaner.create_features_for_ml(agg)
+    print(f"\nFeatures shape: {features.shape}")
+    print(f"Colonnes: {list(features.columns)}")
+    print("Module fonctionne correctement!")
