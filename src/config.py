@@ -74,9 +74,28 @@ ALERT_THRESHOLDS = {
 TRAINING_CONFIG = {
     'min_cases': 50,
     'min_weeks': 20,
+    'history_weeks': 4,
     'test_size': 0.2,
     'cv_splits': 5,
     'random_state': 42
+}
+
+MODEL_RESULT_FILTERS = {
+    'min_acceptable_r2': 0.5,
+}
+
+ALERT_LEVEL_ORDER = [
+    'CRITIQUE',
+    'HAUTE',
+    'MODEREE',
+    'INFO',
+]
+
+ALERT_LEVEL_COLORS = {
+    'CRITIQUE': '#ce1126',
+    'HAUTE': '#f59e0b',
+    'MODEREE': '#fcd116',
+    'INFO': '#0a5fab',
 }
 
 # ============================================

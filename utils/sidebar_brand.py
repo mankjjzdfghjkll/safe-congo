@@ -185,9 +185,27 @@ def render_public_sidebar(active_page: Optional[str] = None, show_home_button: b
         st.markdown(PUBLIC_SIDEBAR_BRAND, unsafe_allow_html=True)
         st.markdown("---")
 
+        button_index = 1
         if show_home_button and st.button(
             "Retour vers l'accueil central",
             use_container_width=True,
             key="sidebar_back_home",
         ):
             switch_to_home_page()
+        if show_home_button:
+            button_index += 1
+
+        active_index = next(
+            (index for index, (slug, _, _, _) in enumerate(PUBLIC_NAV_ITEMS, start=button_index) if slug == active_page),
+            None,
+        )
+        if active_index is not None:
+            render_sidebar_active_button(active_index)
+
+        for slug, page_path, title, description in PUBLIC_NAV_ITEMS:
+            if st.button(title, use_container_width=True, key=f"public_sidebar_{slug}"):
+                st.switch_page(page_path)
+            st.markdown(
+                f'<div style="margin:-6px 0 10px 14px;font-size:.68rem;line-height:1.25;color:#7a9ab8">{description}</div>',
+                unsafe_allow_html=True,
+            )

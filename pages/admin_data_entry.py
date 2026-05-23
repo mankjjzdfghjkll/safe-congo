@@ -1,23 +1,21 @@
-import sqlite3
-import sys
-import unicodedata
-from datetime import datetime
-from pathlib import Path
-from typing import List, Tuple
-
 import pandas as pd
-import plotly.graph_objects as go
+import joblib
+import numpy as np
 import streamlit as st
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
+import unicodedata
+import plotly.graph_objects as go
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import List
 
 from utils.admin_ui import (
-    aggregated_csv_frame,
-    alerts_frame,
     apply_admin_theme,
+    alerts_frame,
     make_plotly_layout,
     panel_title,
     recent_entries_frame,
+    reference_catalog_frame,
+    render_admin_inbox_expander,
     render_admin_hero,
     render_admin_sidebar,
     render_kpi_cards,
@@ -25,25 +23,35 @@ from utils.admin_ui import (
 )
 from utils.auth import AuthSystem, require_auth
 from utils.navigation import switch_to_home_page
-from src.pdf_generator import BarrierMeasuresPDF
+from src.config import MODEL_RESULT_FILTERS
+from src.config import TRAINING_CONFIG
 
-
-PROVINCES = [
-    "Kinshasa", "Kongo Central", "Kwango", "Kwilu", "Mai-Ndombe", "Equateur", "Sud-Ubangi",
-    "Nord-Ubangi", "Mongala", "Tshopo", "Bas-Uele", "Haut-Uele", "Ituri", "Nord-Kivu",
-    "Sud-Kivu", "Maniema", "Tanganyika", "Haut-Lomami", "Lualaba", "Haut-Katanga",
-    "Lomami", "Sankuru", "Kasai", "Kasai Central", "Kasai Oriental",
+# --- CONFIGURATION & PATHS ---
+ROOT_DIR = Path(__file__).resolve().parent.parent
+MODEL_SUMMARY_PATH = ROOT_DIR / "models" / "evaluation" / "model_performance_summary.csv"
+MODELS_PATH = ROOT_DIR / "models" / "trained" / "models.pkl"
+DEFAULT_FORECAST_DATE = datetime.now().date()
+REFERENCE_HISTORY_CANDIDATES = [
+    ROOT_DIR / "data" / "processed" / "donnees_agregees_nettoyees.csv",
+    ROOT_DIR / "data" / "processed" / "aggregated_data_clean.csv",
 ]
+MIN_ACCEPTABLE_R2 = float(MODEL_RESULT_FILTERS.get("min_acceptable_r2", 0.5))
+MIN_HISTORY_WEEKS = int(TRAINING_CONFIG.get("history_weeks", 4))
 
-MALADIES = [
-    "Paludisme", "Cholera", "Rougeole", "Mpox", "Ebola", "Meningite", "Fievre jaune",
-    "Rage", "Typhoide", "Peste", "Trypanosomiase", "Leishmaniose", "Poliomyelite",
-    "Coqueluche", "Tetanos", "Hepatite A", "Hepatite B", "Hepatite E", "Diarrhee", "IRA",
-    "Malnutrition", "Autre",
-]
+# --- HELPERS ---
+
+def _normalize_text(value: str) -> str:
+    if not value: return ""
+    normalized = unicodedata.normalize("NFKD", str(value))
+    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
+    return " ".join(ascii_only.casefold().split())
 
 
-def _sorted_unique(values) -> List[str]:
+def _province_token(value: str) -> str:
+    ascii_only = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode("ascii")
+    return "".join(ch for ch in ascii_only.lower() if ch.isalnum())
+
+def _sorted_unique(values) -> list[str]:
     cleaned = {
         str(value).strip()
         for value in values
@@ -51,210 +59,341 @@ def _sorted_unique(values) -> List[str]:
     }
     return sorted(cleaned, key=lambda item: item.casefold())
 
-
 @st.cache_data(show_spinner=False)
-def _reference_catalog() -> pd.DataFrame:
-    reference_df = aggregated_csv_frame().copy()
-    if reference_df.empty:
-        return pd.DataFrame(columns=["MALADIE", "PROVINCE", "ZONE_SANTE"])
+def _model_r2_by_disease() -> dict[str, float]:
+    if not MODEL_SUMMARY_PATH.exists(): return {}
+    try:
+        summary_df = pd.read_csv(MODEL_SUMMARY_PATH, encoding="utf-8-sig")
+        if "Maladie" not in summary_df.columns or "R² (Best)" not in summary_df.columns:
+            return {}
+        r2_values = pd.to_numeric(summary_df["R² (Best)"], errors="coerce")
+        return {
+            _normalize_text(disease): float(r2_val)
+            for disease, r2_val in zip(summary_df["Maladie"], r2_values)
+            if pd.notnull(r2_val)
+        }
+    except Exception:
+        return {}
 
-    rename_map = {}
-    for column in reference_df.columns:
-        normalized = column.strip().upper()
-        if normalized in {"MALADIE", "PROVINCE", "ZONE_SANTE"}:
-            rename_map[column] = normalized
-    reference_df = reference_df.rename(columns=rename_map)
-
-    for required in ["MALADIE", "PROVINCE", "ZONE_SANTE"]:
-        if required not in reference_df.columns:
-            reference_df[required] = None
-
-    return reference_df[["MALADIE", "PROVINCE", "ZONE_SANTE"]].drop_duplicates()
+def _eligible_model_diseases() -> set[str]:
+    mapping = _model_r2_by_disease()
+    return {d for d, r in mapping.items() if r >= MIN_ACCEPTABLE_R2}
 
 
-def _disease_options(reference_df: pd.DataFrame, entries_df: pd.DataFrame) -> List[str]:
-    sources = list(MALADIES)
+def _all_disease_options(reference_df: pd.DataFrame, entries_df: pd.DataFrame) -> list[str]:
+    sources = []
     if "MALADIE" in reference_df.columns:
         sources.extend(reference_df["MALADIE"].tolist())
-    if not entries_df.empty and "disease" in entries_df.columns:
+    elif not entries_df.empty and "disease" in entries_df.columns:
         sources.extend(entries_df["disease"].tolist())
     return _sorted_unique(sources)
 
+def _disease_options(reference_df: pd.DataFrame, entries_df: pd.DataFrame) -> list[str]:
+    options = _all_disease_options(reference_df, entries_df)
+    eligible = _eligible_model_diseases()
+    return [d for d in options if _normalize_text(d) in eligible] if eligible else options
 
-def _province_options(reference_df: pd.DataFrame, entries_df: pd.DataFrame) -> List[str]:
-    sources = list(PROVINCES)
-    if "PROVINCE" in reference_df.columns:
-        sources.extend(reference_df["PROVINCE"].tolist())
-    if not entries_df.empty and "province" in entries_df.columns:
-        sources.extend(entries_df["province"].tolist())
-    return _sorted_unique(sources)
-
-
-def _zone_options(reference_df: pd.DataFrame, entries_df: pd.DataFrame, province: str) -> List[str]:
+def _province_options(reference_df: pd.DataFrame, entries_df: pd.DataFrame) -> list[str]:
     sources = []
-    if not reference_df.empty and province:
-        matches = reference_df.loc[reference_df["PROVINCE"].astype(str).str.casefold() == province.casefold(), "ZONE_SANTE"]
-        sources.extend(matches.tolist())
-    if not entries_df.empty and province:
-        matches = entries_df.loc[entries_df["province"].astype(str).str.casefold() == province.casefold(), "zone_sante"]
-        sources.extend(matches.tolist())
+    if "PROVINCE" in reference_df.columns: sources.extend(reference_df["PROVINCE"].tolist())
+    elif not entries_df.empty and "province" in entries_df.columns: sources.extend(entries_df["province"].tolist())
     return _sorted_unique(sources)
 
+def _zone_options(reference_df: pd.DataFrame, province: str) -> list[str]:
+    if not province or reference_df.empty: return []
+    norm_p = _normalize_text(province)
+    p_col = next((c for c in reference_df.columns if _normalize_text(c) == "province"), None)
+    z_col = next((c for c in reference_df.columns if _normalize_text(c) in ["zone_sante", "zonesante"]), None)
+    if not p_col or not z_col: return []
+    mask = reference_df[p_col].astype(str).map(_normalize_text) == norm_p
+    zones = reference_df.loc[mask, z_col].dropna().unique().tolist()
+    return sorted([str(z).strip() for z in zones], key=lambda x: x.casefold())
 
-def _reference_lists(reference_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    if reference_df.empty:
-        empty_frame = pd.DataFrame()
-        return empty_frame, empty_frame, empty_frame
+# --- DATA LOADING ---
 
-    diseases_df = pd.DataFrame({"Maladie": _sorted_unique(reference_df.get("MALADIE", []))})
-    provinces_df = pd.DataFrame({"Province": _sorted_unique(reference_df.get("PROVINCE", []))})
-    zones_df = pd.DataFrame({"Zone de sante": _sorted_unique(reference_df.get("ZONE_SANTE", []))})
-    return diseases_df, provinces_df, zones_df
+@st.cache_resource(show_spinner=False)
+def _load_prediction_models() -> dict[str, dict]:
+    if not MODELS_PATH.exists(): return {}
+    try:
+        data = joblib.load(MODELS_PATH)
+        return data.get("best_models", {})
+    except Exception:
+        return {}
+
+@st.cache_data(show_spinner=False)
+def _reference_history_frame() -> pd.DataFrame:
+    expected = ["DEBUTSEM", "MALADIE", "PROVINCE", "ZONE_SANTE", "TOTALCAS", "TOTALDECES"]
+    for path in REFERENCE_HISTORY_CANDIDATES:
+        if not path.exists(): continue
+        try:
+            df = pd.read_csv(path)
+            rename = {c: c.strip().upper() for c in df.columns if c.strip().upper() in expected}
+            df = df.rename(columns=rename)
+            if all(col in df.columns for col in expected):
+                df["DEBUTSEM"] = pd.to_datetime(df["DEBUTSEM"], errors="coerce")
+                df["TOTALCAS"] = pd.to_numeric(df["TOTALCAS"], errors="coerce").fillna(0.0)
+                df = df.dropna(subset=["DEBUTSEM"])
+                return df[expected]
+        except Exception: continue
+    return pd.DataFrame(columns=expected)
+
+@st.cache_data(show_spinner=False)
+def _disease_code_lookup() -> dict[str, int]:
+    df = _reference_history_frame()
+    if df.empty: return {}
+    diseases = sorted({str(v).strip() for v in df["MALADIE"].dropna() if str(v).strip()})
+    return {_normalize_text(d): i for i, d in enumerate(diseases)}
+
+# --- PREDICTION LOGIC ---
+
+def _history_series_for_location(auth: AuthSystem, disease: str, province: str = None, zone: str = None) -> pd.DataFrame:
+    ref_df = _reference_history_frame()
+    norm_d = _normalize_text(disease)
+    
+    # Filter Reference
+    mask = ref_df["MALADIE"].astype(str).map(_normalize_text) == norm_d
+    if province and zone:
+        mask &= (ref_df["PROVINCE"].astype(str).map(_normalize_text) == _normalize_text(province))
+        mask &= (ref_df["ZONE_SANTE"].astype(str).map(_normalize_text) == _normalize_text(zone))
+    base_history = ref_df.loc[mask, ["DEBUTSEM", "TOTALCAS"]].copy() if not ref_df.empty else pd.DataFrame(columns=["DEBUTSEM", "TOTALCAS"])
+
+    # Filter Database (Admin entries)
+    conn = auth._get_connection()
+    try:
+        sql = "SELECT week, year, total_cases, total_deaths FROM epidemiological_data WHERE disease = ?"
+        params = [disease]
+        if province and zone:
+            sql += " AND province = ? AND zone_sante = ?"
+            params.extend([province, zone])
+        admin_raw = pd.read_sql_query(sql, conn, params=params)
+    finally: conn.close()
+
+    if not admin_raw.empty:
+        iso = admin_raw["year"].astype(int).astype(str) + "-W" + admin_raw["week"].astype(int).astype(str).str.zfill(2) + "-1"
+        admin_raw["DEBUTSEM"] = pd.to_datetime(iso, format="%G-W%V-%u", errors="coerce")
+        admin_raw["TOTALCAS"] = pd.to_numeric(admin_raw["total_cases"], errors="coerce")
+        admin_hist = admin_raw.dropna(subset=["DEBUTSEM", "TOTALCAS"])[["DEBUTSEM", "TOTALCAS"]]
+    else: admin_hist = pd.DataFrame(columns=["DEBUTSEM", "TOTALCAS"])
+
+    combined = pd.concat([base_history, admin_hist], ignore_index=True)
+    if combined.empty: return combined
+    return combined.groupby("DEBUTSEM", as_index=False)["TOTALCAS"].sum().sort_values("DEBUTSEM").reset_index(drop=True)
+
+def predict_cases_for_date(auth: AuthSystem, disease: str, province: str, zone: str, target_date):
+    models = _load_prediction_models()
+    normalized_d = _normalize_text(disease)
+    
+    # Resolve Model
+    model_key = next((k for k in models.keys() if _normalize_text(k) == normalized_d), None)
+    if not model_key: raise ValueError(f"Aucun modèle IA disponible pour {disease}.")
+    
+    model_info = models[model_key]
+    r2_map = _model_r2_by_disease()
+    r2 = r2_map.get(normalized_d, 0.0)
+    if r2 < MIN_ACCEPTABLE_R2: raise ValueError(f"Modèle trop imprécis (R²={r2:.2f}).")
+
+    # Features
+    iso_year, week_num, _ = target_date.isocalendar()
+    week_start = pd.Timestamp(datetime.fromisocalendar(iso_year, week_num, 1))
+    
+    location_hist = _history_series_for_location(auth, disease, province, zone)
+    history_before_target = location_hist.loc[location_hist["DEBUTSEM"] < week_start].tail(MIN_HISTORY_WEEKS)
+    if len(history_before_target) < MIN_HISTORY_WEEKS:
+        raise ValueError(f"Historique insuffisant: au moins {MIN_HISTORY_WEEKS} semaines sont requises pour prédire cette zone.")
+
+    recent = history_before_target["TOTALCAS"].tolist()
+    lag_1_value, lag_2_value = recent[-1], recent[-2]
+    ma_4_value = np.mean(recent)
+    
+    disease_code = _disease_code_lookup().get(normalized_d, 0)
+    feat = pd.DataFrame([{
+        "lag_1": lag_1_value, "lag_2": lag_2_value, "lag_3": recent[-3], "lag_4": recent[-4],
+        "ma_2": np.mean(recent[-2:]), "ma_3": np.mean(recent[-3:]), "ma_4": ma_4_value,
+        "growth_rate": np.clip((lag_1_value - lag_2_value)/lag_2_value if lag_2_value > 0 else 0, -5, 5),
+        "week_rank": float(len(location_hist)), "month": float(week_start.month),
+        "quarter": float((week_start.month-1)//3 + 1), "MALADIE_CODE": float(disease_code),
+        "volatility_4w": np.std(recent), "trend": lag_1_value - ma_4_value,
+    }])
+
+    selected = list(model_info.get("features", []))
+    for f in selected: 
+        if f not in feat.columns: feat[f] = 0.0
+    
+    predicted = float(model_info["model"].predict(feat[selected])[0])
+    if model_info.get("log_transform"):
+        predicted = np.expm1(predicted)
+    predicted = max(int(round(predicted)), 0)
+
+    return {
+        "disease": model_key, "week": week_num, "year": iso_year,
+        "previous_cases": int(round(lag_1_value)), "predicted_cases": predicted, "r2": r2
+    }
 
 
-def _filtered_zones(reference_df: pd.DataFrame, selected_province: str) -> pd.DataFrame:
-    if reference_df.empty:
-        return pd.DataFrame(columns=["Zone de sante"])
+def _history_readiness(auth: AuthSystem, disease: str, province: str, zone: str, target_date):
+    if not all([disease, province, zone, target_date]):
+        return None
 
-    filtered_df = reference_df
-    if selected_province and selected_province != "Toutes les provinces":
-        filtered_df = filtered_df.loc[
-            filtered_df["PROVINCE"].astype(str).str.casefold() == selected_province.casefold()
-        ]
-    return pd.DataFrame({"Zone de sante": _sorted_unique(filtered_df.get("ZONE_SANTE", []))})
+    iso_year, week_num, _ = target_date.isocalendar()
+    week_start = pd.Timestamp(datetime.fromisocalendar(iso_year, week_num, 1))
+    location_hist = _history_series_for_location(auth, disease, province, zone)
+    history_before_target = location_hist.loc[location_hist["DEBUTSEM"] < week_start].tail(MIN_HISTORY_WEEKS).copy()
+    available_weeks = len(history_before_target)
+    weeks_list = [value.strftime("%d/%m/%Y") for value in history_before_target["DEBUTSEM"].tolist()]
 
-
-def _reference_export_name(prefix: str, selected_province: str, extension: str) -> str:
-    suffix = "toutes_provinces" if not selected_province or selected_province == "Toutes les provinces" else _normalize_location(selected_province)
-    return f"{prefix}_{suffix}.{extension}"
-
-
-def _alert_destination_provinces(auth: AuthSystem, province_options: List[str]) -> List[str]:
-    authority_provinces = [authority.get("province") for authority in auth.get_all_authorities() if authority.get("province")]
-    return _sorted_unique(list(province_options) + authority_provinces)
+    return {
+        "target_week": week_num,
+        "target_year": iso_year,
+        "available_weeks": available_weeks,
+        "ready": available_weeks >= MIN_HISTORY_WEEKS,
+        "weeks_list": weeks_list,
+    }
 
 
-def _normalize_location(value: str) -> str:
-    if not value:
-        return ""
-    normalized = unicodedata.normalize("NFKD", str(value))
-    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
-    return "".join(ch for ch in ascii_only.lower() if ch.isalnum())
+def _prediction_runs_frame(auth: AuthSystem) -> pd.DataFrame:
+    runs = auth.get_prediction_runs(limit=200)
+    return pd.DataFrame(runs) if runs else pd.DataFrame()
 
+# --- ALERTS & NOTIFS ---
 
-def _recipient_ids_for_target(auth: AuthSystem, target_mode: str, province: str, target_province: str) -> tuple[List[int], str]:
+def _resolve_alert_recipients(auth: AuthSystem, mode: str, entry_province: str, target_province: str) -> tuple[list[int], str]:
     authorities = auth.get_all_authorities()
+    if mode == "Toutes les provinces":
+        ids = sorted({int(authority["id"]) for authority in authorities})
+        return ids, "national"
 
-    if target_mode == "Toutes les provinces":
-        recipient_ids = [authority["id"] for authority in authorities]
-        return recipient_ids, "toutes les provinces"
-
-    destination_label = target_province if target_mode == "Province ciblee" and target_province else province
-    normalized_destination = _normalize_location(destination_label)
-    recipient_ids = [
-        authority["id"]
-        for authority in authorities
-        if _normalize_location(authority.get("province")) == normalized_destination
-    ]
-    return recipient_ids, destination_label
+    destination = entry_province if mode == "Province de la saisie" else target_province
+    destination_token = _province_token(destination)
+    ids = sorted(
+        {
+            int(authority["id"])
+            for authority in authorities
+            if _province_token(authority.get("province", "")) == destination_token
+        }
+    )
+    return ids, destination
 
 
-def generate_alert(
+def generate_prediction_alert(auth: AuthSystem, emitting_user: dict, disease: str, province: str, zone: str, week: int, year: int, prev: int, pred: int, mode: str, target_p: str, r2: float):
+    conn = auth._get_connection()
+    cursor = conn.cursor()
+
+    growth = ((pred - prev) / prev * 100) if prev > 0 else (100.0 if pred > 0 else 0.0)
+    level = "CRITIQUE" if growth > 50 else ("HAUTE" if growth > 25 else ("MODEREE" if growth >= 10 else "INFO"))
+
+    recipient_ids, dest_label = _resolve_alert_recipients(auth, mode, province, target_p)
+    if mode == "Province spécifique" and not target_p:
+        conn.close()
+        raise ValueError("Choisissez une province cible pour cette diffusion.")
+    if not recipient_ids:
+        conn.close()
+        raise ValueError(f"Aucune autorite sanitaire active n'est rattachee a {dest_label or 'la province ciblee'}.")
+
+    message = f"Prévision SAFE CONGO : {disease} à {zone} ({province}), S{week}/{year}. Dernier: {prev} cas, Projection: {pred} cas."
+
+    cursor.execute("INSERT INTO alerts (disease, province, zone_sante, week, year, current_cases, predicted_cases, growth_rate, alert_level, message) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                   (disease, province, zone, week, year, prev, pred, growth, level, message))
+    alert_id = cursor.lastrowid
+
+    notif_msg = f"{message} (R²: {r2:.3f}). Zone cible : {dest_label}."
+    for uid in recipient_ids:
+        cursor.execute("INSERT INTO notifications (user_id, alert_id, title, message) VALUES (?,?,?,?)",
+                       (uid, alert_id, f"ALERTE {level} - {disease}", notif_msg))
+
+    admin_message = (
+        f"Votre alerte {level} pour {disease} a bien ete diffusee vers {dest_label}. "
+        f"{len(recipient_ids)} autorite(s) sanitaire(s) ciblee(s), projection {pred} cas contre {prev} observes."
+    )
+    cursor.execute(
+        "INSERT INTO notifications (user_id, alert_id, title, message) VALUES (?,?,?,?)",
+        (int(emitting_user["id"]), alert_id, f"Diffusion confirmee - {disease}", admin_message),
+    )
+    
+    conn.commit()
+    conn.close()
+    return alert_id, level, growth, len(recipient_ids), dest_label
+
+
+def generate_observed_entry_alert(
     auth: AuthSystem,
+    emitting_user: dict,
     disease: str,
     province: str,
     zone: str,
     week: int,
     year: int,
-    total_cases: int,
-    target_mode: str,
-    target_province: str,
+    observed_cases: int,
+    observed_deaths: int,
 ):
-    conn = sqlite3.connect(str(auth.db_path))
+    conn = auth._get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT total_cases, week, year
-        FROM epidemiological_data
-        WHERE disease=?
-          AND province=?
-          AND zone_sante=?
-          AND (year < ? OR (year = ? AND week < ?))
-        ORDER BY year DESC, week DESC
-        LIMIT 1
-        """,
-        (disease, province, zone, year, year, week),
+
+    recipient_ids, dest_label = _resolve_alert_recipients(auth, "Province de la saisie", province, "")
+    message = (
+        f"Nouveau signal terrain SAFE CONGO : {disease} a {zone} ({province}), "
+        f"S{week}/{year}. Cas observes: {observed_cases}, deces observes: {observed_deaths}."
     )
-    row = cursor.fetchone()
-    prev = int(row[0]) if row else None
 
-    if prev is None:
-        growth = 0.0
-        level = "NOUVELLE_DONNEE"
-        predicted = int(total_cases)
-        msg = f"Nouvelle saisie admin enregistree pour {disease} a {zone}, {province}, semaine {week}/{year}."
-    else:
-        growth = ((total_cases - prev) / prev * 100) if prev > 0 else (100.0 if total_cases > 0 else 0.0)
-        if growth > 50:
-            level = "CRITIQUE"
-        elif growth > 25:
-            level = "HAUTE"
-        elif growth >= 10:
-            level = "MODEREE"
-        else:
-            level = "INFO"
-
-        predicted = max(int(round(total_cases * (1 + max(growth, 0) / 100))), int(total_cases))
-        if growth >= 0:
-            msg = f"Saisie admin recensee avec une evolution de {growth:.1f}% par rapport a la periode precedente."
-        else:
-            msg = f"Saisie admin recensee avec un recul de {abs(growth):.1f}% par rapport a la periode precedente."
-
-    cursor.execute(
-        """
-        INSERT INTO alerts (disease, province, zone_sante, week, year, current_cases, predicted_cases, growth_rate, alert_level, message)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (disease, province, zone, week, year, total_cases, predicted, growth, level, msg),
-    )
-    alert_id = cursor.lastrowid
-
-    recipient_ids, destination_label = _recipient_ids_for_target(auth, target_mode, province, target_province)
-
-    notification_message = f"{msg} Diffusion vers: {destination_label}. Observation source: {province} / {zone}."
-    for uid in recipient_ids:
+    alert_id = None
+    if recipient_ids:
         cursor.execute(
-            "INSERT INTO notifications (user_id, alert_id, title, message) VALUES (?, ?, ?, ?)",
-            (uid, alert_id, f"ALERTE {level} - {disease}", notification_message),
+            "INSERT INTO alerts (disease, province, zone_sante, week, year, current_cases, predicted_cases, growth_rate, alert_level, message) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (disease, province, zone, week, year, observed_cases, observed_cases, 0.0, "INFO", message),
         )
+        alert_id = cursor.lastrowid
+        for uid in recipient_ids:
+            cursor.execute(
+                "INSERT INTO notifications (user_id, alert_id, title, message) VALUES (?,?,?,?)",
+                (uid, alert_id, f"INFORMATION TERRAIN - {disease}", message),
+            )
+
+    admin_message = (
+        f"Votre saisie terrain pour {disease} a {zone} ({province}) a ete enregistree et diffusee vers {len(recipient_ids)} autorite(s) sanitaire(s)."
+        if recipient_ids
+        else f"Votre saisie terrain pour {disease} a {zone} ({province}) a ete enregistree, mais aucune autorite active n'est rattachee a {dest_label or province}."
+    )
+    cursor.execute(
+        "INSERT INTO notifications (user_id, alert_id, title, message) VALUES (?,?,?,?)",
+        (int(emitting_user["id"]), alert_id, f"Saisie terrain confirmee - {disease}", admin_message),
+    )
+
     conn.commit()
     conn.close()
-    return level, growth, len(recipient_ids), destination_label
+    return alert_id, len(recipient_ids), (dest_label or province)
 
+# --- CHARTS ---
 
-def _entry_mix_chart(entries_df: pd.DataFrame) -> go.Figure:
-    chart_df = entries_df.copy()
-    if chart_df.empty:
-        chart_df = pd.DataFrame({"disease": ["Aucune donnee"], "total_cases": [0]})
-    else:
-        chart_df = chart_df.groupby("disease", as_index=False)["total_cases"].sum().sort_values("total_cases", ascending=False).head(8)
-    fig = go.Figure(go.Bar(x=chart_df["disease"], y=chart_df["total_cases"], marker_color="#0a5fab"))
-    return make_plotly_layout(fig, "Maladies les plus saisies")
+def _entry_mix_chart(df: pd.DataFrame) -> go.Figure:
+    if df.empty: df = pd.DataFrame({"disease": ["N/A"], "total_cases": [0]})
+    else: df = df.groupby("disease")["total_cases"].sum().nlargest(8).reset_index()
+    fig = go.Figure(go.Bar(x=df["disease"], y=df["total_cases"], marker_color="#0a5fab"))
+    return make_plotly_layout(fig, "Top Maladies Saisies")
 
+def _province_chart(df: pd.DataFrame) -> go.Figure:
+    if df.empty: df = pd.DataFrame({"province": ["N/A"], "total_cases": [0]})
+    else: df = df.groupby("province")["total_cases"].sum().nlargest(8).reset_index()
+    fig = go.Figure(go.Bar(x=df["total_cases"], y=df["province"], orientation="h", marker_color="#49acef"))
+    return make_plotly_layout(fig, "Top Provinces (Cas)")
 
-def _province_chart(entries_df: pd.DataFrame) -> go.Figure:
-    province_df = entries_df.copy()
-    if province_df.empty:
-        province_df = pd.DataFrame({"province": ["Aucune donnee"], "total_cases": [0]})
-    else:
-        province_df = province_df.groupby("province", as_index=False)["total_cases"].sum().sort_values("total_cases", ascending=True).tail(8)
-    fig = go.Figure(go.Bar(x=province_df["total_cases"], y=province_df["province"], orientation="h", marker_color="#49acef"))
-    return make_plotly_layout(fig, "Charge recente par province")
+def _alert_destination_provinces(auth: AuthSystem, province_options: List[str]) -> List[str]:
+    authority_provinces = [authority.get("province") for authority in auth.get_all_authorities() if authority.get("province")]
+    return _sorted_unique(list(province_options) + authority_provinces)
 
+# --- MAIN APP ---
 
 def main() -> None:
-    st.set_page_config(page_title="Saisie Donnees - SAFE CONGO", page_icon=None, layout="wide")
+    st.set_page_config(page_title="Pilotage - SAFE CONGO", layout="wide")
     apply_admin_theme()
+    
+    st.markdown("""
+<style>
+    .admin-soft-card { background: linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(247,251,255,.96) 100%); padding: 1.4rem; border-radius: 1.2rem; box-shadow: 0 12px 24px rgba(15,23,42,.05); border: 1px solid rgba(180,208,232,.55); margin-bottom: 1rem; transition: transform .22s ease, box-shadow .22s ease; }
+    .admin-soft-card:hover { transform: translateY(-3px); box-shadow: 0 18px 30px rgba(10,95,171,.08); }
+    .stSelectbox label, .stDateInput label, .stRadio label { font-weight: 700 !important; color: #475569 !important; font-size: 0.88rem !important; }
+    button[kind="primary"] { width: 100% !important; background: linear-gradient(135deg, #0a5fab 0%, #49acef 100%) !important; border: none !important; padding: 0.8rem !important; border-radius: 0.8rem !important; font-weight: 700 !important; box-shadow: 0 4px 15px rgba(10,95,171,0.2) !important; }
+    .context-box { background: linear-gradient(135deg,#eff7ff,#f8fbff); border: 1px solid rgba(160,200,232,.45); padding: 1rem 1.1rem; border-radius: 0.95rem; margin: 1rem 0 1.2rem; }
+</style>
+""", unsafe_allow_html=True)
 
     auth = AuthSystem()
     user = require_auth(auth)
@@ -262,219 +401,297 @@ def main() -> None:
         switch_to_home_page()
         return
 
-    render_admin_sidebar(user, active_item=2)
+    render_admin_sidebar(user, active_item=2, show_logo=False)
+    ref_df = reference_catalog_frame()
+    ent_df = recent_entries_frame(auth.db_path)
+    prediction_runs_df = _prediction_runs_frame(auth)
+    recent_alerts = alerts_frame(auth.db_path)
+    admin_notifications = auth.get_notifications(user["id"], unread_only=False)
+    admin_unread = auth.get_unread_count(user["id"])
+    available_target_provinces = _alert_destination_provinces(auth, _province_options(ref_df, ent_df))
+    delivery_flash = st.session_state.pop("admin_delivery_flash", "")
+    entry_flash = st.session_state.pop("admin_entry_flash", "")
+    entry_warning_flash = st.session_state.pop("admin_entry_warning_flash", "")
+    
     render_admin_hero(
-        "Saisie & intelligence epidemiologique",
-        "Un espace de production admin qui combine formulaire, verification, recentrage territorial et declenchement intelligent des alertes.",
-        ["Saisie haute confiance", "Alertes automatiques", "Traite prioritaire"],
+        title="Pilotage strategique et prediction",
+        subtitle="L'interface admin projette les cas a partir d'une date cible, controle la fiabilite du modele et diffuse des alertes sans casser la coherence du cockpit global.",
+        chips=["Prediction guidee", "R2 filtre", "Diffusion ciblee"],
+        eyebrow="Saisie et IA",
+        notification_count=admin_unread,
+    )
+    if entry_flash:
+        st.success(entry_flash)
+    if entry_warning_flash:
+        st.warning(entry_warning_flash)
+    if delivery_flash:
+        st.success(delivery_flash)
+
+    render_kpi_cards([
+        {"label": "Saisies terrain", "value": str(len(ent_df)), "delta": "Donnees observees", "copy": "Les remontees terrain sont maintenant persistées dans la table epidemiologique sans melanger l'observe et la prevision.", "accent": "#0a5fab", "accent_soft": "#49acef", "pill": "rgba(10,95,171,.12)"},
+        {"label": "Previsions recentes", "value": str(len(prediction_runs_df)), "delta": "Trace backend", "copy": "Chaque execution de prediction validee est historisee separement pour garder une piste d'audit claire.", "accent": "#2563eb", "accent_soft": "#60a5fa", "pill": "rgba(37,99,235,.12)"},
+        {"label": "Alertes recentes", "value": str(len(recent_alerts)), "delta": "Diffusion active", "copy": "Chaque prediction transformee en alerte reste visible pour l'arbitrage et le suivi institutionnel.", "accent": "#d97706", "accent_soft": "#fcd116", "pill": "rgba(217,119,6,.12)"},
+        {"label": "Notifications admin", "value": str(admin_unread), "delta": "Accuses non lus", "copy": "Chaque envoi confirme remonte aussi cote admin pour verrouiller la chaine de diffusion.", "accent": "#7c3aed", "accent_soft": "#a78bfa", "pill": "rgba(124,58,237,.12)"},
+        {"label": "Maladies eligibles", "value": str(len(_eligible_model_diseases())), "delta": f"Seuil R2 >= {MIN_ACCEPTABLE_R2:.1f}", "copy": "La liste est volontairement filtree pour ne garder que les modeles suffisamment fiables.", "accent": "#059669", "accent_soft": "#34d399", "pill": "rgba(5,150,105,.12)"},
+        {"label": "Provinces activables", "value": str(len(available_target_provinces)), "delta": "Referentiel + autorites", "copy": "Le ciblage d'alerte reprend les provinces reelles du referentiel et celles effectivement couvertes par des autorites actives.", "accent": "#d97706", "accent_soft": "#fcd116", "pill": "rgba(217,119,6,.12)"},
+    ])
+
+    render_admin_inbox_expander(
+        auth,
+        user["id"],
+        key_prefix="admin_data_entry_inbox",
+        unread_count=admin_unread,
+        title="Messagerie admin",
+        intro="Les confirmations de diffusion et retours systeme restent accessibles ici pendant la saisie et la prediction.",
+        limit=6,
     )
 
-    entries_df = recent_entries_frame(auth.db_path)
-    alerts_df = alerts_frame(auth.db_path)
-    reference_df = _reference_catalog()
-    disease_options = _disease_options(reference_df, entries_df)
-    province_options = _province_options(reference_df, entries_df)
-    destination_options = _alert_destination_provinces(auth, province_options)
-    latest_week = f"S{datetime.now().isocalendar()[1]}-{datetime.now().year}"
-    render_kpi_cards(
-        [
-            {"label": "Saisies recentes", "value": str(len(entries_df)), "delta": "Fenetre de 200 lignes", "copy": "La page garde une vision immediate des entrees les plus fraiches pour detecter les anomalies de cadence.", "accent": "#0a5fab", "accent_soft": "#49acef", "pill": "rgba(10,95,171,.1)"},
-            {"label": "Alertes emises", "value": str(len(alerts_df)), "delta": "Signal compare au precedent", "copy": "Toute hausse significative est transformee en notification exploitable pour les autorites concernees.", "accent": "#d97706", "accent_soft": "#f9c74f", "pill": "rgba(217,119,6,.12)"},
-            {"label": "Semaine active", "value": latest_week, "delta": "Cadence courante", "copy": "Le repere hebdomadaire cadre la saisie et structure l'analyse longitudinale par territoire.", "accent": "#059669", "accent_soft": "#34d399", "pill": "rgba(5,150,105,.12)"},
-            {"label": "Provinces touchees", "value": str(entries_df["province"].nunique()) if not entries_df.empty else "0", "delta": "Couverture territoriale", "copy": "Le nombre de provinces remontees mesure la largeur de la capture sur la fenetre recente.", "accent": "#7c3aed", "accent_soft": "#a78bfa", "pill": "rgba(124,58,237,.12)"},
-        ]
-    )
+    section_label("Saisie terrain et prediction")
+    tabs = st.tabs(["Saisie terrain", "Nouvelle prevision", "Historique", "Referentiel"])
 
-    diseases_reference_df, provinces_reference_df, _ = _reference_lists(reference_df)
-    reference_filter_options = ["Toutes les provinces"] + provinces_reference_df["Province"].tolist() if not provinces_reference_df.empty else ["Toutes les provinces"]
-    tab_form, tab_intel, tab_reference = st.tabs(["Nouvelle saisie", "Lecture recente", "Referentiel dataset"])
-
-    with tab_form:
-        left_col, right_col = st.columns([1.15, 0.85], gap="large")
-        with left_col:
-            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-            panel_title("Formulaire admin prioritaire")
-            with st.form("admin_entry_form", clear_on_submit=True):
+    with tabs[0]:
+        l, r = st.columns([1.3, 0.7], gap="large")
+        with l:
+            with st.container():
+                st.markdown('<div class="admin-soft-card">', unsafe_allow_html=True)
+                panel_title("Enregistrer une donnee terrain")
+                selected_observed_province = st.selectbox(
+                    "Province de saisie",
+                    [""] + _province_options(ref_df, ent_df),
+                    key="observed_province_selector",
+                )
+                observed_province = selected_observed_province
+                observed_zone_options = _zone_options(ref_df, observed_province)
+                st.markdown(
+                    f'<div class="context-box"><div style="font-size:0.72rem; color:#0369a1; font-weight:700;">SOURCE OBSERVEE</div><div style="font-size:1.02rem; font-weight:800;">{observed_province or "Choisissez une province"}</div><div style="margin-top:.35rem; color:#475569; font-size:.88rem;">La date calcule automatiquement la semaine epidemiologique. Les champs cas et deces sont requis pour alimenter correctement l\'historique de prediction. La donnee est mise a jour si une observation existe deja pour la meme maladie, semaine, province et zone.</div></div>',
+                    unsafe_allow_html=True,
+                )
                 c1, c2 = st.columns(2)
-                with c1:
-                    disease = st.selectbox("Maladie", disease_options, accept_new_options=True)
-                    province = st.selectbox("Province", province_options, accept_new_options=True)
-                    zone = st.selectbox(
-                        "Zone de sante",
-                        _zone_options(reference_df, entries_df, province) or [""],
-                        index=None,
-                        placeholder="Choisir ou saisir une zone",
-                        accept_new_options=True,
-                    )
-                with c2:
-                    week = st.number_input("Semaine", min_value=1, max_value=53, value=datetime.now().isocalendar()[1])
-                    year = st.number_input("Annee", min_value=2020, max_value=2035, value=datetime.now().year)
-                    cases = st.number_input("Cas", min_value=0, value=0)
-                    deaths = st.number_input("Deces", min_value=0, value=0)
-                target_mode = st.radio("Diffuser l'alerte vers", ["Province de la saisie", "Province ciblee", "Toutes les provinces"], horizontal=True)
-                target_province = ""
-                if target_mode == "Province ciblee":
-                    target_province = st.selectbox("Province destinataire", destination_options, index=0 if destination_options else None, placeholder="Choisir la province qui recevra l'alerte")
-                submitted = st.form_submit_button("Enregistrer la saisie", use_container_width=True)
-
-            st.caption("Les suggestions de maladie, province et zone de sante sont alimentees par le dataset et les saisies deja en base.")
-
-            if submitted:
-                zone_value = (zone or "").strip()
-                if not disease or not province or not zone_value:
-                    st.warning("Renseignez la maladie, la province et la zone de sante.")
-                elif target_mode == "Province ciblee" and not target_province:
-                    st.warning("Choisissez la province destinataire de l'alerte.")
-                else:
-                    try:
-                        conn = sqlite3.connect(str(auth.db_path))
-                        cursor = conn.cursor()
-                        letalite = (deaths / cases * 100) if cases else 0
-                        cursor.execute(
-                            """
-                            INSERT INTO epidemiological_data
-                            (disease, week, year, province, zone_sante, total_cases, total_deaths, incidence_rate, mortality_rate, entered_by)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """,
-                            (disease, week, year, province, zone_value, cases, deaths, cases / 100000 if cases else 0, letalite, user["id"]),
+                observed_disease = c1.selectbox("Maladie observee", [""] + _all_disease_options(ref_df, ent_df), key="observed_disease")
+                observed_date = c2.date_input("Date d'observation", value=datetime.now().date(), key="observed_date")
+                c3, c4 = st.columns(2)
+                observed_cases = c3.number_input("Cas observes", min_value=0, step=1, value=0, key="observed_cases")
+                observed_deaths = c4.number_input("Deces observes", min_value=0, step=1, value=0, key="observed_deaths")
+                observed_zone = st.selectbox("Zone de sante", [""] + observed_zone_options, key=f"observed_zone_{observed_province or 'none'}")
+                observed_forecast_date = observed_date + timedelta(days=7)
+                observed_history_status = _history_readiness(
+                    auth,
+                    observed_disease,
+                    observed_province,
+                    observed_zone,
+                    observed_forecast_date,
+                )
+                if observed_history_status:
+                    if observed_history_status["ready"]:
+                        st.success(
+                            f"Projection automatique prete pour S{observed_history_status['target_week']}/{observed_history_status['target_year']} : "
+                            f"{observed_history_status['available_weeks']} semaines d'historique trouvees sur {MIN_HISTORY_WEEKS} requises ({', '.join(observed_history_status['weeks_list'])})."
                         )
-                        conn.commit()
-                        conn.close()
-                        st.success("Saisie admin enregistree avec succes.")
-                        alert_result = generate_alert(auth, disease, province, zone_value, int(week), int(year), int(cases), target_mode, target_province)
-                        if alert_result:
-                            level, growth, recipient_count, destination_label = alert_result
-                            if recipient_count == 0:
-                                st.error(f"Alerte {level} creee, mais aucune autorite sanitaire active ne correspond a la destination {destination_label}. Activez un compte autorite ou choisissez une autre destination.")
-                            else:
-                                st.warning(f"Alerte {level} declenchee automatiquement avec une croissance de {growth:.1f}% et diffusee a {recipient_count} autorite(s) vers {destination_label}.")
-                        st.rerun()
-                    except Exception as exc:
-                        st.error(f"Impossible d'enregistrer la saisie : {exc}")
+                    else:
+                        visible_weeks = ", ".join(observed_history_status["weeks_list"]) if observed_history_status["weeks_list"] else "aucune"
+                        st.info(
+                            f"Projection automatique non prete pour S{observed_history_status['target_week']}/{observed_history_status['target_year']} : "
+                            f"{observed_history_status['available_weeks']} semaine(s) disponible(s) avant la date cible sur {MIN_HISTORY_WEEKS} requises. Semaines trouvees : {visible_weeks}."
+                        )
+                observed_submit = st.button("ENREGISTRER LA DONNEE TERRAIN", use_container_width=True, key="observed_entry_submit")
+
+                if observed_submit:
+                    if not all([observed_disease, selected_observed_province, observed_zone]):
+                        st.error("Champs obligatoires manquants pour la saisie terrain.")
+                    elif int(observed_cases) <= 0:
+                        st.error("Le nombre de cas observes doit etre superieur a zero.")
+                    else:
+                        ok, result = auth.save_epidemiological_entry(
+                            disease=observed_disease,
+                            province=selected_observed_province,
+                            zone_sante=observed_zone,
+                            observed_date=observed_date,
+                            total_cases=int(observed_cases),
+                            total_deaths=int(observed_deaths),
+                            entered_by=user["id"],
+                        )
+                        if ok:
+                            forecast_date = observed_date + timedelta(days=7)
+                            try:
+                                forecast = predict_cases_for_date(
+                                    auth,
+                                    result["disease"],
+                                    result["province"],
+                                    result["zone_sante"],
+                                    forecast_date,
+                                )
+                                alert_id, lvl, gr, n_sent, lbl = generate_prediction_alert(
+                                    auth,
+                                    user,
+                                    forecast["disease"],
+                                    result["province"],
+                                    result["zone_sante"],
+                                    forecast["week"],
+                                    forecast["year"],
+                                    forecast["previous_cases"],
+                                    forecast["predicted_cases"],
+                                    "Province de la saisie",
+                                    "",
+                                    forecast["r2"],
+                                )
+                                auth.record_prediction_run(
+                                    disease=forecast["disease"],
+                                    province=result["province"],
+                                    zone_sante=result["zone_sante"],
+                                    target_date=forecast_date,
+                                    week=forecast["week"],
+                                    year=forecast["year"],
+                                    previous_cases=forecast["previous_cases"],
+                                    predicted_cases=forecast["predicted_cases"],
+                                    model_r2=forecast["r2"],
+                                    delivery_mode="Province de la saisie",
+                                    delivery_target=lbl,
+                                    emitted_by=user["id"],
+                                    alert_id=alert_id,
+                                )
+                                st.session_state["admin_entry_flash"] = (
+                                    f"Donnee terrain enregistree ({result['action']}) pour {result['disease']} a {result['zone_sante']} - "
+                                    f"S{result['week']}/{result['year']}. Projection automatique S{forecast['week']}/{forecast['year']} : "
+                                    f"{forecast['predicted_cases']} cas ({gr:+.1f}%). Diffusion confirmee vers {n_sent} autorite(s) pour {lbl}."
+                                )
+                            except Exception as prediction_error:
+                                st.session_state["admin_entry_warning_flash"] = (
+                                    f"Donnee terrain enregistree ({result['action']}) pour {result['disease']} a {result['zone_sante']} - "
+                                    f"S{result['week']}/{result['year']}, mais aucune prediction n'a ete diffusee automatiquement : {prediction_error}"
+                                )
+                            st.rerun()
+                        else:
+                            st.error(f"Erreur de sauvegarde: {result}")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+        with r:
+            st.markdown('<div class="admin-soft-card">', unsafe_allow_html=True)
+            panel_title("Aide a la saisie")
+            st.markdown("<div style='font-size:0.9rem; color:#475569;'>La saisie terrain repose sur la date, la maladie, la localisation, les cas et les deces observes. La semaine epidemiologique est deduite automatiquement puis la donnee alimente l'historique utilise pour la prediction.</div>", unsafe_allow_html=True)
+            if not ent_df.empty:
+                st.plotly_chart(_entry_mix_chart(ent_df), use_container_width=True, key="admin_entry_mix_chart_help")
             st.markdown("</div>", unsafe_allow_html=True)
 
-        with right_col:
-            st.markdown(
-                """
-<div class="admin-panel">
-  <div class="admin-panel-title">Cadre de verification</div>
-  <div class="admin-grid-3">
-    <div class="admin-mini-card"><h4>Signal propre</h4><p>Verifier la coherence entre cas, deces et territoire avant validation pour proteger la fiabilite du tableau national.</p></div>
-        <div class="admin-mini-card"><h4>Diffusion ciblee</h4><p>L'admin choisit desormais si l'alerte doit partir a la province observee, a une autre province precise ou a toutes les autorites actives.</p></div>
-    <div class="admin-mini-card"><h4>Trace immediate</h4><p>La nouvelle ligne rejoint instantanement les vues de lecture recente et les indicateurs du dashboard executif.</p></div>
-  </div>
-</div>
-""",
-                unsafe_allow_html=True,
-            )
-
-    with tab_intel:
-        section_label("Lecture de production")
-        chart_left, chart_right = st.columns(2, gap="large")
-        with chart_left:
-            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-            panel_title("Maladies les plus saisies")
-            st.plotly_chart(_entry_mix_chart(entries_df), use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-        with chart_right:
-            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-            panel_title("Territoires les plus charges")
-            st.plotly_chart(_province_chart(entries_df), use_container_width=True)
+            st.markdown('<div class="admin-soft-card">', unsafe_allow_html=True)
+            panel_title("Dernieres remontees")
+            if ent_df.empty:
+                st.info("Aucune donnee terrain enregistree pour le moment.")
+            else:
+                latest_entries = ent_df.sort_values("entry_date", ascending=False).head(6).copy()
+                latest_entries[["total_cases", "total_deaths"]] = latest_entries[["total_cases", "total_deaths"]].fillna("-")
+                st.dataframe(latest_entries, use_container_width=True, hide_index=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-        panel_title("Journal recent de production")
-        if entries_df.empty:
-            st.info("Aucune saisie recente disponible.")
+    with tabs[1]:
+        l, r = st.columns([1.3, 0.7], gap="large")
+        with l:
+            with st.container():
+                st.markdown('<div class="admin-soft-card">', unsafe_allow_html=True)
+                panel_title("Parametres d'analyse predictive")
+                province = st.selectbox("Province source", [""] + _province_options(ref_df, ent_df), key="prediction_province_selector")
+                mode = st.radio("Destinataires", ["Province de la saisie", "Province spécifique", "Toutes les provinces"], horizontal=True, key="prediction_delivery_mode")
+                prediction_zone_options = _zone_options(ref_df, province)
+                effective_destination = province if mode == "Province de la saisie" else (st.session_state.get("prediction_target_province") or "A choisir") if mode == "Province spécifique" else "Toutes les provinces"
+                st.markdown(
+                    f'<div class="context-box"><div style="font-size:0.72rem; color:#0369a1; font-weight:700;">PORTEE DE DIFFUSION</div><div style="font-size:1.02rem; font-weight:800;">{effective_destination}</div><div style="margin-top:.35rem; color:#475569; font-size:.88rem;">Le formulaire principal est maintenant soumis en bloc pour eviter les reruns a chaque champ. Seuls la province source et le mode de diffusion recalculent la vue.</div></div>',
+                    unsafe_allow_html=True,
+                )
+
+                with st.form("prediction_execution_form"):
+                    c1, c2 = st.columns(2)
+                    disease = c1.selectbox("Maladie", [""] + _disease_options(ref_df, ent_df), key="prediction_disease")
+                    date_input = c2.date_input("Date cible", value=DEFAULT_FORECAST_DATE, key="prediction_date")
+                    iso_year, iso_w, _ = date_input.isocalendar()
+                    st.caption(f"Semaine cible : **S{iso_w}/{iso_year}**")
+
+                    c3, c4 = st.columns(2)
+                    zone = c3.selectbox("Zone de Sante", [""] + prediction_zone_options, key=f"prediction_zone_{province or 'none'}")
+                    target_p = c4.selectbox(
+                        "Province cible",
+                        [""] + available_target_provinces,
+                        disabled=mode != "Province spécifique",
+                        key="prediction_target_province",
+                    )
+                    predict_submit = st.form_submit_button("EXECUTER LA PREVISION", use_container_width=True)
+
+                if predict_submit:
+                    if not all([disease, province, zone]):
+                        st.error("Champs obligatoires manquants.")
+                    else:
+                        with st.spinner("Analyse en cours..."):
+                            try:
+                                f = predict_cases_for_date(auth, disease, province, zone, date_input)
+                                alert_id, lvl, gr, n_sent, lbl = generate_prediction_alert(auth, user, f["disease"], province, zone, f["week"], f["year"], f["previous_cases"], f["predicted_cases"], mode, target_p, f["r2"])
+                                auth.record_prediction_run(
+                                    disease=f["disease"],
+                                    province=province,
+                                    zone_sante=zone,
+                                    target_date=date_input,
+                                    week=f["week"],
+                                    year=f["year"],
+                                    previous_cases=f["previous_cases"],
+                                    predicted_cases=f["predicted_cases"],
+                                    model_r2=f["r2"],
+                                    delivery_mode=mode,
+                                    delivery_target=lbl,
+                                    emitted_by=user["id"],
+                                    alert_id=alert_id,
+                                )
+                                st.session_state["admin_delivery_flash"] = f"Alerte {lvl} emise. Projection: {f['predicted_cases']} cas ({gr:+.1f}%). Diffusion confirmee vers {n_sent} autorite(s) sanitaire(s) pour {lbl}. Un accuse de diffusion a aussi ete depose dans vos notifications admin."
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erreur: {str(e)}")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+        with r:
+            st.markdown('<div class="admin-soft-card">', unsafe_allow_html=True)
+            panel_title("Aide contextuelle")
+            st.markdown(f"<div style='font-size:0.9rem; color:#475569;'>Les prévisions utilisent maintenant les {MIN_HISTORY_WEEKS} dernières semaines de données consolidées. Le score R² est contrôlé au moment de l'exécution pour empêcher une projection peu fiable.</div>", unsafe_allow_html=True)
+            if not ent_df.empty:
+                st.plotly_chart(_entry_mix_chart(ent_df), use_container_width=True, key="admin_entry_mix_chart_prediction")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown('<div class="admin-soft-card">', unsafe_allow_html=True)
+            panel_title("Retour de diffusion")
+            st.markdown(f"<div style='font-size:0.9rem; color:#475569; margin-bottom:0.9rem;'>Vos confirmations d'envoi remontent ici immediatement pour eviter les doutes apres emission. {admin_unread} notification(s) non lue(s).</div>", unsafe_allow_html=True)
+            if not admin_notifications:
+                st.info("Aucune notification admin disponible pour le moment.")
+            else:
+                for notification in admin_notifications[:4]:
+                    st.markdown(
+                        f"<div class='context-box' style='margin-bottom:0.8rem;'><div style='font-size:0.74rem; color:#0369a1; font-weight:700;'>{'NON LUE' if notification['is_read'] == 0 else 'LUE'}</div><div style='font-size:1rem; font-weight:800; color:#0f172a; margin:.2rem 0;'>{notification['title']}</div><div style='font-size:0.9rem; color:#475569;'>{notification['message']}</div><div style='margin-top:.45rem; font-size:0.76rem; color:#7b91a5;'>{notification['created_at']}</div></div>",
+                        unsafe_allow_html=True,
+                    )
+                if admin_unread > 0 and st.button("Marquer mes notifications comme lues", use_container_width=True, key="admin_mark_notifications"):
+                    auth.mark_all_notifications_read(user["id"])
+                    st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    with tabs[2]:
+        st.markdown('<div class="admin-soft-card">', unsafe_allow_html=True)
+        panel_title("Historique des donnees terrain")
+        if ent_df.empty:
+            st.info("Aucune donnee terrain enregistree pour le moment.")
         else:
-            view_df = entries_df.rename(
-                columns={
-                    "disease": "Maladie",
-                    "province": "Province",
-                    "zone_sante": "Zone",
-                    "week": "Semaine",
-                    "year": "Annee",
-                    "total_cases": "Cas",
-                    "total_deaths": "Deces",
-                    "entry_date": "Horodatage",
-                }
-            )
-            st.dataframe(view_df.head(30), use_container_width=True, hide_index=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+            history_entries = ent_df.sort_values("entry_date", ascending=False).copy()
+            history_entries[["total_cases", "total_deaths"]] = history_entries[["total_cases", "total_deaths"]].fillna("-")
+            st.dataframe(history_entries, use_container_width=True, hide_index=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab_reference:
-        section_label("Catalogue dataset")
-        selected_reference_province = st.selectbox("Filtrer les zones de sante par province", reference_filter_options, index=0)
-        filtered_zones_df = _filtered_zones(reference_df, selected_reference_province)
-        export_pdf = BarrierMeasuresPDF().generate_reference_catalog_pdf(
-            diseases_reference_df["Maladie"].tolist() if not diseases_reference_df.empty else [],
-            provinces_reference_df["Province"].tolist() if not provinces_reference_df.empty else [],
-            filtered_zones_df["Zone de sante"].tolist() if not filtered_zones_df.empty else [],
-            None if selected_reference_province == "Toutes les provinces" else selected_reference_province,
-        )
-        export_csv = pd.concat(
-            [
-                diseases_reference_df.assign(Categorie="Maladie", Valeur=diseases_reference_df.get("Maladie")),
-                provinces_reference_df.assign(Categorie="Province", Valeur=provinces_reference_df.get("Province")),
-                filtered_zones_df.assign(Categorie="Zone de sante", Valeur=filtered_zones_df.get("Zone de sante")),
-            ],
-            ignore_index=True,
-        )[["Categorie", "Valeur"]]
-        st.markdown(
-            f"""
-<div class="admin-panel">
-  <div class="admin-support-copy">Ce referentiel liste toutes les valeurs uniques detectees dans le dataset detaille utilise pour alimenter la saisie: <strong>{len(diseases_reference_df)}</strong> maladies, <strong>{len(provinces_reference_df)}</strong> provinces et <strong>{len(filtered_zones_df)}</strong> zones de sante pour le filtre courant.</div>
-</div>
-""",
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="admin-soft-card">', unsafe_allow_html=True)
+        panel_title("Historique recent des previsions")
+        if prediction_runs_df.empty:
+            st.info("Aucune prevision historisee pour le moment.")
+        else:
+            st.dataframe(prediction_runs_df.sort_values("created_at", ascending=False), use_container_width=True, hide_index=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        export_col1, export_col2 = st.columns(2)
-        with export_col1:
-            st.download_button(
-                "Exporter le referentiel en PDF",
-                data=export_pdf,
-                file_name=_reference_export_name("referentiel_safe_congo", selected_reference_province, "pdf"),
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        with export_col2:
-            st.download_button(
-                "Exporter le referentiel en CSV",
-                data=export_csv.to_csv(index=False).encode("utf-8"),
-                file_name=_reference_export_name("referentiel_safe_congo", selected_reference_province, "csv"),
-                mime="text/csv",
-                use_container_width=True,
-            )
-
-        ref_col1, ref_col2, ref_col3 = st.columns(3, gap="large")
-        with ref_col1:
-            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-            panel_title("Toutes les maladies")
-            if diseases_reference_df.empty:
-                st.info("Aucune maladie detectee dans le dataset.")
-            else:
-                st.dataframe(diseases_reference_df, use_container_width=True, hide_index=True, height=520)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with ref_col2:
-            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-            panel_title("Toutes les provinces")
-            if provinces_reference_df.empty:
-                st.info("Aucune province detectee dans le dataset.")
-            else:
-                st.dataframe(provinces_reference_df, use_container_width=True, hide_index=True, height=520)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with ref_col3:
-            st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-            panel_title("Toutes les zones de sante")
-            if filtered_zones_df.empty:
-                st.info("Aucune zone de sante detectee dans le dataset.")
-            else:
-                st.dataframe(filtered_zones_df, use_container_width=True, hide_index=True, height=520)
-            st.markdown("</div>", unsafe_allow_html=True)
-
+    with tabs[3]:
+        st.markdown('<div class="admin-soft-card">', unsafe_allow_html=True)
+        panel_title("Referentiel province / zone")
+        if not ref_df.empty:
+            st.dataframe(ref_df[["PROVINCE", "ZONE_SANTE"]].drop_duplicates().sort_values(["PROVINCE", "ZONE_SANTE"]), use_container_width=True, hide_index=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

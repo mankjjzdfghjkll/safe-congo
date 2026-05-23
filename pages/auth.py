@@ -1,5 +1,6 @@
 import streamlit as st
 import sys
+import pandas as pd
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -71,6 +72,25 @@ CSS = """
   transform:translateY(-2px)!important;
   box-shadow:0 10px 28px rgba(10,95,171,.36)!important;
 }
+.stFormSubmitButton>button{
+  background:#0a5fab!important;
+  background-image:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;
+  color:#fff!important;
+  border:none!important;
+  border-radius:12px!important;
+  padding:13px 24px!important;
+  font-weight:800!important;
+  font-size:.9rem!important;
+  letter-spacing:.4px!important;
+  width:100%!important;
+  opacity:1!important;
+  box-shadow:0 6px 20px rgba(10,95,171,.28)!important;
+  transition:all .25s!important;
+}
+.stFormSubmitButton>button:hover{
+  transform:translateY(-2px)!important;
+  box-shadow:0 10px 28px rgba(10,95,171,.36)!important;
+}
 
 /* ─── tabs ────────────────────────────────────────────── */
 .stTabs [data-baseweb="tab-list"]{
@@ -96,7 +116,7 @@ CSS = """
 @keyframes ecgDraw{0%{stroke-dashoffset:90}60%{stroke-dashoffset:0}80%{stroke-dashoffset:0}100%{stroke-dashoffset:90}}
 
 /* ─── layout ──────────────────────────────────────────── */
-.auth-page{display:grid;grid-template-columns:1.05fr .95fr;min-height:100vh;gap:0;border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(10,60,120,.14);margin:16px;animation:fadeUp .5s ease-out}
+.auth-page{display:grid;grid-template-columns:1.05fr .95fr;min-height:calc(100vh - 34px);gap:0;border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(10,60,120,.14);width:min(96vw,1320px);margin:16px auto;animation:fadeUp .5s ease-out}
 .auth-left{background:linear-gradient(160deg,#0a5fab 0%,#0d80d8 55%,#1aa2e2 100%);padding:52px 44px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .auth-left-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.1) 1px,transparent 1px);background-size:24px 24px;pointer-events:none}
 .auth-left-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 80% 10%,rgba(255,255,255,.14),transparent 36%),radial-gradient(ellipse at 10% 90%,rgba(0,30,80,.18),transparent 28%);pointer-events:none}
@@ -127,14 +147,15 @@ CSS = """
 .al-visual{display:flex;justify-content:center;margin:18px 0}
 
 /* ─── right panel ─────────────────────────────────────── */
-.auth-right{background:#ffffff;padding:52px 48px;display:flex;flex-direction:column;justify-content:center}
+.auth-right{background:#ffffff;padding:52px 48px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.auth-right > *{width:min(100%,560px)}
 .ar-back{display:inline-flex;align-items:center;gap:7px;font-size:.8rem;font-weight:700;color:#5a8aaa;cursor:pointer;margin-bottom:34px;border:none;background:none;padding:0;text-decoration:none;transition:color .2s}
 .ar-back:hover{color:#0a84d0}
 .ar-back svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ar-kicker{display:inline-block;padding:6px 12px;border-radius:999px;background:#eef7ff;border:1px solid #c8dff0;font-size:.68rem;font-weight:800;letter-spacing:1.7px;text-transform:uppercase;color:#1a6db5;margin-bottom:12px}
 .ar-title{font-family:'Sora',sans-serif;font-size:1.85rem;font-weight:800;color:#0a2040;letter-spacing:-.5px;margin-bottom:8px}
 .ar-sub{font-size:.9rem;color:#6a8da8;line-height:1.64;margin-bottom:28px}
-.auth-form-shell{background:linear-gradient(180deg,#fbfdff 0%,#f4faff 100%);border:1px solid #d8e9f6;border-radius:22px;padding:22px 20px 18px;box-shadow:0 10px 28px rgba(10,60,120,.05);margin-bottom:14px}
+.auth-form-shell{background:linear-gradient(180deg,#fbfdff 0%,#f4faff 100%);border:1px solid #d8e9f6;border-radius:22px;padding:22px 20px 18px;box-shadow:0 10px 28px rgba(10,60,120,.05);margin:0 auto 14px auto;max-width:560px}
 .auth-form-topline{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .auth-form-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:#ffffff;border:1px solid #d7e8f5;font-size:.68rem;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:#0a5fab}
 .auth-form-chip-dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#0a5fab,#1aa2e2)}
@@ -143,10 +164,17 @@ CSS = """
 .auth-form-helper{margin-top:12px;padding:12px 14px;border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#f8fcff 100%);border:1px dashed #c8dff0;font-size:.77rem;line-height:1.6;color:#67839c}
 .auth-section-note{margin-top:16px;padding:12px 14px;border-radius:14px;background:#f0f8ff;border:1px solid #c8dff0;font-size:.78rem;line-height:1.6;color:#5a8aaa}
 .auth-register-note{margin-bottom:16px;padding:13px 14px;border-radius:14px;background:linear-gradient(135deg,#eef7ff,#f7fbff);border:1px solid #d3e6f4;font-size:.8rem;line-height:1.65;color:#62819c}
-[data-testid="stForm"]{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);border:1px solid #d8e9f6;border-radius:22px;padding:18px 18px 10px;box-shadow:0 12px 28px rgba(10,60,120,.05);margin-bottom:12px}
+.auth-access-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:560px;margin:0 auto 16px auto}
+.auth-access-card{padding:14px 15px;border-radius:16px;border:1px solid #d6e6f4;background:linear-gradient(180deg,#ffffff 0%,#f7fbff 100%);box-shadow:0 8px 22px rgba(10,60,120,.05)}
+.auth-access-card strong{display:block;font-size:.72rem;letter-spacing:1.2px;text-transform:uppercase;color:#0a5fab;margin-bottom:6px}
+.auth-access-card span{display:block;font-size:.8rem;line-height:1.58;color:#64809a}
+.auth-access-card.admin{background:linear-gradient(180deg,#f8fbff 0%,#eef6ff 100%)}
+[data-testid="stForm"]{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);border:1px solid #d8e9f6;border-radius:22px;padding:18px 18px 10px;box-shadow:0 12px 28px rgba(10,60,120,.05);margin:0 auto 12px auto;max-width:560px}
 [data-testid="stForm"] [data-testid="stVerticalBlock"]{gap:.35rem}
+.stFormSubmitButton{max-width:560px;margin:0 auto}
+.auth-form-helper,.auth-section-note,.auth-register-note,.register-success{max-width:560px;margin-left:auto;margin-right:auto}
 
-.no-account{background:linear-gradient(135deg,#f0f9ff 0%,#e8f4fd 100%);border:1px solid #c8dff0;border-radius:18px;padding:20px 22px;margin-top:22px}
+.no-account{background:linear-gradient(135deg,#f0f9ff 0%,#e8f4fd 100%);border:1px solid #c8dff0;border-radius:18px;padding:20px 22px;margin:22px auto 0 auto;max-width:560px}
 .nac-label{font-size:.7rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#5a9ac0;margin-bottom:8px}
 .nac-title{font-size:1rem;font-weight:800;color:#0a2040;margin-bottom:6px}
 .nac-copy{font-size:.84rem;color:#6a8da8;line-height:1.58;margin-bottom:12px}
@@ -158,18 +186,67 @@ CSS = """
 .reg-s-t{font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:800;color:#065f46;margin-bottom:6px}
 .reg-s-c{font-size:.86rem;color:#047857;line-height:1.58}
 
-@media(max-width:860px){.auth-page{grid-template-columns:1fr;margin:8px}.auth-left{padding:32px 24px}.auth-right{padding:32px 24px}.al-headline{font-size:2rem}.al-headline em{font-size:1.7rem}}
+@media(max-width:860px){
+  .auth-page{grid-template-columns:1fr;margin:8px}
+  .auth-left{padding:32px 24px;min-height:auto!important}
+  .auth-right{padding:32px 24px}
+  .al-headline{font-size:2rem}
+  .al-headline em{font-size:1.7rem}
+  .block-container{padding-left:1rem!important;padding-right:1rem!important;padding-top:.75rem!important}
+  [data-testid="stHorizontalBlock"]{flex-direction:column!important;gap:1rem!important}
+  [data-testid="column"]{width:100%!important;flex:1 1 100%!important;min-width:100%!important}
+  [data-testid="stForm"]{padding:16px 14px 10px!important}
+  .auth-form-shell,.auth-form-helper,.auth-section-note,.auth-register-note,.register-success,.no-account,.stFormSubmitButton,.auth-access-split{max-width:100%!important}
+  .auth-access-split{grid-template-columns:1fr!important}
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-PROVINCES = [
-    "Kinshasa","Kongo Central","Kwango","Kwilu","Mai-Ndombe",
-    "Equateur","Sud-Ubangi","Nord-Ubangi","Mongala","Tshopo",
-    "Bas-Uele","Haut-Uele","Ituri","Nord-Kivu","Sud-Kivu",
-    "Maniema","Tanganyika","Haut-Lomami","Lualaba","Haut-Katanga",
-    "Lomami","Sankuru","Kasai","Kasai Central","Kasai Oriental",
-]
+DATASET_GEO_PATH = Path(__file__).resolve().parents[1] / "data" / "processed" / "donnees_agregees_nettoyees.csv"
+REQUIRED_GEO_COLUMNS = {"PROVINCE", "ZONE_SANTE"}
+
+
+def _clean_geo_value(value):
+    if pd.isna(value):
+        return ""
+    cleaned = str(value).strip()
+    if not cleaned or cleaned.lower() == "nan":
+        return ""
+    return cleaned
+
+
+# Source unique des provinces et zones: dataset géographique
+df_geo = pd.DataFrame()
+PROVINCES = []
+ZONES_BY_PROVINCE = {}
+GEO_DATA_ERROR = ""
+
+try:
+    df_geo = pd.read_csv(DATASET_GEO_PATH)
+    if not REQUIRED_GEO_COLUMNS.issubset(df_geo.columns):
+        missing = REQUIRED_GEO_COLUMNS.difference(set(df_geo.columns))
+        raise ValueError(f"Colonnes manquantes dans le dataset: {', '.join(sorted(missing))}")
+
+    province_order = []
+    zones_by_province = {}
+    for raw_province, raw_zone in df_geo[["PROVINCE", "ZONE_SANTE"]].itertuples(index=False, name=None):
+        province = _clean_geo_value(raw_province)
+        zone = _clean_geo_value(raw_zone)
+        if not province or not zone:
+            continue
+        if province not in zones_by_province:
+            zones_by_province[province] = set()
+            province_order.append(province)
+        zones_by_province[province].add(zone)
+
+    PROVINCES = province_order
+    ZONES_BY_PROVINCE = {
+        province: sorted(zones_by_province[province], key=lambda item: item.casefold())
+        for province in province_order
+    }
+except Exception as exc:
+    GEO_DATA_ERROR = str(exc)
 
 SHIELD_SVG = """<svg width="44" height="52" viewBox="0 0 110 128" xmlns="http://www.w3.org/2000/svg" class="al-shield">
   <defs>
@@ -239,6 +316,10 @@ def main():
         st.session_state.register_success = False
 
     auth = AuthSystem()
+    db_snapshot = auth.database_snapshot()
+    province_count = len(PROVINCES)
+    zone_count = sum(len(zones) for zones in ZONES_BY_PROVINCE.values())
+    user_count = int(db_snapshot.get("users_total", 0))
 
     # Already logged in → route to dashboard
     if st.session_state.user is not None:
@@ -275,16 +356,16 @@ def main():
 
             # features
             f'<div class="al-features">'
-            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Detection precoce</div><div class="al-feat-c">Signaux d\'alerte sur 26 provinces en temps reel.</div></div></div>'
-            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Analyse intelligente</div><div class="al-feat-c">Tendances, visualisations et previsions fiables.</div></div></div>'
-            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.7-7 10-4-2.3-7-5.5-7-10V6l7-3Z"/><path d="m9.5 12 1.8 1.8 3.2-3.6"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Acces securise</div><div class="al-feat-c">Espace personnel protege, role adapte.</div></div></div>'
+            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Detection precoce</div><div class="al-feat-c">Lecture des signaux sur {province_count} provinces chargees dans le referentiel.</div></div></div>'
+            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Analyse territoriale</div><div class="al-feat-c">Suivi structure autour de {zone_count} zones de sante disponibles dans la base de reference.</div></div></div>'
+            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.7-7 10-4-2.3-7-5.5-7-10V6l7-3Z"/><path d="m9.5 12 1.8 1.8 3.2-3.6"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Acces securise</div><div class="al-feat-c">Connexion reservee aux comptes actifs deja presents dans la base locale.</div></div></div>'
             f'</div>'
 
             # stats
             f'<div class="al-stats">'
-            f'<div class="al-stat"><div class="al-stat-v">26</div><div class="al-stat-k">Provinces</div></div>'
-            f'<div class="al-stat"><div class="al-stat-v">516</div><div class="al-stat-k">Zones</div></div>'
-            f'<div class="al-stat"><div class="al-stat-v">24/7</div><div class="al-stat-k">Alerte</div></div>'
+            f'<div class="al-stat"><div class="al-stat-v">{province_count}</div><div class="al-stat-k">Provinces</div></div>'
+            f'<div class="al-stat"><div class="al-stat-v">{zone_count}</div><div class="al-stat-k">Zones</div></div>'
+            f'<div class="al-stat"><div class="al-stat-v">{user_count}</div><div class="al-stat-k">Comptes</div></div>'
             f'</div>'
             f'</div>'
 
@@ -327,8 +408,14 @@ def main():
                 unsafe_allow_html=True,
             )
 
+            if db_snapshot.get("database_exists"):
+                st.markdown(
+                    f'<div class="auth-section-note">Base locale detectee: <b>{db_snapshot.get("users_total", 0)}</b> compte(s), <b>{db_snapshot.get("alerts_total", 0)}</b> alerte(s), <b>{db_snapshot.get("entries_total", 0)}</b> saisie(s) terrain et <b>{db_snapshot.get("prediction_runs_total", 0)}</b> prevision(s) historisee(s). Taille courante: <b>{db_snapshot.get("database_size_kb", 0)}</b> Ko.</div>',
+                    unsafe_allow_html=True,
+                )
+
             with st.form("login_form_page"):
-                username = st.text_input("Nom d'utilisateur", placeholder="Votre identifiant")
+                username = st.text_input("Nom d'utilisateur ou email", placeholder="Votre identifiant ou email")
                 password = st.text_input("Mot de passe", type="password", placeholder="Votre mot de passe")
                 submitted = st.form_submit_button("Acceder a mon espace", use_container_width=True)
 
@@ -345,7 +432,15 @@ def main():
                         st.session_state.user = user
                         st.rerun()
                     else:
-                        st.error("Identifiants incorrects ou compte désactivé.")
+                        diagnostic = auth.diagnose_login_attempt(username)
+                        if diagnostic.get("status") == "disabled":
+                            st.error("Compte trouve, mais desactive. Demandez sa reactivation a l'administration.")
+                        elif diagnostic.get("status") == "password_mismatch":
+                            st.error("Compte reconnu, mais mot de passe incorrect. Vous pouvez utiliser votre identifiant ou votre email.")
+                        elif diagnostic.get("status") == "not_found":
+                            st.error("Aucun compte correspondant n'a ete trouve dans la base locale.")
+                        else:
+                            st.error("Connexion impossible pour le moment. Verifiez vos identifiants puis reessayez.")
                 else:
                     st.warning("Veuillez remplir tous les champs.")
 
@@ -392,6 +487,10 @@ def main():
 
                 st.markdown(
                     '<div class="auth-register-note">Chaque demande est rattachee a une province et a une zone de sante afin de garantir un acces adapte au bon niveau de responsabilite.</div>'
+                  '<div class="auth-access-split">'
+                  '<div class="auth-access-card"><strong>Acces public</strong><span>Cette page sert a demander un compte d\'autorite sanitaire rattache a une province et une zone de sante.</span></div>'
+                  '<div class="auth-access-card admin"><strong>Compte admin</strong><span>Les administrateurs SAFE CONGO sont crees uniquement depuis la gouvernance interne par un autre administrateur.</span></div>'
+                  '</div>'
                     '<div class="auth-form-shell">'
                     '<div class="auth-form-topline">'
                     '<div class="auth-form-chip"><span class="auth-form-chip-dot"></span>Nouvel acces</div>'
@@ -402,45 +501,74 @@ def main():
                     unsafe_allow_html=True,
                 )
 
-                with st.form("register_form_page"):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        r_username  = st.text_input("Identifiant *", placeholder="ex: dr.kabongo")
-                        r_nom       = st.text_input("Nom *")
-                        r_prenom    = st.text_input("Prénom *")
-                        r_email     = st.text_input("Email *")
-                    with c2:
-                        r_password  = st.text_input("Mot de passe *", type="password")
-                        r_confirm   = st.text_input("Confirmer *", type="password")
-                        r_telephone = st.text_input("Téléphone *")
-                        r_province  = st.selectbox("Province *", PROVINCES)
-                    r_zone = st.text_input("Zone de santé *", placeholder="Votre zone de santé")
-                    reg_submit = st.form_submit_button("Soumettre ma demande", use_container_width=True)
+                provinces_options = [""] + PROVINCES if PROVINCES else [""]
 
-                st.markdown(
-                    '<div class="auth-form-helper">Les champs marques d\'un asterisque sont obligatoires. Votre demande pourra etre activee apres verification des informations fournies.</div>'
-                  ,
-                    unsafe_allow_html=True,
+                if GEO_DATA_ERROR:
+                    st.warning("Le dataset géographique n'a pas pu être chargé.")
+                c1, c2 = st.columns(2)
+                with c1:
+                  r_username = st.text_input("Identifiant *", placeholder="ex: dr.kabongo", key="register_username")
+                  r_nom = st.text_input("Nom *", key="register_nom")
+                  r_prenom = st.text_input("Prénom *", key="register_prenom")
+                  r_email = st.text_input("Email *", key="register_email")
+                with c2:
+                  r_password = st.text_input("Mot de passe *", type="password", key="register_password")
+                  r_confirm = st.text_input("Confirmer *", type="password", key="register_confirm")
+                  r_telephone = st.text_input("Téléphone *", key="register_telephone")
+
+                current_province = st.selectbox(
+                  "Province *",
+                  options=provinces_options,
+                  key="register_province_dynamic",
+                  format_func=lambda value: "Sélectionnez une province" if value == "" else value,
                 )
 
+                filtered_zones = ZONES_BY_PROVINCE.get(current_province, []) if current_province else []
+                if current_province and not filtered_zones:
+                  st.warning("Aucune zone de santé trouvée pour cette province dans le dataset.")
+
+                zone_options = [""] + filtered_zones if current_province else [""]
+                r_zone = st.selectbox(
+                  "Zone de santé *",
+                  options=zone_options,
+                  index=0,
+                  key=f"register_zone_form_{current_province or 'none'}",
+                  format_func=lambda value: (
+                    "Choisissez d'abord une province" if not current_province else "Sélectionnez une zone de santé" if value == "" else value
+                  ),
+                  disabled=not current_province,
+                )
+
+                st.markdown(
+                  '<div class="auth-form-helper">Les champs marques d\'un asterisque sont obligatoires. Votre demande pourra etre activee apres verification des informations fournies.</div>',
+                  unsafe_allow_html=True,
+                )
+                reg_submit = st.button("Soumettre ma demande", use_container_width=True, key="register_authority_submit")
+
                 if reg_submit:
-                    if all([r_username, r_password, r_confirm, r_nom, r_prenom, r_email, r_telephone, r_province, r_zone]):
-                        if r_password != r_confirm:
-                            st.error("Les mots de passe ne correspondent pas.")
-                        elif len(r_password) < 6:
-                            st.error("Mot de passe trop court (minimum 6 caractères).")
-                        else:
-                            ok, msg = auth.register_authority(
-                                r_username, r_password, r_nom, r_prenom,
-                                r_email, r_telephone, r_province, r_zone,
-                            )
-                            if ok:
-                                st.session_state.register_success = True
-                                st.rerun()
-                            else:
-                                st.error(msg)
+                  if all([r_username, r_password, r_confirm, r_nom, r_prenom, r_email, r_telephone, current_province, r_zone]):
+                    if r_password != r_confirm:
+                      st.error("Les mots de passe ne correspondent pas.")
+                    elif len(r_password) < 6:
+                      st.error("Mot de passe trop court (minimum 6 caractères).")
                     else:
-                        st.warning("Veuillez remplir tous les champs obligatoires (*).")
+                      ok, msg = auth.register_authority(
+                        r_username,
+                        r_password,
+                        r_nom,
+                        r_prenom,
+                        r_email,
+                        r_telephone,
+                        current_province,
+                        r_zone,
+                      )
+                      if ok:
+                        st.session_state.register_success = True
+                        st.rerun()
+                      else:
+                        st.error(msg)
+                  else:
+                    st.warning("Veuillez remplir tous les champs obligatoires (*).")
 
                 st.markdown(
                   '<div class="auth-section-note">Deja inscrit ? Revenez simplement a la connexion pour acceder a votre espace des que votre compte est actif.</div>',

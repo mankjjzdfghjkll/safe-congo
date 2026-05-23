@@ -19,18 +19,27 @@ def main():
     print("=" * 60)
 
     base_dir = Path(__file__).parent.parent
-    data_file = base_dir / "data" / "raw" / "drc-2023_sem08.xlsx"
+    data_file_2023 = base_dir / "data" / "raw" / "drc-2023_sem08.xlsx"
+    data_file_2022 = base_dir / "data" / "raw" / "drc-2022_sem40.xlsx"
 
-    if not data_file.exists():
-        print(f"\n Erreur: Fichier non trouvé: {data_file}")
+    if not data_file_2023.exists():
+        print(f"\n Erreur: Fichier non trouvé: {data_file_2023}")
         return
+
+    if data_file_2022.exists():
+        print(f" Dataset 2022 trouvé → fusion 2022+2023 activée")
+    else:
+        print(f" Dataset 2022 absent → entraînement sur 2023 uniquement")
 
     # ------------------------------------------------------------------
     # Étape 1 : Nettoyage complet
     # ------------------------------------------------------------------
     print("\n Étape 1: Nettoyage des données...")
     try:
-        cleaner = DataCleaner(str(data_file))
+        cleaner = DataCleaner(
+            str(data_file_2023),
+            file_path_2022=str(data_file_2022) if data_file_2022.exists() else None,
+        )
         cleaner.load_data()
         cleaner.clean_data()
         agg_data = cleaner.aggregate_by_week_disease()
@@ -77,6 +86,13 @@ def main():
         str(base_dir / "models" / "evaluation")
     )
     for f in exported:
+        print(f"   → {f}")
+
+    print("\n Étape 5: Export rapports de performance...")
+    reports = predictor.export_performance_reports(
+        str(base_dir / "models" / "evaluation")
+    )
+    for f in reports:
         print(f"   → {f}")
 
     print("\n" + "=" * 60)

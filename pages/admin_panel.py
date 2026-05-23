@@ -8,11 +8,13 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.admin_ui import (
+    admin_notifications_snapshot,
     alerts_frame,
     apply_admin_theme,
     make_plotly_layout,
     panel_title,
     recent_entries_frame,
+    render_admin_inbox_expander,
     render_admin_hero,
     render_admin_sidebar,
     render_kpi_cards,
@@ -20,105 +22,241 @@ from utils.admin_ui import (
     users_frame,
 )
 from utils.auth import AuthSystem, require_auth
+from utils.chart_helpers import empty_state_figure
+from utils.data_prep import prepare_periodic_alerts, prepare_periodic_entries
 from utils.navigation import switch_to_home_page
 
 
-def _health_chart(entries_df: pd.DataFrame, alerts_df: pd.DataFrame, users_df: pd.DataFrame) -> go.Figure:
-    fig = go.Figure(go.Bar(x=["Saisies", "Alertes", "Utilisateurs"], y=[len(entries_df), len(alerts_df), len(users_df)], marker_color=["#0a5fab", "#f59e0b", "#34d399"]))
+def _system_pulse_chart(entries_df: pd.DataFrame, alerts_df: pd.DataFrame, users_df: pd.DataFrame) -> go.Figure:
+    entries = prepare_periodic_entries(entries_df)
+    alerts = prepare_periodic_alerts(alerts_df)
+    if entries.empty and alerts.empty:
+        return empty_state_figure("Pulse systeme", "Le systeme attend encore des signaux recents pour composer ce pulse.", make_plotly_layout)
+
+    entry_counts = entries.groupby("period", as_index=False).size().rename(columns={"size": "entries"}) if not entries.empty else pd.DataFrame(columns=["period", "entries"])
+    alert_counts = alerts.groupby("period", as_index=False).size().rename(columns={"size": "alerts"}) if not alerts.empty and "period" in alerts.columns else pd.DataFrame(columns=["period", "alerts"])
+    pulse = entry_counts.merge(alert_counts, on="period", how="outer").fillna(0)
+    pulse = pulse.sort_values("period").tail(12)
+    if pulse.empty:
+        return empty_state_figure("Pulse systeme", "Aucune semaine consolidee disponible.", make_plotly_layout)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            x=pulse["period"],
+            y=pulse["entries"],
+            name="Saisies",
+            marker_color="rgba(10,95,171,.84)",
+            hovertemplate="<b>%{x}</b><br>Saisies: %{y}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=pulse["period"],
+            y=pulse["alerts"],
+            name="Alertes",
+            mode="lines+markers",
+            line=dict(color="#f59e0b", width=3, shape="spline"),
+            marker=dict(size=8, color="#ffffff", line=dict(color="#f59e0b", width=2)),
+            hovertemplate="<b>%{x}</b><br>Alertes: %{y}<extra></extra>",
+        )
+    )
+    fig.update_layout(hovermode="x unified")
     return make_plotly_layout(fig, "Pulse systeme")
 
 
-def _latest_logins(users_df: pd.DataFrame) -> pd.DataFrame:
+def _coverage_chart(users_df: pd.DataFrame) -> go.Figure:
+    if users_df.empty or "role" not in users_df.columns:
+        return empty_state_figure("Couverture institutionnelle", "Aucune presence utilisateur consolidee.", make_plotly_layout)
+
+    active_df = users_df.copy()
+    if "is_active" in active_df.columns:
+        active_df = active_df.loc[active_df["is_active"] == 1]
+    role_df = active_df.groupby("role", as_index=False).size().rename(columns={"size": "count"})
+    if role_df.empty:
+        return empty_state_figure("Couverture institutionnelle", "Aucun compte actif a cartographier.", make_plotly_layout)
+
+    fig = go.Figure(
+        go.Pie(
+            labels=role_df["role"],
+            values=role_df["count"],
+            hole=0.66,
+            marker=dict(colors=["#0a5fab", "#34d399", "#fcd116", "#a78bfa"]),
+            textinfo="percent",
+            hovertemplate="<b>%{label}</b><br>Comptes: %{value}<extra></extra>",
+        )
+    )
+    return make_plotly_layout(fig, "Couverture institutionnelle")
+
+
+def _recent_login_table(users_df: pd.DataFrame) -> pd.DataFrame:
     if users_df.empty:
         return pd.DataFrame()
-    df = users_df.copy()
-    df["Nom complet"] = df["nom"].fillna("") + " " + df["prenom"].fillna("")
-    return df[["Nom complet", "username", "role", "last_login", "province"]].rename(columns={"username": "Identifiant", "role": "Role", "last_login": "Derniere connexion", "province": "Province"})
+    table_df = users_df.copy()
+    table_df["Nom complet"] = table_df["nom"].fillna("") + " " + table_df["prenom"].fillna("")
+    if "last_login" in table_df.columns:
+        table_df = table_df.sort_values("last_login", ascending=False, na_position="last")
+    if "is_active" in table_df.columns:
+        table_df["Statut"] = table_df["is_active"].map({1: "Actif", 0: "Inactif"}).fillna("Inconnu")
+    else:
+        table_df["Statut"] = "Actif"
+    return table_df[["Nom complet", "username", "role", "province", "last_login", "Statut"]].rename(
+        columns={
+            "username": "Identifiant",
+            "role": "Role",
+            "province": "Province",
+            "last_login": "Derniere connexion",
+        }
+    )
+
+
+def _render_action_ribbon() -> None:
+    st.markdown(
+        """
+<div class="admin-grid-3">
+  <div class="admin-mini-card"><h4>Executif national</h4><p>Basculer vers la lecture macro des courbes, de la pression territoriale et des signaux critiques.</p></div>
+  <div class="admin-mini-card"><h4>Saisie et IA</h4><p>Declencher une nouvelle projection terrain sans quitter la couche de commandement.</p></div>
+  <div class="admin-mini-card"><h4>Gouvernance utilisateurs</h4><p>Ouvrir ou restreindre le maillage institutionnel selon la pression operationnelle du moment.</p></div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("Ouvrir le dashboard", use_container_width=True, key="panel_to_dashboard"):
+            st.switch_page("pages/admin_dashboard.py")
+    with col2:
+        if st.button("Lancer une prediction", use_container_width=True, key="panel_to_entry"):
+            st.switch_page("pages/admin_data_entry.py")
+    with col3:
+        if st.button("Piloter les comptes", use_container_width=True, key="panel_to_users"):
+            st.switch_page("pages/admin_users.py")
 
 
 def main() -> None:
-    st.set_page_config(page_title="Admin Control Center - SAFE CONGO", page_icon=None, layout="wide")
+    st.set_page_config(page_title="Centre de pilotage | SAFE CONGO", layout="wide")
     apply_admin_theme()
 
     auth = AuthSystem()
     user = require_auth(auth)
     if not user or user["role"] != "admin":
         switch_to_home_page()
-        return
+        st.stop()
 
-    render_admin_sidebar(user, active_item=4)
+    render_admin_sidebar(user, active_item=4, show_logo=False)
+    _, admin_unread = admin_notifications_snapshot(auth, user["id"])
     render_admin_hero(
-        "Centre de pilotage systeme",
-        "Une salle de controle admin pour surveiller la sante de la plateforme, le poids des donnees, les connexions recentes et les points d'attention operationnels.",
-        ["Controle central", "Etat du socle", "Actions rapides"],
+        title="Centre de pilotage systeme",
+        subtitle="Une vue de supervision qui rassemble rythme de production, pression d'alerte, disponibilite du reseau et raccourcis d'action dans une seule salle de controle.",
+        chips=["Commandement central", "Vue temps court", "Actions rapides"],
         eyebrow="Pilotage systeme",
+        notification_count=admin_unread,
     )
 
     entries_df = recent_entries_frame(auth.db_path)
     alerts_df = alerts_frame(auth.db_path)
     users_df = users_frame(auth)
-    db_size = Path(auth.db_path).stat().st_size / 1024 if Path(auth.db_path).exists() else 0
+    db_size_kb = Path(auth.db_path).stat().st_size / 1024 if Path(auth.db_path).exists() else 0
+
+    prepared_alerts = prepare_periodic_alerts(alerts_df)
+    active_users = int((users_df["is_active"] == 1).sum()) if not users_df.empty and "is_active" in users_df.columns else len(users_df)
+    peak_growth = prepared_alerts["growth_rate"].max() if not prepared_alerts.empty else 0.0
 
     render_kpi_cards(
         [
-            {"label": "Poids base", "value": f"{db_size:,.0f} Ko", "delta": "Empreinte locale", "copy": "Le volume SQLite donne une lecture rapide de la croissance des donnees et de la charge de stockage courante.", "accent": "#0a5fab", "accent_soft": "#49acef", "pill": "rgba(10,95,171,.1)"},
-            {"label": "Saisies recentes", "value": str(len(entries_df)), "delta": "Fenetre 200 lignes", "copy": "Le centre de pilotage suit la densite de production admin sans ouvrir le detail de chaque formulaire.", "accent": "#059669", "accent_soft": "#34d399", "pill": "rgba(5,150,105,.12)"},
-            {"label": "Alertes recentes", "value": str(len(alerts_df)), "delta": "Signal conserve", "copy": "Les alertes restent visibles ici pour mesurer la pression systemique globale et non page par page.", "accent": "#d97706", "accent_soft": "#f9c74f", "pill": "rgba(217,119,6,.12)"},
-            {"label": "Comptes connus", "value": str(len(users_df)), "delta": "Population plateforme", "copy": "Le nombre de comptes aide a arbitrer les besoins de gouvernance et de support institutionnel.", "accent": "#7c3aed", "accent_soft": "#a78bfa", "pill": "rgba(124,58,237,.12)"},
+            {
+                "label": "Base systeme",
+                "value": f"{db_size_kb:,.0f} Ko",
+                "delta": "Empreinte locale",
+                "copy": "Lecture instantanee de la taille actuelle du socle SQLite utilise en exploitation.",
+                "accent": "#0a5fab",
+                "accent_soft": "#49acef",
+                "pill": "rgba(10,95,171,.12)",
+            },
+            {
+                "label": "Comptes actifs",
+                "value": f"{active_users}",
+                "delta": "Reseau disponible",
+                "copy": "Presence immediate des operateurs et administrateurs capables d'agir dans la plateforme.",
+                "accent": "#059669",
+                "accent_soft": "#34d399",
+                "pill": "rgba(5,150,105,.12)",
+            },
+            {
+                "label": "Alertes recentes",
+                "value": f"{len(alerts_df)}",
+                "delta": f"Pic {peak_growth:.1f}%",
+                "copy": "Le centre retient la densite d'alertes et la pointe de croissance la plus haute sur la fenetre recente.",
+                "accent": "#d97706",
+                "accent_soft": "#fcd116",
+                "pill": "rgba(217,119,6,.12)",
+            },
+            {
+                "label": "Production recente",
+                "value": f"{len(entries_df)}",
+                "delta": "Fenetre 200 lignes",
+                "copy": "Le volume de saisies reelles permet de sentir le rythme de remontee terrain et admin.",
+                "accent": "#7c3aed",
+                "accent_soft": "#a78bfa",
+                "pill": "rgba(124,58,237,.12)",
+            },
+            {
+                "label": "Notifications admin",
+                "value": f"{admin_unread}",
+                "delta": "Suivi diffusion",
+                "copy": "Les confirmations de diffusion et retours systeme restent a portee depuis le centre de pilotage.",
+                "accent": "#ce1126",
+                "accent_soft": "#f87171",
+                "pill": "rgba(206,17,38,.12)",
+            },
         ]
     )
 
-    left_col, right_col = st.columns([1.05, 0.95], gap="large")
-    with left_col:
-        st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-        panel_title("Pulse systeme")
-        st.plotly_chart(_health_chart(entries_df, alerts_df, users_df), use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    render_admin_inbox_expander(
+        auth,
+        user["id"],
+        key_prefix="admin_panel_inbox",
+        unread_count=admin_unread,
+        title="Messagerie admin",
+        intro="Les confirmations de diffusion et retours systeme restent accessibles ici sans quitter la salle de controle.",
+        limit=6,
+    )
 
-        st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-        panel_title("Connexions recentes")
-        logins_df = _latest_logins(users_df)
-        if logins_df.empty:
-            st.info("Aucune connexion recente disponible.")
-        else:
-            st.dataframe(logins_df.head(15), use_container_width=True, hide_index=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with right_col:
-        st.markdown(
-            """
-<div class="admin-panel">
-  <div class="admin-panel-title">Actions rapides</div>
-  <div class="admin-grid-3">
-    <div class="admin-mini-card"><h4>Vers le dashboard</h4><p>Relire la situation generale, les courbes et les derniers signaux critiques.</p></div>
-    <div class="admin-mini-card"><h4>Vers la saisie</h4><p>Produire une nouvelle observation terrain et declencher l'intelligence d'alerte.</p></div>
-    <div class="admin-mini-card"><h4>Vers les utilisateurs</h4><p>Ouvrir, encadrer ou desactiver un acces territorial selon les besoins de gouvernance.</p></div>
-  </div>
+    st.markdown(
+        f"""
+<div class="admin-grid-3">
+  <div class="admin-mini-card"><h4>Pression actuelle</h4><p>{'Escalade active' if peak_growth >= 30 else 'Sous tension' if peak_growth >= 10 else 'Sous controle'} avec un pic de croissance mesure a <strong>{peak_growth:.1f}%</strong>.</p></div>
+  <div class="admin-highlight"><strong>Socle unifie</strong><span>Cette page reprend le meme langage visuel que le dashboard executif pour eviter toute rupture de lecture.</span></div>
+  <div class="admin-mini-card"><h4>Navigation tactique</h4><p>Chaque bloc privilegie une information courte, puis une action directe vers la bonne page admin.</p></div>
 </div>
 """,
-            unsafe_allow_html=True,
-        )
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            if st.button("Dashboard executif", use_container_width=True):
-                st.switch_page("pages/admin_dashboard.py")
-        with c2:
-            if st.button("Saisie admin", use_container_width=True):
-                st.switch_page("pages/admin_data_entry.py")
-        with c3:
-            if st.button("Utilisateurs", use_container_width=True):
-                st.switch_page("pages/admin_users.py")
+        unsafe_allow_html=True,
+    )
+
+    section_label("Supervision temps court")
+    main_col, side_col = st.columns([1.25, 0.95], gap="large")
+    with main_col:
+        st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+        st.plotly_chart(_system_pulse_chart(entries_df, alerts_df, users_df), use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-        panel_title("Qualite d'exploitation")
-        st.markdown(
-            """
-<div class="admin-highlight"><strong>Socle simplifie et robuste</strong><span>Le centre de pilotage a ete recentre sur les operations reelles du projet: donnees, alertes, comptes et navigation admin.</span></div>
-<div style="height:12px"></div>
-<div class="admin-highlight"><strong>Moins de dette visuelle</strong><span>Les composants sont harmonises pour reduire la rupture entre pages et renforcer la lecture de commandement.</span></div>
-""",
-            unsafe_allow_html=True,
-        )
+        panel_title("Connexions et disponibilite")
+        logins_df = _recent_login_table(users_df)
+        if logins_df.empty:
+            st.info("Aucune connexion recente disponible dans la base.")
+        else:
+            st.dataframe(logins_df.head(15), use_container_width=True, hide_index=True, height=340)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with side_col:
+        st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+        st.plotly_chart(_coverage_chart(users_df), use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
+        panel_title("Actions rapides")
+        _render_action_ribbon()
         st.markdown("</div>", unsafe_allow_html=True)
 
     section_label("Veille operationnelle")
@@ -127,8 +265,39 @@ def main() -> None:
     if alerts_df.empty:
         st.info("Aucune alerte disponible dans la base.")
     else:
-        view_df = alerts_df.rename(columns={"disease": "Maladie", "province": "Province", "zone_sante": "Zone", "alert_level": "Niveau", "growth_rate": "Croissance (%)", "current_cases": "Cas actuels", "predicted_cases": "Projection", "created_at": "Emission"})
-        st.dataframe(view_df.head(20), use_container_width=True, hide_index=True)
+        view_df = prepared_alerts.copy().sort_values(["year", "week"], ascending=False) if {"year", "week"}.issubset(prepared_alerts.columns) else prepared_alerts.copy()
+        if {"year", "week"}.issubset(view_df.columns):
+            view_df["Periode"] = view_df["year"].astype(str) + "-S" + view_df["week"].astype(str).str.zfill(2)
+        view_df["growth_rate"] = view_df["growth_rate"].map(lambda value: f"{value:.1f}%")
+        st.dataframe(
+            view_df.rename(
+                columns={
+                    "disease": "Maladie",
+                    "province": "Province",
+                    "zone_sante": "Zone",
+                    "alert_level": "Niveau",
+                    "growth_rate": "Croissance",
+                    "current_cases": "Cas actuels",
+                    "predicted_cases": "Projection",
+                    "message": "Message",
+                }
+            )[
+                [
+                    "Maladie",
+                    "Province",
+                    "Zone",
+                    "Periode",
+                    "Cas actuels",
+                    "Projection",
+                    "Croissance",
+                    "Niveau",
+                    "Message",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+            height=360,
+        )
     st.markdown("</div>", unsafe_allow_html=True)
 
 

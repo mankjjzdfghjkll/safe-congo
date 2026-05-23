@@ -1,11 +1,58 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import pandas as pd
 import sys
 import warnings
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).parent))
+
+PROCESSED_DATA_CANDIDATES = [
+  Path(__file__).parent / "data" / "processed" / "donnees_agregees_nettoyees.csv",
+  Path(__file__).parent / "data" / "processed" / "aggregated_data.csv",
+]
+
+
+@st.cache_data(show_spinner=False)
+def _home_reference_metrics() -> dict[str, int]:
+    metrics = {"diseases": 0, "provinces": 0, "zones": 0}
+    for candidate in PROCESSED_DATA_CANDIDATES:
+        if not candidate.exists():
+            continue
+        try:
+            frame = pd.read_csv(candidate)
+        except Exception:
+            continue
+
+        normalized_columns = {column: column.strip().upper() for column in frame.columns}
+        frame = frame.rename(columns=normalized_columns)
+
+        disease_col = next((column for column in ["MALADIE", "DISEASE"] if column in frame.columns), None)
+        province_col = next((column for column in ["PROVINCE", "PROV"] if column in frame.columns), None)
+        zone_col = next((column for column in ["ZONE_SANTE", "ZS"] if column in frame.columns), None)
+
+        if disease_col:
+            metrics["diseases"] = int(frame[disease_col].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique())
+        if province_col:
+            metrics["provinces"] = int(frame[province_col].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique())
+        if zone_col:
+            metrics["zones"] = int(frame[zone_col].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique())
+        return metrics
+    return metrics
+
+
+def _home_surface_context(auth) -> dict[str, int]:
+    reference_metrics = _home_reference_metrics()
+    snapshot = auth.database_snapshot() if hasattr(auth, "database_snapshot") else {}
+    return {
+        "diseases": int(reference_metrics.get("diseases", 0)),
+        "provinces": int(reference_metrics.get("provinces", 0)),
+        "zones": int(reference_metrics.get("zones", 0)),
+        "users_total": int(snapshot.get("users_total", 0)),
+        "alerts_total": int(snapshot.get("alerts_total", 0)),
+        "entries_total": int(snapshot.get("entries_total", 0)),
+    }
 
 st.set_page_config(
     page_title="SAFE CONGO - Surveillance Epidemiologique",
@@ -975,7 +1022,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 @keyframes ripple{0%{r:40;opacity:.55}100%{r:64;opacity:0}}
 
 /* ── BASE ───────────────────────────────────────── */
-.shell{padding:14px 18px 0}
+.shell{padding:10px 18px 0}
 
 /* ── NAVBAR ─────────────────────────────────────── */
 .navbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;border-radius:18px;background:#ffffff;border:1px solid #d0e8f8;box-shadow:0 4px 22px rgba(10,70,140,.08);margin-bottom:18px;animation:fadeUp .45s ease-out}
@@ -987,7 +1034,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .nav-pill{padding:7px 14px;border-radius:999px;background:#eef7ff;border:1px solid #c8e2f5;font-size:.72rem;font-weight:700;color:#1a6db5;letter-spacing:.3px;white-space:nowrap}
 
 /* ── HERO ───────────────────────────────────────── */
-.hero{position:relative;overflow:hidden;border-radius:26px;background:linear-gradient(135deg,#0a5fab 0%,#0d80d8 52%,#1aa2e2 100%);padding:50px 48px 46px;margin-bottom:20px;box-shadow:0 22px 58px rgba(10,95,171,.24),0 2px 0 rgba(255,255,255,.14) inset;animation:fadeUp .55s ease-out .06s both}
+.hero{position:relative;overflow:hidden;border-radius:26px;background:linear-gradient(135deg,#0a5fab 0%,#0d80d8 52%,#1aa2e2 100%);padding:48px 46px 42px;margin-bottom:16px;box-shadow:0 22px 58px rgba(10,95,171,.24),0 2px 0 rgba(255,255,255,.14) inset;animation:fadeUp .55s ease-out .06s both}
 .hero-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.11) 1px,transparent 1px);background-size:26px 26px;pointer-events:none}
 .hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 78% 18%,rgba(255,255,255,.16),transparent 34%),radial-gradient(ellipse at 12% 82%,rgba(0,40,100,.22),transparent 30%);pointer-events:none}
 .hero-inner{position:relative;z-index:2;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
@@ -1000,12 +1047,16 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .hstat{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:11px 16px;text-align:center;min-width:80px}
 .hstat-v{font-family:'Sora',sans-serif;font-size:1.3rem;font-weight:800;color:#ffffff}
 .hstat-k{font-size:.62rem;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:rgba(255,255,255,.68);margin-top:3px}
+.hero-proof{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px;max-width:740px}
+.hero-proof-card{padding:13px 14px;border-radius:16px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px)}
+.hero-proof-k{font-size:.66rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:rgba(255,255,255,.68)}
+.hero-proof-v{margin-top:6px;font-size:.88rem;line-height:1.45;color:#fff;font-weight:700}
 .hero-visual{animation:float 5.5s ease-in-out infinite;filter:drop-shadow(0 18px 36px rgba(0,0,0,.16))}
 
 /* ── CARDS ──────────────────────────────────────── */
 .section-head{margin:0 0 32px 0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);}
 .section-label{font-size:.7rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#3a7ebf;padding-left:2px}
-.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin:64px 0 64px 0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);}
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin:44px 0 40px 0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);}
 .card{background:#ffffff;border:1px solid #d0e8f8;border-radius:22px;padding:32px 28px;box-shadow:0 8px 32px rgba(10,60,120,.09);position:relative;overflow:hidden;transition:transform .28s,box-shadow .28s;animation:fadeUp .65s ease-out both}
 .card:nth-child(1){animation-delay:.08s}.card:nth-child(2){animation-delay:.16s}.card:nth-child(3){animation-delay:.24s}
 .card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:22px 22px 0 0}
@@ -1019,7 +1070,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .ct-b{background:#e6f4fd;color:#1268b0}.ct-g{background:#e6f8f0;color:#0b7a52}.ct-o{background:#fff3e0;color:#c05800}
 
 /* ── STEPS ──────────────────────────────────────── */
-.steps-wrap{background:#ffffff;border:1px solid #d0e8f8;border-radius:22px;padding:38px 38px 38px;margin:80px 0 0 0;box-shadow:0 8px 32px rgba(10,60,120,.09);animation:fadeUp 1.1s cubic-bezier(.22,1,.36,1);}
+.steps-wrap{background:#ffffff;border:1px solid #d0e8f8;border-radius:22px;padding:34px 34px 34px;margin:56px 0 0 0;box-shadow:0 8px 32px rgba(10,60,120,.09);animation:fadeUp 1.1s cubic-bezier(.22,1,.36,1);}
 .steps-title{font-family:'Sora',sans-serif;font-size:1.35rem;font-weight:800;color:#0a2c5a;text-align:center;margin-bottom:18px;}
 .steps-sub{font-size:.98rem;color:#7a9ab8;text-align:center;margin-bottom:44px;}
 .steps-row{display:flex;align-items:flex-start;gap:54px;}
@@ -1029,6 +1080,14 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .step-num{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#0a5fab,#1aa2e2);color:#fff;font-family:'Sora',sans-serif;font-size:1rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:11px;box-shadow:0 6px 18px rgba(10,95,171,.26)}
 .step-t{font-size:.9rem;font-weight:800;color:#0a2040;margin-bottom:5px}
 .step-c{font-size:.78rem;color:#7a9ab8;line-height:1.56;max-width:150px}
+
+@media(max-width:860px){
+  .hero{padding:34px 26px 30px}
+  .hero-inner{grid-template-columns:1fr;gap:24px}
+  .hero-title{font-size:2.35rem}
+  .hero-title em{font-size:1.95rem}
+  .hero-proof{grid-template-columns:1fr}
+}
 
 /* ── FOOTER ─────────────────────────────────────── */
 
@@ -1065,7 +1124,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
           <div style="border-left:3px solid #0055B8;padding-left:20px">
             <div style="font-size:14px;font-weight:700;color:#0a5fab;font-family:'Sora',sans-serif;letter-spacing:1px;margin-bottom:4px">REPUBLIQUE DEMOCRATIQUE</div>
             <div style="font-size:14px;font-weight:700;color:#0a5fab;font-family:'Sora',sans-serif;letter-spacing:1px;margin-bottom:8px">DU CONGO</div>
-            <div style="font-size:11px;color:#1aa2e2;font-family:'Manrope',sans-serif;font-weight:700;letter-spacing:1.5px">Unité • Travail • Progrès</div>
+            <div style="font-size:11px;color:#1aa2e2;font-family:'Manrope',sans-serif;font-weight:700;letter-spacing:1.5px">justice paix travail</div>
           </div>
         </div>
         
@@ -1083,7 +1142,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
             <div style="display:flex;gap:30px;flex-wrap:wrap">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:4px;height:20px;background:#0055B8;border-radius:2px"></div>
-                <div style="font-size:12px;color:#0a5fab;font-family:'Sora',sans-serif;font-weight:700">Surveillance 24/7</div>
+                <div style="font-size:12px;color:#0a5fab;font-family:'Sora',sans-serif;font-weight:700">Surveillance structuree</div>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:4px;height:20px;background:#CE1126;border-radius:2px"></div>
@@ -1106,14 +1165,19 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
     <div class="hero-glow"></div>
     <div class="hero-inner">
       <div>
-        <div class="hero-kicker"><span class="kicker-dot"></span>Plateforme epidemiologique RDC</div>
-        <div class="hero-title">Surveiller<em>pour proteger.</em></div>
-        <div class="hero-sub">Un outil national de veille sanitaire au service des autorites de sante de la Republique Democratique du Congo.</div>
+        <div class="hero-kicker"><span class="kicker-dot"></span>__HERO_KICKER__</div>
+        <div class="hero-title">__HERO_TITLE_MAIN__<em>__HERO_TITLE_EMPHASIS__</em></div>
+        <div class="hero-sub">__HERO_SUBTEXT__</div>
         <div class="hero-stats">
-          <div class="hstat"><div class="hstat-v">26</div><div class="hstat-k">Provinces</div></div>
-          <div class="hstat"><div class="hstat-v">516</div><div class="hstat-k">Zones</div></div>
-          <div class="hstat"><div class="hstat-v">24/7</div><div class="hstat-k">Alerte</div></div>
-          <div class="hstat"><div class="hstat-v">RDC</div><div class="hstat-k">National</div></div>
+          <div class="hstat"><div class="hstat-v">__STAT_ONE_VALUE__</div><div class="hstat-k">__STAT_ONE_LABEL__</div></div>
+          <div class="hstat"><div class="hstat-v">__STAT_TWO_VALUE__</div><div class="hstat-k">__STAT_TWO_LABEL__</div></div>
+          <div class="hstat"><div class="hstat-v">__STAT_THREE_VALUE__</div><div class="hstat-k">__STAT_THREE_LABEL__</div></div>
+          <div class="hstat"><div class="hstat-v">__STAT_FOUR_VALUE__</div><div class="hstat-k">__STAT_FOUR_LABEL__</div></div>
+        </div>
+        <div class="hero-proof">
+          <div class="hero-proof-card"><div class="hero-proof-k">__PROOF_ONE_LABEL__</div><div class="hero-proof-v">__PROOF_ONE_VALUE__</div></div>
+          <div class="hero-proof-card"><div class="hero-proof-k">__PROOF_TWO_LABEL__</div><div class="hero-proof-v">__PROOF_TWO_VALUE__</div></div>
+          <div class="hero-proof-card"><div class="hero-proof-k">__PROOF_THREE_LABEL__</div><div class="hero-proof-v">__PROOF_THREE_VALUE__</div></div>
         </div>
       </div>
       <div class="hero-visual">
@@ -1155,7 +1219,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 
   <!-- CARDS -->
   <div class="section-head" style="margin-bottom:0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);"><div class="section-label" style="font-size:1.1rem;letter-spacing:2.5px;color:#0a5fab;">Capacités clés de la plateforme</div></div>
-  <div class="cards-grid" style="margin-top:38px;gap:44px;">
+  <div class="cards-grid" style="margin-top:30px;gap:36px;">
     <div class="card card-premium" style="background:linear-gradient(135deg,#fafdff 60%,#e6f2fd 100%);border-radius:36px;box-shadow:0 22px 70px 0 rgba(26,162,226,.13),0 0 0 10px #e6f2fd1a inset;border:2.5px solid #e0eaff;align-items:center;gap:28px;animation:fadeUp .7s cubic-bezier(.22,1,.36,1);position:relative;overflow:hidden;transition:box-shadow .22s,transform .22s;min-width:310px;max-width:400px;padding:38px 28px 32px 28px;">
       <span class="c-tag-float" style="position:absolute;top:18px;right:18px;background:linear-gradient(90deg,#e6f2fd 60%,#fafdff 100%);color:#0a5fab;border:1.2px solid #c8e2f5;font-size:.89rem;font-weight:800;border-radius:999px;padding:6px 14px;box-shadow:0 2px 12px #e6f2fd80;z-index:2;">Surveillance</span>
       <div style="display:flex;align-items:center;gap:18px;margin-top:18px;">
@@ -1198,8 +1262,8 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
     .cards-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 32px;
-      margin: 36px 0 44px 0;
+      gap: 26px;
+      margin: 24px 0 30px 0;
       justify-content: center;
       overflow-x: unset;
       padding-bottom: 0;
@@ -1264,10 +1328,10 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
   </div>
 
   <!-- STEPS -->
-  <div class="steps-wrap" style="margin-top:64px;">
+  <div class="steps-wrap" style="margin-top:42px;">
     <div class="steps-title" style="font-size:1.5rem;letter-spacing:1.2px;">Du signal à la réponse</div>
-    <div class="steps-sub" style="font-size:1.08rem;margin-bottom:38px;">Un processus structuré pour agir efficacement sur le terrain</div>
-    <div class="steps-row" style="gap:38px;">
+    <div class="steps-sub" style="font-size:1.08rem;margin-bottom:30px;">Un processus structuré pour agir efficacement sur le terrain</div>
+    <div class="steps-row" style="gap:32px;">
       <div class="step" style="animation:fadeUp .7s .1s cubic-bezier(.22,1,.36,1);">
         <div class="step-num" style="background:linear-gradient(135deg,#0a5fab,#1aa2e2);box-shadow:0 6px 18px rgba(10,95,171,.26);font-size:1.2rem;">1</div>
         <div class="step-t">Signalement</div>
@@ -1296,10 +1360,10 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 
   <!-- DRAPEAU RDC -->
   <!-- IMPACT SECTION -->
-  <div style="padding:110px 40px;background:linear-gradient(180deg,#eef6ff 0%,#f6fbff 46%,#edf6ff 100%);position:relative;overflow:hidden;border-top:1px solid rgba(26,162,226,.18);border-bottom:1px solid rgba(26,162,226,.14)">
+  <div style="padding:82px 40px;background:linear-gradient(180deg,#eef6ff 0%,#f6fbff 46%,#edf6ff 100%);position:relative;overflow:hidden;border-top:1px solid rgba(26,162,226,.18);border-bottom:1px solid rgba(26,162,226,.14);animation:fadeUp .9s cubic-bezier(.22,1,.36,1) both">
     <div style="position:absolute;inset:0;background:radial-gradient(circle at 10% 18%,rgba(0,85,184,.09),transparent 20%),radial-gradient(circle at 88% 24%,rgba(252,209,22,.12),transparent 18%),radial-gradient(circle at 50% 100%,rgba(26,162,226,.08),transparent 28%);pointer-events:none"></div>
     <div style="max-width:1200px;margin:0 auto;position:relative;z-index:1">
-      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:end;margin-bottom:44px">
+      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:22px;align-items:end;margin-bottom:30px">
         <div>
           <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:999px;background:rgba(255,255,255,.8);border:1px solid rgba(10,95,171,.10);box-shadow:0 6px 18px rgba(10,60,120,.05);font-size:.72rem;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:#0a5fab;font-family:'Sora',sans-serif;margin-bottom:18px">
             <span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#0055B8,#1aa2e2)"></span>
@@ -1310,15 +1374,15 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
           </div>
           <div style="font-size:16px;color:#587691;font-family:'Manrope',sans-serif;line-height:1.8;max-width:650px">Engagement continu vers une couverture sanitaire universelle en RDC, avec des donnees fiables, des signaux precoces et une coordination rapide entre les acteurs sanitaires.</div>
         </div>
-        <div style="justify-self:end;width:100%;max-width:360px;padding:22px 24px;border-radius:24px;background:linear-gradient(145deg,#0c4e91,#1176c0);box-shadow:0 20px 48px rgba(10,95,171,.22);border:1px solid rgba(255,255,255,.10)">
+        <div style="justify-self:end;width:100%;max-width:360px;padding:22px 24px;border-radius:24px;background:linear-gradient(145deg,#0c4e91,#1176c0);box-shadow:0 20px 48px rgba(10,95,171,.22);border:1px solid rgba(255,255,255,.10);animation:fadeUp .95s .12s cubic-bezier(.22,1,.36,1) both, float 5.5s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
           <div style="font-size:.72rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.7);font-family:'Sora',sans-serif;margin-bottom:10px">Vision terrain</div>
           <div style="font-size:1rem;font-weight:700;color:#ffffff;font-family:'Sora',sans-serif;line-height:1.5;margin-bottom:10px">Une veille epidemiologique utile, lisible et actionnable au niveau national.</div>
           <div style="font-size:.82rem;color:rgba(255,255,255,.76);line-height:1.65;font-family:'Manrope',sans-serif">Le systeme transforme les signaux sanitaires en decisions plus rapides pour les zones de sante, les provinces et la coordination centrale.</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-bottom:28px">
-        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#f6fbff 100%);border:1px solid rgba(10,95,171,.10);box-shadow:0 18px 40px rgba(10,60,120,.08)">
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-bottom:20px">
+        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#f6fbff 100%);border:1px solid rgba(10,95,171,.10);box-shadow:0 18px 40px rgba(10,60,120,.08);animation:fadeUp .9s .16s cubic-bezier(.22,1,.36,1) both, blockGlow 5.8s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
           <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#0055B8,#1aa2e2)"></div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
             <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(0,85,184,.10),rgba(26,162,226,.16));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
@@ -1326,45 +1390,45 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
             </div>
             <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#84a7c5;font-family:'Sora',sans-serif">Couverture</div>
           </div>
-          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#0055B8,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1">2,400+</div>
+          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#0055B8,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 2.8s ease-in-out infinite">2,400+</div>
           <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Structures de sante</div>
           <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">Un reseau de structures suivies pour alimenter une surveillance nationale plus precise et continue.</div>
         </div>
 
-        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#fff7f8 100%);border:1px solid rgba(206,17,38,.10);box-shadow:0 18px 40px rgba(10,60,120,.08)">
-          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#CE1126,#ff6b78)"></div>
+        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#fff7ef 100%);border:1px solid rgba(232,136,43,.18);box-shadow:0 18px 40px rgba(10,60,120,.08);animation:fadeUp .9s .28s cubic-bezier(.22,1,.36,1) both, blockGlow 6.2s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
+          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#de7f1f,#f2ad43)"></div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
-            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(206,17,38,.10),rgba(255,107,120,.14));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#CE1126" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4.97-4.22 8-7.44 8-11a4 4 0 0 0-7-2.65A4 4 0 0 0 4 10c0 3.56 3.03 6.78 8 11Z"/></svg>
+            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(222,127,31,.15),rgba(242,173,67,.22));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#de7f1f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4.97-4.22 8-7.44 8-11a4 4 0 0 0-7-2.65A4 4 0 0 0 4 10c0 3.56 3.03 6.78 8 11Z"/></svg>
             </div>
-            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#d18a92;font-family:'Sora',sans-serif">Population</div>
+            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#c77a2d;font-family:'Sora',sans-serif">Population</div>
           </div>
-          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#CE1126,#ff6b78);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1">85M+</div>
+          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#de7f1f,#f2ad43);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 3.1s ease-in-out infinite">85M+</div>
           <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Personnes surveillees</div>
           <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">Une capacite de suivi a grande echelle pour mieux anticiper les foyers et proteger les populations.</div>
         </div>
 
-        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#fffdf4 100%);border:1px solid rgba(252,209,22,.18);box-shadow:0 18px 40px rgba(10,60,120,.08)">
-          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#FCD116,#ffe47a)"></div>
+        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#f3fbf4 100%);border:1px solid rgba(54,153,88,.18);box-shadow:0 18px 40px rgba(10,60,120,.08);animation:fadeUp .9s .4s cubic-bezier(.22,1,.36,1) both, blockGlow 6.6s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
+          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#2d8a4a,#74bf6b)"></div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
-            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(252,209,22,.18),rgba(255,228,122,.18));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c58d00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>
+            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(45,138,74,.14),rgba(116,191,107,.20));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2d8a4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>
             </div>
-            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#c2a14d;font-family:'Sora',sans-serif">Qualite</div>
+            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#4d9b62;font-family:'Sora',sans-serif">Qualite</div>
           </div>
-          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#c58d00,#FCD116);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1">98%</div>
+          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#2d8a4a,#74bf6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 3.4s ease-in-out infinite">98%</div>
           <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Donnees tracees</div>
           <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">Une circulation fiable de l'information sanitaire pour soutenir des analyses solides et des actions rapides.</div>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1.08fr .92fr;gap:22px;align-items:stretch">
-        <div style="padding:30px 30px 28px;border-radius:26px;background:linear-gradient(135deg,#ffffff 0%,#f7fbff 100%);border:1px solid rgba(10,95,171,.10);box-shadow:0 16px 36px rgba(10,60,120,.07)">
+        <div style="padding:30px 30px 28px;border-radius:26px;background:linear-gradient(135deg,#ffffff 0%,#f7fbff 100%);border:1px solid rgba(10,95,171,.10);box-shadow:0 16px 36px rgba(10,60,120,.07);animation:fadeUp .95s .52s cubic-bezier(.22,1,.36,1) both">
           <div style="font-size:.74rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#0a84d0;font-family:'Sora',sans-serif;margin-bottom:12px">Mission Sanitaire</div>
           <div style="font-size:24px;font-weight:800;color:#0a2040;font-family:'Sora',sans-serif;line-height:1.25;margin-bottom:12px">Transformer les donnees sanitaires en action concrete sur le terrain.</div>
           <div style="font-size:14px;color:#65839c;font-family:'Manrope',sans-serif;line-height:1.8;max-width:700px">Assurer une surveillance epidemiologique en temps reel, detecter rapidement les foyers de maladie et coordonner les interventions pour proteger la sante de tous les Congolais.</div>
         </div>
-        <div style="padding:26px 26px 24px;border-radius:26px;background:linear-gradient(160deg,#0c4e91,#1581cb);border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 42px rgba(10,95,171,.22)">
+        <div style="padding:26px 26px 24px;border-radius:26px;background:linear-gradient(160deg,#0c4e91,#1581cb);border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 42px rgba(10,95,171,.22);animation:fadeUp .95s .66s cubic-bezier(.22,1,.36,1) both, float 6s ease-in-out infinite">
           <div style="font-size:.72rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.68);font-family:'Sora',sans-serif;margin-bottom:10px">Lecture rapide</div>
           <div style="font-size:1.35rem;font-weight:800;color:#ffffff;font-family:'Sora',sans-serif;line-height:1.35;margin-bottom:16px">Une plateforme qui renforce la reactivite nationale face aux menaces sanitaires.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1379,6 +1443,42 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 
 </div>
 </body></html>"""
+
+
+def build_home_hero_html(auth) -> str:
+  _ = auth
+  html = HERO_HTML
+  html = html.replace("__HERO_KICKER__", "Dispositif national de veille sanitaire")
+  html = html.replace("__HERO_TITLE_MAIN__", "Veiller avec clarte")
+  html = html.replace("__HERO_TITLE_EMPHASIS__", "agir avec coordination.")
+  html = html.replace(
+    "__HERO_SUBTEXT__",
+    "SAFE CONGO facilite la lecture sanitaire nationale, l'orientation des autorites et la coordination des actions dans une interface claire, fiable et orientee decision.",
+  )
+  html = html.replace("__STAT_ONE_VALUE__", "National")
+  html = html.replace("__STAT_ONE_LABEL__", "Portee")
+  html = html.replace("__STAT_TWO_VALUE__", "Securise")
+  html = html.replace("__STAT_TWO_LABEL__", "Acces")
+  html = html.replace("__STAT_THREE_VALUE__", "Coordonne")
+  html = html.replace("__STAT_THREE_LABEL__", "Reponse")
+  html = html.replace("__STAT_FOUR_VALUE__", "Continu")
+  html = html.replace("__STAT_FOUR_LABEL__", "Suivi")
+  html = html.replace("__PROOF_ONE_LABEL__", "Orientation")
+  html = html.replace(
+    "__PROOF_ONE_VALUE__",
+    "Un parcours lisible pour comprendre rapidement les priorites sanitaires.",
+  )
+  html = html.replace("__PROOF_TWO_LABEL__", "Coordination")
+  html = html.replace(
+    "__PROOF_TWO_VALUE__",
+    "Une interface unifiee pour relier lecture terrain et action institutionnelle.",
+  )
+  html = html.replace("__PROOF_THREE_LABEL__", "Confiance")
+  html = html.replace(
+    "__PROOF_THREE_VALUE__",
+    "Des reperes consolides pour soutenir des decisions rapides et responsables.",
+  )
+  return html
 
 def sidebar_info():
     with st.sidebar:
@@ -1416,73 +1516,314 @@ def show_login(auth):
     if "auth_view" not in st.session_state:
         st.session_state.auth_view = None
 
+    components.html(build_home_hero_html(auth), height=2520, scrolling=False)
 
+    st.markdown(
+        """
+    <style>
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"] .stButton > button {
+        min-height:60px;
+        border-radius:18px;
+        border:1px solid rgba(96,193,232,.24);
+        font:800 1rem Sora,sans-serif;
+        letter-spacing:.2px;
+        transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+        box-shadow:0 14px 30px rgba(53,157,209,.10);
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"] .stButton > button:hover {
+        transform:translateY(-2px);
+        box-shadow:0 20px 38px rgba(53,157,209,.15);
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button {
+        background:linear-gradient(135deg,#79d7f2 0%,#94e2f8 48%,#b7efff 100%);
+        color:#1d6f9c;
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:hover,
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:focus,
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:active {
+        border-color:rgba(96,193,232,.28);
+        background:linear-gradient(135deg,#6fd1ee 0%,#8eddF6 46%,#aeeafb 100%);
+        color:#1d6f9c;
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button {
+        background:#ffffff;
+        color:#359bc8;
+        border:2px solid rgba(96,193,232,.26);
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:hover,
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:focus,
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:active {
+        background:linear-gradient(135deg,#f2fbff 0%,#fbfeff 100%);
+        color:#2c88b5;
+        border-color:#78d2ee;
+      }
+      .home-footer-shell{
+        width:100vw;
+        margin:14px calc(50% - 50vw) 0;
+        padding:0;
+        border-radius:0;
+        background:linear-gradient(135deg,#073d73 0%,#0a5ba8 44%,#1196d4 100%);
+        border-top:1px solid rgba(197,235,255,.35);
+        box-shadow:0 -14px 36px rgba(6,41,77,.26);
+        overflow:hidden;
+      }
+      .home-footer-top{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:14px;
+        padding:16px min(6vw,64px) 8px;
+        background:radial-gradient(circle at top right,rgba(152,228,255,.24),transparent 44%);
+      }
+      .home-footer-badge{
+        display:inline-flex;
+        align-items:center;
+        gap:9px;
+        padding:9px 14px;
+        border-radius:999px;
+        background:rgba(255,255,255,.16);
+        border:1px solid rgba(202,236,255,.45);
+        color:#d7f2ff;
+        font:800 .73rem Sora,sans-serif;
+        letter-spacing:1.2px;
+        text-transform:uppercase;
+      }
+      .home-footer-title{margin-top:8px;font:800 1.22rem/1.16 Sora,sans-serif;color:#ffffff}
+      .home-footer-copy{margin-top:6px;color:#d7ecf9;font:600 .86rem/1.62 Manrope,sans-serif;max-width:760px}
+      .home-footer-copy b{color:#ffffff}
+      .home-footer-social-label{color:#d6efff;font:800 .76rem Sora,sans-serif;letter-spacing:.9px;text-transform:uppercase}
+      .home-footer-socials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+      .home-footer-social{
+        display:flex;
+        align-items:center;
+        gap:11px;
+        padding:8px 10px;
+        border-radius:10px;
+        background:rgba(255,255,255,.12);
+        border:1px solid rgba(208,237,255,.38);
+        color:#dff3ff;
+        font:700 .76rem Manrope,sans-serif;
+      }
+      .home-footer-social svg{width:20px;height:20px;fill:#ffffff;flex:none}
+      .home-footer-social strong{display:block;color:#ffffff;font:800 .74rem Sora,sans-serif}
+      .home-footer-links{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}
+      .home-footer-links a{
+        color:#f2fbff;
+        text-decoration:none;
+        padding:6px 9px;
+        border-radius:10px;
+        background:rgba(255,255,255,.16);
+        border:1px solid rgba(208,237,255,.38);
+        font:800 .69rem Manrope,sans-serif;
+        letter-spacing:.35px;
+        text-transform:uppercase;
+      }
+      .home-footer-links a:hover{background:rgba(255,255,255,.24);border-color:rgba(224,244,255,.6)}
+      .home-footer-bottom{
+        display:flex;
+        justify-content:space-between;
+        gap:14px;
+        flex-wrap:wrap;
+        align-items:center;
+        padding:8px min(6vw,64px) 9px;
+        border-top:1px solid rgba(195,233,252,.34);
+        background:rgba(2,28,58,.18);
+      }
+      .home-footer-bottom strong{color:#ffffff;font:800 .84rem Sora,sans-serif;letter-spacing:.8px;text-transform:uppercase}
+      .home-footer-bottom span{color:#d8ecfb;font:700 .8rem/1.6 Manrope,sans-serif}
+      @media(max-width:840px){
+        .home-footer-socials{grid-template-columns:1fr}
+      }
+      .home-auth-shell{
+        width:min(94vw,1020px);
+        margin:12px auto 14px auto;
+        padding:26px 24px;
+        border-radius:30px;
+        background:linear-gradient(180deg,#ffffff 0%,#f9fdff 100%);
+        border:1px solid #dceef8;
+        box-shadow:0 18px 38px rgba(53,157,209,.08);
+      }
+      .home-auth-grid{
+        display:grid;
+        grid-template-columns:1.04fr .96fr;
+        gap:18px;
+        align-items:stretch;
+      }
+      .home-auth-main{padding:4px 2px}
+      .home-auth-badge{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        padding:8px 14px;
+        border-radius:999px;
+        background:#f2fbff;
+        border:1px solid #d9eef8;
+        color:#43a7d1;
+        font:800 .74rem Sora,sans-serif;
+        letter-spacing:1.4px;
+        text-transform:uppercase;
+      }
+      .home-auth-title{
+        margin-top:12px;
+        font:800 1.72rem/1.2 Sora,sans-serif;
+        color:#2a82b0;
+      }
+      .home-auth-copy{
+        margin-top:9px;
+        color:#68869b;
+        font:600 .92rem/1.74 Manrope,sans-serif;
+        max-width:620px;
+      }
+      .home-auth-points{display:grid;gap:7px;margin-top:10px}
+      .home-auth-point{padding:9px 11px;border-radius:14px;background:#f8fdff;border:1px solid #e2f2fa;color:#69869b;font:600 .82rem/1.58 Manrope,sans-serif}
+      .home-auth-point strong{display:block;margin-bottom:3px;color:#3798c6;font:800 .78rem Sora,sans-serif}
+      .home-auth-side{
+        padding:18px 16px;
+        border-radius:20px;
+        background:linear-gradient(150deg,#dff5ff 0%,#edfaff 100%);
+        border:1px solid #d7edf8;
+      }
+      .home-auth-side h3{font:800 1.05rem/1.3 Sora,sans-serif;color:#2e86b3;margin-bottom:8px}
+      .home-auth-side p{color:#6a879b;font:600 .86rem/1.64 Manrope,sans-serif;margin-bottom:10px}
+      .home-auth-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+      .home-auth-tags span{padding:6px 9px;border-radius:999px;background:#ffffff;border:1px solid #d8edf8;color:#4aa9d1;font:800 .66rem Manrope,sans-serif;letter-spacing:.55px;text-transform:uppercase}
+      @media(max-width:900px){.home-auth-grid{grid-template-columns:1fr}}
+    </style>
+    """,
+        unsafe_allow_html=True,
+    )
 
-    # Bloc test AVANT le composant principal
-    # Réduire la hauteur de l'iframe pour laisser de la place en bas
-    components.html(HERO_HTML, height=1500, scrolling=False)
+    st.markdown(
+        '''
+    <style>
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"] .stButton > button {
+        min-height:62px;
+        border-radius:18px;
+        border:1px solid rgba(10,95,171,.18);
+        font:800 1rem Sora,sans-serif;
+        letter-spacing:.2px;
+        transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+        box-shadow:0 16px 36px rgba(10,95,171,.12);
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"] .stButton > button:hover {
+        transform:translateY(-2px);
+        box-shadow:0 22px 42px rgba(10,95,171,.18);
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button {
+        background:linear-gradient(135deg,#083f73 0%,#0a5fab 48%,#1aa2e2 100%);
+        color:#fff;
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:hover,
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:focus,
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:active {
+        border-color:rgba(8,63,115,.24);
+        background:linear-gradient(135deg,#07345f 0%,#0a5498 46%,#1595d3 100%);
+        color:#fff;
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button {
+        background:rgba(255,255,255,.96);
+        color:#0a4e8f;
+        border:2px solid rgba(13,111,188,.34);
+      }
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:hover,
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:focus,
+      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:active {
+        background:linear-gradient(135deg,#eef7ff 0%,#f7fbff 100%);
+        color:#083f73;
+        border-color:#0d6fbc;
+      }
+    </style>
+    ''',
+        unsafe_allow_html=True,
+    )
 
-    # Bloc Accès rapide juste après le HERO
-    st.markdown('''
-    <div style="margin: 0 auto; max-width: 600px; padding: 0 0 28px 0;">
-      <div style="background: rgba(255,255,255,0.98); border-radius: 32px; box-shadow: 0 8px 32px rgba(10,95,171,.09); border: 1.5px solid #e0eaff; padding: 36px 32px 28px 32px; position: relative; overflow: hidden; animation: fadeIn .8s; display: flex; flex-direction: column; align-items: center;">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="background:linear-gradient(135deg,#fafdff,#e6f2fd);border-radius:8px;"><rect x="4" y="4" width="24" height="24" rx="8" fill="#fafdff" stroke="#0a5fab" stroke-width="1.5"/><path d="M10 18v-2a6 6 0 1 1 12 0v2" stroke="#1aa2e2" stroke-width="1.5" fill="none"/><circle cx="16" cy="12" r="3" stroke="#1aa2e2" stroke-width="1.5" fill="#e6f2fd"/></svg>
-          <span style="font-size: 1.45rem; font-weight: 900; color: #0a2040; font-family: Sora,sans-serif; letter-spacing: -.5px;">Accès rapide</span>
+    st.markdown(
+        """
+    <div class="home-auth-shell">
+      <div class="home-auth-grid">
+        <div class="home-auth-main">
+          <div class="home-auth-badge">Acces securise</div>
+          <div class="home-auth-title">Choisissez votre parcours en quelques secondes.</div>
+          <div class="home-auth-copy">Une zone unique, claire et stable pour acceder a votre espace ou lancer une demande d'acces, sans perdre du temps dans la navigation.</div>
+          <div class="home-auth-points">
+            <div class="home-auth-point"><strong>Connexion immediate</strong>Entrez directement dans votre espace si votre compte est deja valide.</div>
+            <div class="home-auth-point"><strong>Demande guidee</strong>Soumettez votre acces avec un formulaire simple pour les profils habilites.</div>
+            <div class="home-auth-point"><strong>Parcours sans confusion</strong>Les deux actions critiques restent visibles au meme endroit du debut a la fin.</div>
+          </div>
         </div>
-        <div style="font-size: 1.04rem; color: #4a6a8a; font-family: Manrope,sans-serif; margin-bottom: 22px; text-align:center;">Connexion et inscription rapides pour les autorités sanitaires.</div>
+        <div class="home-auth-side">
+          <h3>Orientation rapide, decision facile.</h3>
+          <p>Un coup d'oeil suffit pour savoir quoi faire: se connecter ou demander un acces.</p>
+          <div class="home-auth-tags">
+            <span>Connexion</span>
+            <span>Demande d'acces</span>
+            <span>Parcours simplifie</span>
+            <span>Admin et autorites</span>
+          </div>
+        </div>
       </div>
     </div>
-    ''', unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     _, login_col, register_col, _ = st.columns([0.45, 1, 1, 0.45], gap="medium")
     with login_col:
-      if st.button("Se connecter", use_container_width=True, key="open_login_middle"):
-        st.session_state.auth_view = "login"
-        st.switch_page("pages/auth.py")
+        if st.button("Ouvrir mon espace", use_container_width=True, key="open_login_middle"):
+            st.session_state.auth_view = "login"
+            st.switch_page("pages/auth.py")
     with register_col:
-      if st.button("Créer un accès", use_container_width=True, key="open_register_middle"):
-        st.session_state.auth_view = "register"
-        st.switch_page("pages/auth.py")
+        if st.button("Demander un acces", use_container_width=True, key="open_register_middle"):
+            st.session_state.auth_view = "register"
+            st.switch_page("pages/auth.py")
 
-    # Bloc IMPACT (rendu via components.html pour compatibilité totale)
-    IMPACT_HTML = """
-  <div class='impact-premium' style='margin-top:18px; padding: 0 0 54px 0; background: rgba(255,255,255,0.92); border-radius: 38px; box-shadow: 0 8px 40px rgba(26,162,226,.10), 0 0 0 6px #e6f2fd inset; border: 2px solid #e6f2fd; max-width: 1100px; margin-left: auto; margin-right: auto; position: relative; overflow: hidden; animation: fadeIn .8s;'>
-    <div style="padding: 54px 36px 34px 36px; background: rgba(255,255,255,0.98); border-radius: 28px; box-shadow: 0 4px 18px rgba(26,162,226,.08), 0 0 0 4px #e6f2fd inset; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 32px;">
-      <div style="font-size:2.5rem; font-weight:900; color:#0a5fab; font-family:'Sora',sans-serif; letter-spacing:-1.1px; text-align:center; text-shadow:0 2px 12px #e6f2fd;">SAFE CONGO</div>
-      <div style="font-size:1.18rem; color:#1a3d5c; font-family:'Manrope',sans-serif; text-align:center; max-width:700px; font-weight:600;">Le réseau digital qui anticipe, protège et connecte tous les acteurs de la santé publique en RDC.<br><span style='color:#1876c2;font-weight:800;'>Pour une veille, une action et une solidarité sans front</span></div>
-      <div style="display: flex; flex-direction: row; justify-content: center; align-items: flex-start; gap: 48px; margin-top: 24px;">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;min-width:160px;background:linear-gradient(135deg,#fafdff 60%,#e6f2fd 100%);border-radius:18px;padding:14px 8px 14px 8px;box-shadow:0 1px 8px #e6f2fd;">
-          <svg width="56" height="56" viewBox="0 0 64 64" fill="none" style="background:linear-gradient(135deg,#e6f2fd,#fafdff);border-radius:14px;box-shadow:0 0 0 3px #e6f2fd;">
-            <rect x="14" y="14" width="36" height="36" rx="12" fill="#fafdff"/>
-            <path d="M32 20a12 12 0 1 1 0 24a12 12 0 1 1 0-24z" stroke="#0a5fab" stroke-width="2.2" fill="none"/>
-            <circle cx="32" cy="32" r="4" fill="#1aa2e2"/>
-          </svg>
-          <div style="font-size:1.08rem;font-weight:800;color:#0a5fab;font-family:'Sora',sans-serif;letter-spacing:.4px;">Veille active</div>
-          <div style="font-size:.97rem;color:#1876c2;font-family:'Manrope',sans-serif;text-align:center;max-width:160px;">Surveillance continue, détection précoce et analyse intelligente des signaux sanitaires.</div>
+    st.markdown(
+        """
+    <div class="home-footer-shell">
+      <div class="home-footer-top">
+        <div>
+          <div class="home-footer-badge">SAFE CONGO • RDC</div>
+          <div class="home-footer-title">Veille sanitaire nationale</div>
+          <div class="home-footer-copy">Restez connecte aux <b>canaux officiels</b> de SAFE CONGO pour la communication sanitaire publique et la diffusion des messages essentiels.</div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;min-width:160px;background:linear-gradient(135deg,#f8fcff 60%,#e6f8f0 100%);border-radius:18px;padding:14px 8px 14px 8px;box-shadow:0 1px 8px #e6f8f0;">
-          <svg width="56" height="56" viewBox="0 0 64 64" fill="none" style="background:linear-gradient(135deg,#e6f8f0,#f8fcff);border-radius:14px;box-shadow:0 0 0 3px #e6f8f0;">
-            <rect x="14" y="14" width="36" height="36" rx="12" fill="#f8fcff"/>
-            <path d="M32 24l8 8-8 8-8-8z" stroke="#1aa2e2" stroke-width="2.2" fill="#e6f8f0"/>
-          </svg>
-          <div style="font-size:1.08rem;font-weight:800;color:#1aa2e2;font-family:'Sora',sans-serif;letter-spacing:.4px;">Réponse rapide</div>
-          <div style="font-size:.97rem;color:#1876c2;font-family:'Manrope',sans-serif;text-align:center;max-width:160px;">Mobilisation immédiate et coordination efficace pour chaque alerte sanitaire.</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;min-width:160px;background:linear-gradient(135deg,#fafdff 60%,#e6f2fd 100%);border-radius:18px;padding:14px 8px 14px 8px;box-shadow:0 1px 8px #e6f2fd;">
-          <svg width="56" height="56" viewBox="0 0 64 64" fill="none" style="background:linear-gradient(135deg,#e6f2fd,#fafdff);border-radius:14px;box-shadow:0 0 0 3px #e6f2fd;">
-            <rect x="14" y="14" width="36" height="36" rx="12" fill="#fafdff"/>
-            <path d="M24 40c0-8 16-8 16 0" stroke="#0a5fab" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-            <circle cx="32" cy="28" r="4" fill="#1aa2e2"/>
-          </svg>
-          <div style="font-size:1.08rem;font-weight:800;color:#0a5fab;font-family:'Sora',sans-serif;letter-spacing:.4px;">Collaboration enrichie</div>
-          <div style="font-size:.97rem;color:#1876c2;font-family:'Manrope',sans-serif;text-align:center;max-width:160px;">Partage d’informations, entraide et synergie nationale pour une santé publique renforcée.</div>
+        <div>
+          <div class="home-footer-social-label">Reseaux sociaux</div>
+          <div class="home-footer-socials" style="margin-top:8px">
+            <div class="home-footer-social">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.6 1.7-1.6H17V3.8c-.3 0-1.2-.1-2.4-.1-2.4 0-4 1.4-4 4.2V10H8v3h2.6v8h2.9Z"/></svg>
+              <div><strong>Facebook</strong>Communication institutionnelle</div>
+            </div>
+            <div class="home-footer-social">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 3H21l-4.6 5.3L21.8 21h-4.3l-3.4-4.6L10 21H7.8l5-5.8L2.2 3h4.4l3 4.2L13.2 3h2.1l-4.6 5.2L18.9 3Z"/></svg>
+              <div><strong>X</strong>Annonces rapides</div>
+            </div>
+            <div class="home-footer-social">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.5 12 4.5 12 4.5s-7 0-8.9.6A3 3 0 0 0 1 7.2 31.7 31.7 0 0 0 .5 12c0 1.6.2 3.2.5 4.8A3 3 0 0 0 3.1 19c1.9.5 8.9.5 8.9.5s7 0 8.9-.6a3 3 0 0 0 2.1-2.1c.3-1.6.5-3.2.5-4.8s-.2-3.2-.5-4.8ZM9.7 15.4V8.6l5.9 3.4-5.9 3.4Z"/></svg>
+              <div><strong>YouTube</strong>Sensibilisation</div>
+            </div>
+            <div class="home-footer-social">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.9 8.5A1.4 1.4 0 1 1 7 5.7a1.4 1.4 0 0 1-.1 2.8ZM8.4 9.8H5.6V18h2.8V9.8Zm4.4 0H10V18h2.8v-4.3c0-2.4 3.1-2.6 3.1 0V18h2.8v-5.2c0-4-4.5-3.9-5.9-1.9V9.8Z"/></svg>
+              <div><strong>LinkedIn</strong>Partenariats</div>
+            </div>
+          </div>
         </div>
       </div>
+      <div style="padding:0 min(6vw,64px) 12px;">
+        <div class="home-footer-social-label">Liens officiels</div>
+        <div class="home-footer-links" style="margin-top:7px;">
+          <a href="https://www.minisanterdc.cd" target="_blank">Ministere de la Sante</a>
+          <a href="https://www.who.int/fr" target="_blank">OMS</a>
+          <a href="https://www.unicef.org/drcongo" target="_blank">UNICEF RDC</a>
+          <a href="https://africacdc.org" target="_blank">Africa CDC</a>
+        </div>
+      </div>
+      <div class="home-footer-bottom">
+        <strong>SAFE CONGO</strong>
+        <span>Service de veille sanitaire disponible 24/24 • Republique Democratique du Congo</span>
+      </div>
     </div>
-  </div>
-  """
-    components.html(IMPACT_HTML, height=1400, scrolling=False)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 

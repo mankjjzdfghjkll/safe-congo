@@ -38,3 +38,19 @@ database/users.db
 # Distribution
 *.tar.gz
 *.zip
+
+# Local VS Code / PyDev artifacts
+*.pydevinfo
+*.v1_projectinfodelta
+0.3
+120
+str
+
+# Generated reports and runtime outputs
+rapport_pipeline_ML_SAFE_CONGO.pdf
+logs/eda/
+logs/*.csv
+logs/*.log
+models/best_model.pkl
+models/evaluation/*.csv
+models/evaluation/*.png

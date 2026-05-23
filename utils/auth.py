@@ -1,10 +1,24 @@
 # utils/auth.py - Version complète avec toutes les fonctions exportées
-import streamlit as st
-import sqlite3
 import hashlib
-from pathlib import Path
+import os
+import secrets
+import sqlite3
 import time
+from pathlib import Path
+
 import pandas as pd
+import streamlit as st
+
+
+SCHEMA_PATH = Path(__file__).parent.parent / "database" / "schema.sql"
+APP_ENV = os.environ.get("SAFE_CONGO_ENV", "development").strip().lower()
+IS_PRODUCTION = APP_ENV in {"prod", "production"}
+BOOTSTRAP_USERS_ENABLED = os.environ.get(
+    "SAFE_CONGO_ENABLE_BOOTSTRAP_USERS",
+    "0" if IS_PRODUCTION else "1",
+).strip().lower() in {"1", "true", "yes", "on"}
+LOCAL_DEV_ADMIN_PASSWORD = "Admin@123"
+LOCAL_DEV_AUTHORITY_PASSWORD = "Sante@2024"
 
 class AuthSystem:
     """Système d'authentification pour Admin et Autorités Sanitaires"""
@@ -17,7 +31,111 @@ class AuthSystem:
         self._init_database()
     
     def _get_connection(self):
-        return sqlite3.connect(self.db_path, timeout=30)
+        conn = sqlite3.connect(self.db_path, timeout=30)
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA busy_timeout = 30000")
+        return conn
+
+    def _load_schema_sql(self):
+        if not SCHEMA_PATH.exists():
+            raise FileNotFoundError(f"Schema introuvable: {SCHEMA_PATH}")
+        return SCHEMA_PATH.read_text(encoding="utf-8")
+
+    def _clean_text(self, value):
+        return " ".join(str(value or "").strip().split())
+
+    def _normalize_login_identifier(self, value):
+        return self._clean_text(value).casefold()
+
+    def _bootstrap_password(self, role):
+        env_var = (
+            "SAFE_CONGO_BOOTSTRAP_ADMIN_PASSWORD"
+            if role == "admin"
+            else "SAFE_CONGO_BOOTSTRAP_AUTHORITY_PASSWORD"
+        )
+        configured = os.environ.get(env_var, "").strip()
+        if configured:
+            return configured
+        if IS_PRODUCTION and BOOTSTRAP_USERS_ENABLED:
+            raise RuntimeError(
+                f"La variable d'environnement {env_var} est obligatoire quand le bootstrap des comptes est actif en production."
+            )
+        return LOCAL_DEV_ADMIN_PASSWORD if role == "admin" else LOCAL_DEV_AUTHORITY_PASSWORD
+
+    def _is_legacy_sha256_hash(self, value):
+        return isinstance(value, str) and len(value) == 64 and all(ch in "0123456789abcdef" for ch in value.lower())
+
+    def _verify_password(self, stored_hash, password):
+        if not stored_hash:
+            return False
+        if self._is_legacy_sha256_hash(stored_hash):
+            legacy = hashlib.sha256(password.encode("utf-8")).hexdigest()
+            return secrets.compare_digest(stored_hash, legacy)
+
+        try:
+            algorithm, n_value, r_value, p_value, salt_hex, digest_hex = stored_hash.split("$")
+            if algorithm != "scrypt":
+                return False
+            salt = bytes.fromhex(salt_hex)
+            digest = hashlib.scrypt(
+                password.encode("utf-8"),
+                salt=salt,
+                n=int(n_value),
+                r=int(r_value),
+                p=int(p_value),
+                dklen=len(bytes.fromhex(digest_hex)),
+            ).hex()
+            return secrets.compare_digest(digest, digest_hex)
+        except (TypeError, ValueError):
+            return False
+
+    def _bootstrap_default_users(self, cursor):
+        if not BOOTSTRAP_USERS_ENABLED:
+            return
+        cursor.execute("SELECT id FROM users WHERE username = 'admin'")
+        if not cursor.fetchone():
+            cursor.execute(
+                '''
+                INSERT INTO users (username, password, role, nom, prenom, email, telephone)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''',
+                (
+                    'admin',
+                    self._hash_password(self._bootstrap_password("admin")),
+                    'admin',
+                    'ADMIN',
+                    'System',
+                    'admin@safe-congo.com',
+                    '+243800000001',
+                ),
+            )
+
+        default_authorities = [
+            ('autorite_kinshasa', 'Kinshasa', 'Kinshasa Centre', 'KABILA', 'Jean', 'jean.kabila@sante.gouv.cd', '+243811111111'),
+            ('autorite_kasai', 'Kasaï', 'Tshikapa', 'MUKENDI', 'Marie', 'marie.mukendi@sante.gouv.cd', '+243822222222'),
+            ('autorite_nordkivu', 'Nord-Kivu', 'Goma', 'KAMBALE', 'Paul', 'paul.kambale@sante.gouv.cd', '+243833333333'),
+            ('autorite_sudkivu', 'Sud-Kivu', 'Bukavu', 'MULONGO', 'Alice', 'alice.mulongo@sante.gouv.cd', '+243844444444'),
+        ]
+        for auth_data in default_authorities:
+            cursor.execute("SELECT id FROM users WHERE username = ?", (auth_data[0],))
+            if not cursor.fetchone():
+                cursor.execute(
+                    '''
+                    INSERT INTO users (username, password, role, nom, prenom, email, telephone, province, zone_sante)
+                    VALUES (?, ?, 'autorite_sanitaire', ?, ?, ?, ?, ?, ?)
+                    ''',
+                    (
+                        auth_data[0],
+                        self._hash_password(self._bootstrap_password("autorite_sanitaire")),
+                        auth_data[3],
+                        auth_data[4],
+                        auth_data[5],
+                        auth_data[6],
+                        auth_data[1],
+                        auth_data[2],
+                    ),
+                )
     
     def _init_database(self):
         """Initialise la base de données SQLite"""
@@ -26,109 +144,9 @@ class AuthSystem:
         for _ in range(5):
             try:
                 conn = self._get_connection()
+                conn.executescript(self._load_schema_sql())
                 cursor = conn.cursor()
-                
-                # Table des utilisateurs
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        username TEXT UNIQUE NOT NULL,
-                        password TEXT NOT NULL,
-                        role TEXT NOT NULL CHECK(role IN ('admin', 'autorite_sanitaire')),
-                        nom TEXT NOT NULL,
-                        prenom TEXT NOT NULL,
-                        email TEXT NOT NULL,
-                        telephone TEXT,
-                        province TEXT,
-                        zone_sante TEXT,
-                        notification_email INTEGER DEFAULT 1,
-                        notification_sms INTEGER DEFAULT 0,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        last_login TIMESTAMP,
-                        is_active INTEGER DEFAULT 1
-                    )
-                ''')
-                
-                # Table des données épidémiologiques
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS epidemiological_data (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        disease TEXT NOT NULL,
-                        week INTEGER NOT NULL,
-                        year INTEGER NOT NULL,
-                        province TEXT NOT NULL,
-                        zone_sante TEXT NOT NULL,
-                        total_cases INTEGER DEFAULT 0,
-                        total_deaths INTEGER DEFAULT 0,
-                        incidence_rate REAL,
-                        mortality_rate REAL,
-                        entered_by INTEGER,
-                        entry_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        validated INTEGER DEFAULT 0,
-                        FOREIGN KEY (entered_by) REFERENCES users(id)
-                    )
-                ''')
-                
-                # Table des alertes
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS alerts (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        disease TEXT NOT NULL,
-                        province TEXT NOT NULL,
-                        zone_sante TEXT NOT NULL,
-                        week INTEGER NOT NULL,
-                        year INTEGER NOT NULL,
-                        current_cases INTEGER,
-                        predicted_cases REAL,
-                        growth_rate REAL,
-                        alert_level TEXT,
-                        message TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        is_read INTEGER DEFAULT 0,
-                        pdf_generated INTEGER DEFAULT 0
-                    )
-                ''')
-                
-                # Table des notifications
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS notifications (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER,
-                        alert_id INTEGER,
-                        title TEXT,
-                        message TEXT,
-                        is_read INTEGER DEFAULT 0,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users(id),
-                        FOREIGN KEY (alert_id) REFERENCES alerts(id)
-                    )
-                ''')
-                
-                # Créer l'admin par défaut
-                cursor.execute("SELECT * FROM users WHERE username = 'admin'")
-                if not cursor.fetchone():
-                    admin_password = self._hash_password('Admin@123')
-                    cursor.execute('''
-                        INSERT INTO users (username, password, role, nom, prenom, email, telephone)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', ('admin', admin_password, 'admin', 'ADMIN', 'System', 'admin@safe-congo.com', '+243800000001'))
-                
-                # Créer des autorités sanitaires par défaut
-                default_authorities = [
-                    ('autorite_kinshasa', 'Kinshasa', 'Kinshasa Centre', 'KABILA', 'Jean', 'jean.kabila@sante.gouv.cd', '+243811111111'),
-                    ('autorite_kasai', 'Kasaï', 'Tshikapa', 'MUKENDI', 'Marie', 'marie.mukendi@sante.gouv.cd', '+243822222222'),
-                    ('autorite_nordkivu', 'Nord-Kivu', 'Goma', 'KAMBALE', 'Paul', 'paul.kambale@sante.gouv.cd', '+243833333333'),
-                    ('autorite_sudkivu', 'Sud-Kivu', 'Bukavu', 'MULONGO', 'Alice', 'alice.mulongo@sante.gouv.cd', '+243844444444'),
-                ]
-                
-                for auth_data in default_authorities:
-                    cursor.execute("SELECT * FROM users WHERE username = ?", (auth_data[0],))
-                    if not cursor.fetchone():
-                        auth_password = self._hash_password('Sante@2024')
-                        cursor.execute('''
-                            INSERT INTO users (username, password, role, nom, prenom, email, telephone, province, zone_sante)
-                            VALUES (?, ?, 'autorite_sanitaire', ?, ?, ?, ?, ?, ?)
-                        ''', (auth_data[0], auth_password, auth_data[3], auth_data[4], auth_data[5], auth_data[6], auth_data[1], auth_data[2]))
+                self._bootstrap_default_users(cursor)
                 
                 conn.commit()
                 conn.close()
@@ -138,55 +156,127 @@ class AuthSystem:
                 continue
     
     def _hash_password(self, password):
-        return hashlib.sha256(password.encode()).hexdigest()
+        salt = secrets.token_bytes(16)
+        n_value = 2**14
+        r_value = 8
+        p_value = 1
+        digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=n_value, r=r_value, p=p_value, dklen=64)
+        return f"scrypt${n_value}${r_value}${p_value}${salt.hex()}${digest.hex()}"
     
     def authenticate(self, username, password):
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
-            hashed = self._hash_password(password)
+            identifier = self._normalize_login_identifier(username)
+            if not identifier:
+                conn.close()
+                return None
             
             cursor.execute('''
-                SELECT id, username, role, nom, prenom, email, telephone, province, zone_sante
-                FROM users WHERE username = ? AND password = ? AND is_active = 1
-            ''', (username, hashed))
+                SELECT id, username, password, role, nom, prenom, email, telephone, province, zone_sante, is_active
+                FROM users
+                WHERE lower(trim(username)) = ? OR lower(trim(email)) = ?
+                ORDER BY is_active DESC, id DESC
+                LIMIT 1
+            ''', (identifier, identifier))
             
             user = cursor.fetchone()
-            if user:
+            if user and int(user[10]) == 1 and self._verify_password(user[2], password):
                 cursor.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (user[0],))
+                if self._is_legacy_sha256_hash(user[2]):
+                    cursor.execute('UPDATE users SET password = ? WHERE id = ?', (self._hash_password(password), user[0]))
                 conn.commit()
                 conn.close()
                 return {
-                    'id': user[0], 'username': user[1], 'role': user[2],
-                    'nom': user[3], 'prenom': user[4], 'email': user[5],
-                    'telephone': user[6], 'province': user[7], 'zone_sante': user[8],
-                    'full_name': f"{user[3]} {user[4]}", 'authenticated': True
+                    'id': user[0], 'username': user[1], 'role': user[3],
+                    'nom': user[4], 'prenom': user[5], 'email': user[6],
+                    'telephone': user[7], 'province': user[8], 'zone_sante': user[9],
+                    'full_name': f"{user[4]} {user[5]}", 'authenticated': True
                 }
             conn.close()
             return None
         except Exception:
             return None
-    
-    def register_authority(self, username, password, nom, prenom, email, telephone, province, zone_sante):
+
+    def diagnose_login_attempt(self, identifier):
         try:
+            normalized = self._normalize_login_identifier(identifier)
+            if not normalized:
+                return {"status": "missing"}
+
             conn = self._get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            cursor.execute(
+                '''
+                SELECT username, email, is_active
+                FROM users
+                WHERE lower(trim(username)) = ? OR lower(trim(email)) = ?
+                ORDER BY is_active DESC, id DESC
+                LIMIT 1
+                ''',
+                (normalized, normalized),
+            )
+            row = cursor.fetchone()
+            conn.close()
+            if not row:
+                return {"status": "not_found"}
+            if int(row[2]) != 1:
+                return {"status": "disabled", "username": row[0], "email": row[1]}
+            return {"status": "password_mismatch", "username": row[0], "email": row[1]}
+        except Exception:
+            return {"status": "unknown"}
+    
+    def register_user(self, username, password, nom, prenom, email, telephone, role, province="", zone_sante=""):
+        try:
+            normalized_username = self._clean_text(username)
+            normalized_nom = self._clean_text(nom)
+            normalized_prenom = self._clean_text(prenom)
+            normalized_email = self._clean_text(email).lower()
+            normalized_phone = self._clean_text(telephone)
+            normalized_role = self._clean_text(role)
+            normalized_province = self._clean_text(province)
+            normalized_zone = self._clean_text(zone_sante)
+
+            if normalized_role not in {"admin", "autorite_sanitaire"}:
+                return False, "Role invalide"
+            if normalized_role == "autorite_sanitaire" and not all([normalized_province, normalized_zone]):
+                return False, "La province et la zone de sante sont obligatoires pour une autorite sanitaire"
+
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM users WHERE lower(trim(username)) = ?",
+                (normalized_username.casefold(),),
+            )
             if cursor.fetchone():
                 conn.close()
                 return False, "Nom d'utilisateur existe déjà"
             
-            hashed = self._hash_password(password)
             cursor.execute('''
                 INSERT INTO users (username, password, role, nom, prenom, email, telephone, province, zone_sante)
-                VALUES (?, ?, 'autorite_sanitaire', ?, ?, ?, ?, ?, ?)
-            ''', (username, hashed, nom, prenom, email, telephone, province, zone_sante))
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                normalized_username,
+                self._hash_password(password),
+                normalized_role,
+                normalized_nom,
+                normalized_prenom,
+                normalized_email,
+                normalized_phone,
+                normalized_province,
+                normalized_zone,
+            ))
             
             conn.commit()
             conn.close()
+            if normalized_role == "admin":
+                return True, "Administrateur cree avec succes"
             return True, "Autorité sanitaire créée avec succès"
         except Exception as e:
             return False, f"Erreur: {e}"
+
+    def register_authority(self, username, password, nom, prenom, email, telephone, province, zone_sante):
+        return self.register_user(username, password, nom, prenom, email, telephone, "autorite_sanitaire", province, zone_sante)
     
     def get_all_authorities(self):
         try:
@@ -296,6 +386,17 @@ class AuthSystem:
             return True, "Utilisateur désactivé"
         except Exception as e:
             return False, str(e)
+
+    def reactivate_user(self, user_id):
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute('UPDATE users SET is_active = 1 WHERE id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+            return True, "Utilisateur réactivé"
+        except Exception as e:
+            return False, str(e)
     
     def get_stats(self):
         try:
@@ -307,14 +408,226 @@ class AuthSystem:
             total_alerts = cursor.fetchone()[0]
             cursor.execute("SELECT COUNT(*) FROM epidemiological_data")
             total_entries = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM prediction_runs")
+            total_prediction_runs = cursor.fetchone()[0]
             conn.close()
             return {
                 'total_authorities': total_authorities,
                 'total_alerts': total_alerts,
-                'total_entries': total_entries
+                'total_entries': total_entries,
+                'total_prediction_runs': total_prediction_runs,
             }
         except:
-            return {'total_authorities': 0, 'total_alerts': 0, 'total_entries': 0}
+            return {'total_authorities': 0, 'total_alerts': 0, 'total_entries': 0, 'total_prediction_runs': 0}
+
+    def database_snapshot(self):
+        snapshot = {
+            'database_exists': Path(self.db_path).exists(),
+            'database_size_kb': 0,
+            'users_total': 0,
+            'alerts_total': 0,
+            'notifications_total': 0,
+            'entries_total': 0,
+            'prediction_runs_total': 0,
+        }
+        if not snapshot['database_exists']:
+            return snapshot
+
+        try:
+            snapshot['database_size_kb'] = round(Path(self.db_path).stat().st_size / 1024, 1)
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM users")
+            snapshot['users_total'] = int(cursor.fetchone()[0])
+            cursor.execute("SELECT COUNT(*) FROM alerts")
+            snapshot['alerts_total'] = int(cursor.fetchone()[0])
+            cursor.execute("SELECT COUNT(*) FROM notifications")
+            snapshot['notifications_total'] = int(cursor.fetchone()[0])
+            cursor.execute("SELECT COUNT(*) FROM epidemiological_data")
+            snapshot['entries_total'] = int(cursor.fetchone()[0])
+            cursor.execute("SELECT COUNT(*) FROM prediction_runs")
+            snapshot['prediction_runs_total'] = int(cursor.fetchone()[0])
+            conn.close()
+        except Exception:
+            return snapshot
+        return snapshot
+
+    def save_epidemiological_entry(
+        self,
+        disease,
+        province,
+        zone_sante,
+        observed_date,
+        total_cases,
+        total_deaths,
+        entered_by,
+        validated=0,
+    ):
+        try:
+            normalized_cases = None if total_cases is None else int(total_cases)
+            normalized_deaths = None if total_deaths is None else int(total_deaths)
+            clean_disease = self._clean_text(disease)
+            clean_province = self._clean_text(province)
+            clean_zone = self._clean_text(zone_sante)
+            iso_year, week_num, _ = observed_date.isocalendar()
+
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                SELECT id
+                FROM epidemiological_data
+                WHERE lower(trim(disease)) = ?
+                  AND week = ?
+                  AND year = ?
+                  AND lower(trim(province)) = ?
+                  AND lower(trim(zone_sante)) = ?
+                LIMIT 1
+                ''',
+                (
+                    clean_disease.casefold(),
+                    int(week_num),
+                    int(iso_year),
+                    clean_province.casefold(),
+                    clean_zone.casefold(),
+                ),
+            )
+            existing = cursor.fetchone()
+
+            if existing:
+                cursor.execute(
+                    '''
+                    UPDATE epidemiological_data
+                    SET total_cases = ?,
+                        total_deaths = ?,
+                        entered_by = ?,
+                        validated = ?,
+                        entry_date = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    ''',
+                    (normalized_cases, normalized_deaths, int(entered_by), int(validated), int(existing[0])),
+                )
+                action = "mise a jour"
+            else:
+                cursor.execute(
+                    '''
+                    INSERT INTO epidemiological_data (
+                        disease, week, year, province, zone_sante,
+                        total_cases, total_deaths, entered_by, validated
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''',
+                    (
+                        clean_disease,
+                        int(week_num),
+                        int(iso_year),
+                        clean_province,
+                        clean_zone,
+                        normalized_cases,
+                        normalized_deaths,
+                        int(entered_by),
+                        int(validated),
+                    ),
+                )
+                action = "creation"
+
+            conn.commit()
+            conn.close()
+            return True, {
+                'action': action,
+                'week': int(week_num),
+                'year': int(iso_year),
+                'disease': clean_disease,
+                'province': clean_province,
+                'zone_sante': clean_zone,
+            }
+        except Exception as exc:
+            return False, str(exc)
+
+    def record_prediction_run(
+        self,
+        disease,
+        province,
+        zone_sante,
+        target_date,
+        week,
+        year,
+        previous_cases,
+        predicted_cases,
+        model_r2,
+        delivery_mode,
+        delivery_target,
+        emitted_by,
+        alert_id,
+    ):
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                INSERT INTO prediction_runs (
+                    disease, province, zone_sante, target_date, week, year,
+                    previous_cases, predicted_cases, model_r2, delivery_mode,
+                    delivery_target, emitted_by, alert_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''',
+                (
+                    disease,
+                    province,
+                    zone_sante,
+                    str(target_date),
+                    int(week),
+                    int(year),
+                    int(previous_cases),
+                    int(predicted_cases),
+                    float(model_r2),
+                    delivery_mode,
+                    delivery_target,
+                    int(emitted_by),
+                    int(alert_id),
+                ),
+            )
+            conn.commit()
+            conn.close()
+            return True
+        except Exception:
+            return False
+
+    def get_prediction_runs(self, limit=100):
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                SELECT disease, province, zone_sante, target_date, week, year,
+                       previous_cases, predicted_cases, model_r2, delivery_mode,
+                       delivery_target, created_at
+                FROM prediction_runs
+                ORDER BY created_at DESC
+                LIMIT ?
+                ''',
+                (int(limit),),
+            )
+            rows = cursor.fetchall()
+            conn.close()
+            return [
+                {
+                    'disease': row[0],
+                    'province': row[1],
+                    'zone_sante': row[2],
+                    'target_date': row[3],
+                    'week': row[4],
+                    'year': row[5],
+                    'previous_cases': row[6],
+                    'predicted_cases': row[7],
+                    'model_r2': row[8],
+                    'delivery_mode': row[9],
+                    'delivery_target': row[10],
+                    'created_at': row[11],
+                }
+                for row in rows
+            ]
+        except Exception:
+            return []
 
 
 # ============ FONCTIONS STREAMLIT ============

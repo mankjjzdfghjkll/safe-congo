@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # src/pipeline/data_cleaner.py
 """Module de nettoyage des données pour SAFE CONGO — pipeline ML complet"""
 
@@ -6,8 +8,10 @@ import warnings
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+from src.config import TRAINING_CONFIG
 
 warnings.filterwarnings("ignore")
+HISTORY_WEEKS = int(TRAINING_CONFIG.get("history_weeks", 2))
 
 
 class DataCleaner:
@@ -16,11 +20,24 @@ class DataCleaner:
     # Colonnes techniques sans valeur prédictive
     _COLS_TO_DROP = [
         "NUM", "C328TNN", "DTNN",
+        "RecStatus", "UniqueKey",
+        "LETAL", "ATTAQ",
+    ]
+
+    # Colonnes d'âge — conservées mais remplies à 0 si NaN
+    _AGE_COLS = [
         "C011MOIS", "D011MOIS",
         "C1259MOIS", "D1259MOIS",
         "C515ANS", "D515ANS",
         "CP15ANS", "DP15ANS",
-        "RecStatus",
+    ]
+
+    # Colonnes utiles à charger (évite MemoryError sur les fichiers avec 16k colonnes vides)
+    _USECOLS = [
+        "NUM", "PAYS", "PROV", "ZS", "POP", "NUMSEM", "DEBUTSEM", "MALADIE",
+        "C011MOIS", "D011MOIS", "C1259MOIS", "D1259MOIS",
+        "C515ANS", "D515ANS", "CP15ANS", "DP15ANS",
+        "TOTALCAS", "TOTALDECES", "RecStatus", "UniqueKey",
     ]
 
     # Normalisation des noms de maladies (codes bruts → noms lisibles)
@@ -39,8 +56,9 @@ class DataCleaner:
         "COVID-19": "COVID-19",
     }
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, file_path_2022: str | None = None):
         self.file_path = file_path
+        self.file_path_2022 = file_path_2022
         self.raw_data: pd.DataFrame | None = None
         self.cleaned_data: pd.DataFrame | None = None
         self.label_encoder: LabelEncoder = LabelEncoder()
@@ -49,10 +67,53 @@ class DataCleaner:
     # ------------------------------------------------------------------
     # 1. CHARGEMENT
     # ------------------------------------------------------------------
+    def _load_single(self, path: str) -> pd.DataFrame:
+        """
+        Charge un fichier Excel en mode read_only (openpyxl) pour éviter
+        le MemoryError sur les fichiers avec >16 000 colonnes vides.
+        Seules les colonnes listées dans _USECOLS sont conservées.
+        Limite à max_col=30 car les colonnes utiles sont toutes dans les 24 premières.
+        """
+        import openpyxl
+        from pathlib import Path as _Path
+
+        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        ws = wb.active
+
+        # Lire les en-têtes sur les 30 premières colonnes uniquement
+        MAX_COL = 30
+        headers = []
+        for row in ws.iter_rows(min_row=1, max_row=1, max_col=MAX_COL, values_only=True):
+            headers = list(row)
+
+        # Indices (0-based) des colonnes utiles dans cette plage
+        usecols_set = set(self._USECOLS)
+        col_indices = {i: h for i, h in enumerate(headers) if h in usecols_set}
+
+        # Lire toutes les lignes de données en limitant à MAX_COL colonnes
+        rows = []
+        for row in ws.iter_rows(min_row=2, max_col=MAX_COL, values_only=True):
+            rows.append({h: row[i] for i, h in col_indices.items()})
+
+        wb.close()
+
+        df = pd.DataFrame(rows, columns=list(col_indices.values()))
+        # Supprimer les lignes entièrement vides (artefacts Excel)
+        df.dropna(how="all", inplace=True)
+        print(f"    {_Path(path).name}: {df.shape[0]:,} lignes | {len(col_indices)} colonnes")
+        return df
+
     def load_data(self) -> pd.DataFrame:
         print("Chargement des données...")
-        self.raw_data = pd.read_excel(self.file_path, sheet_name=0)
-        print(f"  {self.raw_data.shape[0]:,} lignes | {self.raw_data.shape[1]} colonnes chargées")
+        from pathlib import Path
+        df_2023 = self._load_single(self.file_path)
+        if self.file_path_2022 and Path(self.file_path_2022).exists():
+            df_2022 = self._load_single(self.file_path_2022)
+            self.raw_data = pd.concat([df_2022, df_2023], ignore_index=True)
+            print(f"  Fusion 2022+2023 : {self.raw_data.shape[0]:,} lignes totales | {self.raw_data['MALADIE'].nunique()} maladies")
+        else:
+            self.raw_data = df_2023
+            print(f"  {self.raw_data.shape[0]:,} lignes chargées (2023 uniquement)")
         return self.raw_data
 
     # ------------------------------------------------------------------
@@ -67,6 +128,27 @@ class DataCleaner:
         df.drop(columns=[c for c in self._COLS_TO_DROP if c in df.columns],
                 errors="ignore", inplace=True)
 
+        # — Colonnes d'âge : NaN → 0 (données manquantes = 0 cas dans ce groupe)
+        age_cols_present = [c for c in self._AGE_COLS if c in df.columns]
+        if age_cols_present:
+            df[age_cols_present] = df[age_cols_present].apply(
+                pd.to_numeric, errors="coerce"
+            ).fillna(0).clip(lower=0)
+
+        # — POP = 0 → None (population inconnue, pas zéro réel)
+        if "POP" in df.columns:
+            df["POP"] = pd.to_numeric(df["POP"], errors="coerce")
+            df.loc[df["POP"] == 0, "POP"] = np.nan
+
+        # — Suppression lignes sans zone de santé ou sans population connue
+        critical = [c for c in ["ZS", "MALADIE", "TOTALCAS"] if c in df.columns]
+        df.dropna(subset=critical, inplace=True)
+
+        # — Tri chronologique par zone/maladie avant feature engineering
+        sort_cols = [c for c in ["PROV", "ZS", "MALADIE", "DEBUTSEM"] if c in df.columns]
+        df.sort_values(sort_cols, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+
         # — Conversion et validation des dates
         if "DEBUTSEM" in df.columns:
             df["DEBUTSEM"] = pd.to_datetime(df["DEBUTSEM"], errors="coerce")
@@ -74,6 +156,12 @@ class DataCleaner:
             if nat_count:
                 print(f"  Dates invalides supprimées : {nat_count}")
             df.dropna(subset=["DEBUTSEM"], inplace=True)
+            # — Filtrage années hors plage (ex: 2102 = erreur de saisie)
+            valid_years = (df["DEBUTSEM"].dt.year >= 2020) & (df["DEBUTSEM"].dt.year <= 2030)
+            bad_years = (~valid_years).sum()
+            if bad_years:
+                print(f"  Dates hors plage 2020-2030 supprimées : {bad_years}")
+            df = df[valid_years]
 
         # — Normalisation noms de maladies
         if "MALADIE" in df.columns:
@@ -244,17 +332,17 @@ class DataCleaner:
             for window in [2, 3, 4]:
                 data[f"ma_{window}"] = shifted.rolling(window, min_periods=1).mean()
 
-            # Taux de croissance — protection contre division par zéro et infinis
-            prev = data["TOTALCAS"].shift(1).replace(0, np.nan)
+            # Taux de croissance causal : compare uniquement les semaines deja observees
+            prev = data["TOTALCAS"].shift(2).replace(0, np.nan)
             data["growth_rate"] = (
-                (data["TOTALCAS"] - data["TOTALCAS"].shift(1)) / prev
+                (data["TOTALCAS"].shift(1) - data["TOTALCAS"].shift(2)) / prev
             ).replace([np.inf, -np.inf], 0).fillna(0).clip(-5, 5)
 
             # Volatilité récente (écart-type sur 4 semaines passées)
             data["volatility_4w"] = shifted.rolling(4, min_periods=2).std().fillna(0)
 
-            # Tendance : différence semaine vs moyenne des 4 dernières
-            data["trend"] = data["TOTALCAS"] - data["ma_4"]
+            # Tendance causale : niveau recent vs moyenne des 4 semaines precedentes
+            data["trend"] = data["TOTALCAS"].shift(1) - data["ma_4"]
 
             # Variables temporelles
             data["week_rank"] = range(len(data))
