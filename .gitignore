@@ -51,6 +51,8 @@ rapport_pipeline_ML_SAFE_CONGO.pdf
 logs/eda/
 logs/*.csv
 logs/*.log
+data/processed/dataset_propre.csv
+data/raw/drc-2022_sem40.xlsx
 models/best_model.pkl
 models/evaluation/*.csv
 models/evaluation/*.png

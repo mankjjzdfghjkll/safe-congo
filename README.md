@@ -27,10 +27,20 @@ SAFE CONGO est un réseau digital qui anticipe, protège et connecte tous les ac
    ```sh
    pip install -r requirements.txt
    ```
-3. Lancer l’application :
+3. Optionnel : définir les mots de passe bootstrap avant le premier lancement :
+   ```sh
+   set SAFE_CONGO_BOOTSTRAP_ADMIN_PASSWORD=VotreMotDePasseAdmin
+   set SAFE_CONGO_BOOTSTRAP_AUTHORITY_PASSWORD=VotreMotDePasseAutorites
+   ```
+4. Lancer l’application :
    ```sh
    streamlit run app.py
    ```
+
+## Sécurité backend
+- SQLite reste utilisé comme base locale; SQLAlchemy n'est pas requis pour sécuriser l'application.
+- Les mots de passe sont désormais hachés avec `scrypt` et les anciens hachages SHA-256 sont migrés à la connexion.
+- Le schéma SQL versionné est défini dans `database/schema.sql` et les clés étrangères SQLite sont activées à l'ouverture des connexions.
 
 ## Structure du projet
 - `app.py` : Point d’entrée principal (UI, navigation, rendu des blocs)
