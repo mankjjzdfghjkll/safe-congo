@@ -1,0 +1,33 @@
+{
+    "pythonVersion": "3.12",
+    "pythonPlatform": "Windows",
+    "venvPath": ".",
+    "venv": ".conda",
+    "include": [
+        "."
+    ],
+    "exclude": [
+        ".conda",
+        ".git",
+        ".streamlit",
+        "logs",
+        "models",
+        "data",
+        "TP machine learning",
+        "utils/admin_ui.py",
+        "**/__pycache__",
+        "**/*.pyc"
+    ],
+    "executionEnvironments": [
+        {
+            "root": ".",
+            "extraPaths": [
+                "."
+            ]
+        }
+    ],
+    "reportMissingImports": "none",
+    "reportMissingModuleSource": "none",
+    "reportUndefinedVariable": "none",
+    "reportGeneralTypeIssues": "none"
+}

@@ -13,7 +13,6 @@ from utils.admin_ui import (
     apply_admin_theme,
     make_plotly_layout,
     recent_entries_frame,
-    render_admin_inbox_expander,
     render_admin_hero,
     render_admin_sidebar,
     render_kpi_cards,
@@ -190,6 +189,10 @@ def main() -> None:
         chips=["Surveillance structuree", "Analyse IA active", "Lecture sans doublons"],
         eyebrow="Niveau national",
         notification_count=admin_unread,
+        auth=auth,
+        user_id=user["id"],
+        inbox_key_prefix="admin_dashboard_inbox",
+        inbox_limit=8,
     )
 
     entries_df = recent_entries_frame(auth.db_path)
@@ -232,16 +235,6 @@ def main() -> None:
                 "pill": "rgba(5,150,105,.12)",
             },
         ]
-    )
-
-    render_admin_inbox_expander(
-        auth,
-        user["id"],
-        key_prefix="admin_dashboard_inbox",
-        unread_count=admin_unread,
-        title="Messagerie admin",
-        intro="Les confirmations de diffusion et retours systeme restent accessibles ici sans surcharger le tableau de bord.",
-        limit=6,
     )
 
     section_label("Vue executive simplifiee")

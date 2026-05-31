@@ -2,16 +2,395 @@
 from datetime import datetime
 from io import BytesIO
 
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import cm
-from reportlab.graphics.shapes import Circle, Drawing, Polygon, Rect, String
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.graphics.shapes import Circle, Drawing, Polygon, Rect, String
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    REPORTLAB_AVAILABLE = True
+    REPORTLAB_IMPORT_ERROR = None
+except ModuleNotFoundError as exc:
+    colors = None
+    TA_CENTER = None
+    TA_LEFT = None
+    A4 = None
+    ParagraphStyle = None
+    getSampleStyleSheet = None
+    cm = None
+    Circle = None
+    Drawing = None
+    Polygon = None
+    Rect = None
+    String = None
+    Paragraph = None
+    SimpleDocTemplate = None
+    Spacer = None
+    Table = None
+    TableStyle = None
+    REPORTLAB_AVAILABLE = False
+    REPORTLAB_IMPORT_ERROR = exc
 
 
 class BarrierMeasuresPDF:
+    def _normalize_disease(self, disease):
+        import re
+        import unicodedata
+
+        text = unicodedata.normalize("NFKD", str(disease or "")).encode("ascii", "ignore").decode("ascii")
+        return re.sub(r"\s+", " ", text).strip().lower()
+
+    def _disease_profile(self, disease):
+        normalized = self._normalize_disease(disease)
+        profiles = [
+            {
+                "match": ["cholera", "diarr sanglante", "diarrhee dhy m5"],
+                "focus": "Priorite eau, hygiene, assainissement et rehydratation precoce.",
+                "advice": "Renforcez l'eau traitee, la chloration, l'hygiene des mains et la reference rapide des cas deshydrates.",
+                "measures": [
+                    "Securiser l'eau de boisson et la chloration des points d'eau exposes.",
+                    "Mettre en place un circuit de rehydratation orale et de reference des cas graves.",
+                    "Desinfecter les surfaces, latrines et zones souillees avec une solution adaptee.",
+                    "Sensibiliser sur le lavage des mains, l'eau traitee et l'alimentation sure.",
+                ],
+                "actions": [
+                    ("0-6 h", "Verifier les points d'eau, latrines et stocks de SRO/chlore."),
+                    ("6-24 h", "Rechercher activement les cas autour des foyers et sources d'eau exposees."),
+                    ("24-48 h", "Documenter les besoins WASH et la capacite locale de prise en charge."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Verifier eau, latrines et chlore", "Immediat", "WASH / Zone"],
+                    ["Assurer SRO et triage", "Meme jour", "Structure de sante"],
+                    ["Sensibiliser les menages exposes", "Sous 24 heures", "Relais communautaires"],
+                    ["Suivre les foyers hydriques", "Continu", "Surveillance / WASH"],
+                ],
+            },
+            {
+                "match": ["paludisme conf", "paludisme susp"],
+                "focus": "Priorite diagnostic rapide, traitement precoce et lutte antivectorielle.",
+                "advice": "Associez TDR, antipaludiques, moustiquaires impregnees et elimination des gites larvaires.",
+                "measures": [
+                    "Verifier la disponibilite des TDR et des antipaludiques de premiere ligne.",
+                    "Distribuer et promouvoir l'utilisation correcte des moustiquaires impregnees.",
+                    "Assainir les eaux stagnantes et renforcer la lutte antivectorielle autour des foyers.",
+                    "Referer rapidement les formes graves et surveiller les groupes a risque.",
+                ],
+                "actions": [
+                    ("0-12 h", "Verifier stocks de TDR/ACT et zones avec hausse inhabituelle des fievres."),
+                    ("12-24 h", "Renforcer les messages sur moustiquaires et recours precoce aux soins."),
+                    ("24-48 h", "Cibler les aires de sante avec foyers repetes pour des actions antivectorielles."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Verifier TDR et ACT", "Immediat", "Pharmacie / Zone"],
+                    ["Identifier gites larvaires", "Meme jour", "Zone / Communaute"],
+                    ["Renforcer moustiquaires", "Sous 24 heures", "Relais communautaires"],
+                    ["Suivre les cas graves", "Continu", "Clinique / Reference"],
+                ],
+            },
+            {
+                "match": ["ira", "pneumonie", "grippe", "covid 19", "covid-19", "coqueluche", "diphterie"],
+                "focus": "Priorite triage respiratoire, aeration et reduction des contacts rapproches.",
+                "advice": "Le controle repose sur le triage, l'aeration, l'hygiene respiratoire et l'orientation rapide des formes graves.",
+                "measures": [
+                    "Mettre en place un triage respiratoire a l'arrivee et separer les patients symptomatiques.",
+                    "Renforcer l'aeration, l'etiquette respiratoire et le port de protection selon le risque.",
+                    "Verifier la disponibilite des intrants cliniques critiques et des EPI.",
+                    "Orienter rapidement les detresses respiratoires vers la reference.",
+                ],
+                "actions": [
+                    ("0-6 h", "Verifier triage, aeration et capacite d'orientation des cas graves."),
+                    ("6-24 h", "Sensibiliser la communaute aux signes respiratoires prioritaires."),
+                    ("24-48 h", "Suivre la pression sur les consultations et les intrants critiques."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Activer circuit respiratoire", "Immediat", "Structure de sante"],
+                    ["Verifier EPI et intrants", "Meme jour", "Logistique / Clinique"],
+                    ["Renforcer aeration et etiquette", "Sous 24 heures", "Equipes terrain"],
+                    ["Suivre formes graves", "Continu", "Clinique / Zone"],
+                ],
+            },
+            # --- Rougeole / PFA -------------------------------------------------
+            {
+                "match": ["rougeole", "pfa"],
+                "focus": "Priorite verification vaccinale, confirmation rapide et mobilisation du programme PEV pour riposte ou enquete poliovirus.",
+                "advice": "La riposte rougeole/PFA repose sur la confirmation, la couverture vaccinale et la coordination PEV. Tout cas AFP exige une investigation poliovirus.",
+                "measures": [
+                    "Verifier et documenter le statut vaccinal des cas et de leurs contacts proches.",
+                    "Notifier immediatement les cas suspects au programme PEV et a la surveillance epidemiologique.",
+                    "Organiser l'isolement respiratoire des cas rougeole et la recherche active des contacts non vaccines.",
+                    "Activer une campagne de vaccination de rattrapage dans les zones de faible couverture.",
+                ],
+                "actions": [
+                    ("0-12 h", "Confirmer le signal, evaluer la couverture vaccinale et les zones exposees."),
+                    ("12-24 h", "Cartographier les poches a risque et notifier le programme PEV."),
+                    ("24-48 h", "Coordonner la riposte vaccinale et investiguer les contacts non vaccines."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Confirmer et notifier PEV", "Immediat", "Surveillance / PEV"],
+                    ["Verifier la couverture vaccinale", "Meme jour", "PEV / Zone"],
+                    ["Isoler cas rougeole / enquete AFP", "Sous 12 heures", "Clinique / Epidemio"],
+                    ["Planifier la riposte vaccinale", "Sous 48 heures", "PEV / Province"],
+                    ["Suivre l'evolution du foyer", "Continu", "District / Province"],
+                ],
+            },
+            # --- Tetanos neonatal / maternel ------------------------------------
+            {
+                "match": ["tnn", "tetanos materne"],
+                "focus": "Priorite vaccination antitetanique (VAT) des femmes enceintes, accouchements propres et soins du cordon.",
+                "advice": "La prevention du tetanos neonatal repose sur la vaccination VAT, les pratiques hygieniques d'accouchement et les soins propres du cordon ombilical.",
+                "measures": [
+                    "Verifier et renforcer la couverture en vaccin antitetanique (VAT) des femmes enceintes de la zone concernee.",
+                    "Superviser et former les accoucheuses aux pratiques propres d'accouchement et de soins du cordon.",
+                    "Sensibiliser les communautes sur le VAT antenatal, l'accouchement assiste et les soins neonataux.",
+                    "Rechercher activement les cas dans les zones eloignees des structures de sante.",
+                ],
+                "actions": [
+                    ("0-12 h", "Confirmer le cas, evaluer la couverture VAT locale et les pratiques d'accouchement."),
+                    ("12-48 h", "Identifier les zones de faible couverture VAT et les accoucheuses non formees."),
+                    ("48 h-1 sem", "Planifier une session de vaccination de rattrapage et renforcer la supervision."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Confirmer le cas et evaluer couverture VAT", "Immediat", "PEV / Zone"],
+                    ["Cartographier la couverture VAT", "Sous 24 heures", "PEV / District"],
+                    ["Superviser les accoucheuses", "Sous 48 heures", "Zone / District"],
+                    ["Campagne de rattrapage VAT", "Sous 1 semaine", "PEV / Province"],
+                    ["Surveiller les indicateurs neonataux", "Continu", "District / Province"],
+                ],
+            },
+            # --- MAPI (manifestations post-vaccination) -------------------------
+            {
+                "match": ["mapi legeres", "mapi graves"],
+                "focus": "Priorite pharmacovigilance, identification du lot incrimine, notification PEV et prise en charge clinique.",
+                "advice": "Tout MAPI grave exige une notification immediate au programme PEV. Suspendre le lot implique en attendant les resultats de l'investigation.",
+                "measures": [
+                    "Notifier immediatement tout MAPI grave au programme national PEV et a l'autorite sanitaire.",
+                    "Identifier et documenter les informations du lot de vaccin incrimine (numero, fabricant, date d'expiration).",
+                    "Suspendre provisoirement l'utilisation du lot concerne dans toute la zone en attendant l'enquete.",
+                    "Assurer la prise en charge clinique appropriee de la personne affectee selon les protocoles en vigueur.",
+                ],
+                "actions": [
+                    ("0-6 h", "Notifier le PEV, documenter le lot et prendre en charge cliniquement le patient."),
+                    ("6-24 h", "Rechercher d'autres cas lies au meme lot ou site; suspendre le lot provisoirement."),
+                    ("24-72 h", "Coordonner avec le niveau national pour l'enquete et la decision definitive sur le lot."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Notifier PEV et documenter le lot", "Immediat", "Structure / PEV"],
+                    ["Suspendre le lot provisoirement", "Meme jour", "PEV / District"],
+                    ["Prise en charge clinique du patient", "Meme jour", "Structure de sante"],
+                    ["Investigation lot et site de vaccination", "Sous 48 heures", "PEV / Pharmacovigilance"],
+                    ["Rapport au niveau national / OMS", "Sous 72 heures", "Ministere / PEV"],
+                ],
+            },
+            # --- Meningite -------------------------------------------------------
+            {
+                "match": ["meningite"],
+                "focus": "Priorite prise en charge rapide, suivi des contacts et verification des besoins de prophylaxie.",
+                "advice": "Le retard de prise en charge augmente le risque de deces et de sequelles neurologiques.",
+                "measures": [
+                    "Identifier rapidement les signes neurologiques d'alerte et referer les cas severes.",
+                    "Renforcer les precautions respiratoires rapprochees et limiter la promiscuité.",
+                    "Verifier la disponibilite des antibiotiques et kits de prise en charge.",
+                    "Suivre les contacts proches selon le protocole local.",
+                ],
+                "actions": [
+                    ("0-6 h", "Verifier triage, antibiotherapie initiale et capacite de reference."),
+                    ("6-24 h", "Lister les contacts proches et les besoins en prophylaxie."),
+                    ("24-48 h", "Suivre l'evolution du foyer et preparer l'escalade si necessaire."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Referer les cas severes", "Immediat", "Clinique / Zone"],
+                    ["Verifier antibiotiques", "Meme jour", "Logistique / Structure"],
+                    ["Documenter contacts proches", "Sous 24 heures", "Surveillance"],
+                    ["Suivre l'evolution du foyer", "Continu", "District / Province"],
+                ],
+            },
+            # --- Fievre typhoide -------------------------------------------------
+            {
+                "match": ["fievre typhoide"],
+                "focus": "Priorite eau potable, hygiene alimentaire et recherche des sources communes.",
+                "advice": "La riposte doit proteger les menages exposes et verifier rapidement les sources d'eau ou d'aliments communes.",
+                "measures": [
+                    "Promouvoir l'eau traitee, le lavage des mains et les aliments bien cuits.",
+                    "Identifier les sources communes de contamination potentielle.",
+                    "Verifier la disponibilite des traitements et la reference des formes compliquees.",
+                    "Suivre les syndromes febriles digestifs dans la zone concernee.",
+                ],
+                "actions": [
+                    ("0-12 h", "Verifier les foyers relies a une meme source et l'acces a l'eau traitee."),
+                    ("12-24 h", "Sensibiliser sur l'hygiene alimentaire et l'eau sure."),
+                    ("24-48 h", "Suivre les menages exposes et les signes de complication."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Identifier la source commune", "Immediat", "Surveillance / WASH"],
+                    ["Promouvoir eau sure et hygiene", "Meme jour", "Communaute"],
+                    ["Verifier traitements", "Sous 24 heures", "Clinique / Pharmacie"],
+                    ["Suivre complications", "Continu", "Zone / District"],
+                ],
+            },
+            # --- Monkeypox (Mpox) ------------------------------------------------
+            {
+                "match": ["monkeypox"],
+                "focus": "Priorite isolement contact, tracage des contacts sur 21 jours, protection des soignants et lutte contre la zoonose.",
+                "advice": "Le Mpox se transmet par contact rapproche avec les lesions ou les secretions. L'isolement precoce et le tracage des contacts sur 21 jours sont essentiels.",
+                "measures": [
+                    "Isoler immediatement les cas suspects dans une chambre individuelle avec precautions de contact.",
+                    "Tracer et surveiller tous les contacts rapproches des 21 derniers jours avec suivi quotidien des symptomes.",
+                    "Equiper les soignants d'EPI complet (masque FFP2, gants doubles, blouse, lunettes) pour tout soin.",
+                    "Sensibiliser la communaute a eviter tout contact avec des animaux sauvages malades et les eruptions cutanees.",
+                ],
+                "actions": [
+                    ("0-6 h", "Isoler le cas, notifier la coordination provinciale et activer le tracage des contacts."),
+                    ("6-24 h", "Lister les contacts (21j) et verifier la disponibilite des EPI dans les structures."),
+                    ("24-72 h", "Surveiller les contacts; coordonner avec le niveau national et l'OMS."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Isoler le cas et notifier", "Immediat", "Clinique / Zone"],
+                    ["Equiper les soignants en EPI", "Meme jour", "Logistique / Clinique"],
+                    ["Tracer les contacts (21 jours)", "Sous 12 heures", "Surveillance / Epidemio"],
+                    ["Sensibiliser la communaute (zoonose)", "Sous 24 heures", "Relais communautaires"],
+                    ["Rapport de situation quotidien", "Quotidien", "Province / OMS"],
+                ],
+            },
+            # --- Chikungunya -----------------------------------------------------
+            {
+                "match": ["chikungunya"],
+                "focus": "Priorite lutte vectorielle contre le moustique Aedes, protection individuelle et prise en charge symptomatique.",
+                "advice": "Le chikungunya est transmis par les moustiques Aedes aegypti et albopictus. La suppression des gites larvaires et la protection individuelle sont centrales.",
+                "measures": [
+                    "Eliminer systematiquement les gites larvaires d'Aedes (eaux stagnantes, contenants, pneumatiques usages).",
+                    "Promouvoir l'utilisation de moustiquaires impregnees, repulsifs cutanes et vetements couvrants.",
+                    "Assurer la prise en charge symptomatique des cas (analgesiques, antipyretiques, hydratation).",
+                    "Eviter l'aspirine et les AINS en presence de syndrome hemorragique ou de doute diagnostique.",
+                ],
+                "actions": [
+                    ("0-12 h", "Confirmer le signal, identifier les zones de gites larvaires et les concentrations de cas."),
+                    ("12-24 h", "Organiser une campagne d'elimination des gites et de protection vectorielle."),
+                    ("24-48 h", "Suivre la tendance des cas et assurer l'acces aux traitements symptomatiques."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Confirmer et cartographier les cas", "Immediat", "Surveillance / Epidemio"],
+                    ["Eliminer les gites larvaires", "Meme jour", "WASH / Communaute"],
+                    ["Distribuer repulsifs et moustiquaires", "Sous 24 heures", "Zone / Logistique"],
+                    ["Prise en charge symptomatique", "Continue", "Structures de sante"],
+                    ["Suivre la tendance des cas", "Hebdomadaire", "District / Province"],
+                ],
+            },
+            # --- Rage ------------------------------------------------------------
+            {
+                "match": ["rage"],
+                "focus": "Priorite prophylaxie post-exposition (PEP) immediate, lavage de la plaie et neutralisation de l'animal mordeur.",
+                "advice": "La rage est mortelle sans PEP. Toute morsure par un animal suspect doit etre traitee en urgence absolue. Le delai est critique.",
+                "measures": [
+                    "Initier immediatement le protocole de prophylaxie post-exposition (PEP) chez toute personne mordue par un animal suspect.",
+                    "Nettoyer la plaie abondamment a l'eau courante et au savon pendant 15 minutes minimum, puis desinfecter.",
+                    "Rechercher, capturer ou faire abattre l'animal mordeur pour observation veterinaire ou analyse.",
+                    "Sensibiliser la population sur les risques de morsure animale et la conduite a tenir en urgence.",
+                ],
+                "actions": [
+                    ("0-6 h", "Evaluer la plaie, initier le lavage et orienter vers la structure PEP la plus proche."),
+                    ("6-24 h", "Administrer la premiere dose de vaccin antirabique (J0) et verifier les doses suivantes."),
+                    ("24-72 h", "Suivre le patient, investiguer l'animal et evaluer les autres personnes exposees."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Laver la plaie 15 min et desinfecter", "Immediat", "Patient / Structure"],
+                    ["Initier la PEP - vaccin antirabique J0", "Sous 6 heures", "Structure de sante"],
+                    ["Evaluer et neutraliser l'animal", "Meme jour", "Zone / Veterinaire"],
+                    ["Sensibiliser la communaute", "Sous 24 heures", "Relais / Zone"],
+                    ["Suivre le calendrier PEP (J0/J3/J7/J14)", "Calendrier complet", "Clinique / District"],
+                ],
+            },
+            # --- Deces maternels -------------------------------------------------
+            {
+                "match": ["deces maternels"],
+                "focus": "Priorite audit immediat, renforcement des soins obstetricaux d'urgence (SOUB/SOUC) et analyse des causes evitables.",
+                "advice": "Chaque deces maternel evitable exige un audit. La majorite est liee aux hemorragies, infections, eclampsie et retards de reference.",
+                "measures": [
+                    "Conduire un audit de deces maternel dans les 24 heures pour identifier les causes evitables et facteurs de retard.",
+                    "Verifier la disponibilite et la fonctionnalite des soins obstetricaux d'urgence de base et complets (SOUB/SOUC).",
+                    "Renforcer la chaine de reference obstetricale et la disponibilite du transport d'urgence.",
+                    "Sensibiliser les communautes sur les signaux d'alerte de la grossesse et l'importance de l'accouchement assiste.",
+                ],
+                "actions": [
+                    ("0-24 h", "Declarer le deces, conduire l'audit et identifier les mesures correctives immediates."),
+                    ("24-72 h", "Cartographier les causes avec les equipes terrain et evaluer les SOUB/SOUC locaux."),
+                    ("72 h-1 sem", "Partager les recommandations avec les structures et la coordination provinciale."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Declarer et investiguer le deces", "Immediat", "Structure / Zone"],
+                    ["Audit de deces maternel", "Sous 24 heures", "Equipe soins / District"],
+                    ["Verifier SOUB et SOUC", "Meme jour", "Zone / Coordination"],
+                    ["Renforcer la reference obstetricale", "Sous 48 heures", "Zone / Province"],
+                    ["Rapport de riposte et recommandations", "Sous 1 semaine", "Province / Ministere"],
+                ],
+            },
+            # --- Maladies RSI / zero-tolerance (Fievre jaune, FHA, Peste, Dracunculose) ---
+            {
+                "match": ["fievre jaune", "fha", "peste", "dracunculose"],
+                "focus": "Priorite notification immédiate au titre du RSI, isolement strict et mesures de containment specialisees.",
+                "advice": "Ces maladies a notification obligatoire internationale demandent une reponse sans delai, un isolement strict et une coordination avec l'OMS.",
+                "measures": [
+                    "Notifier immediatement la chaine de commandement nationale et internationale (RSI) dans les 24 heures.",
+                    "Appliquer l'isolement strict des cas et les precautions de contact, gouttelettes ou airborne selon la maladie.",
+                    "Securiser les EPI de niveau maximum pour tout le personnel soignant et les equipes d'investigation.",
+                    "Activer le plan de riposte specifique et coordonner avec les equipes provinciales, nationales et l'OMS.",
+                ],
+                "actions": [
+                    ("0-6 h", "Confirmer le signal, notifier la hierarchie et proteger immediatement les personnes exposees."),
+                    ("6-24 h", "Lister les expositions, activer le plan RSI et coordonner la riposte specialisee."),
+                    ("24-48 h", "Securiser le suivi des contacts et preparer la communication officielle de crise."),
+                ],
+                "checklist": [
+                    ["Action", "Delai attendu", "Responsable cible"],
+                    ["Notifier la hierarchie et le RSI", "Immediat (0-24h)", "Zone / Ministere / OMS"],
+                    ["Isoler le cas et proteger les exposes", "Meme jour", "Clinique / Zone"],
+                    ["Securiser les EPI niveau maximum", "Sous 6 heures", "Logistique / Coordination"],
+                    ["Activer le plan de riposte RSI", "Sous 12 heures", "Province / Ministere"],
+                    ["Suivi des contacts et communication", "Continu", "Surveillance / OMS"],
+                ],
+            },
+        ]
+
+        for profile in profiles:
+            if any(token in normalized for token in profile["match"]):
+                return profile
+
+        return {
+            "focus": "Priorite prevention, surveillance rapprochee et coordination rapide autour du signal sanitaire.",
+            "advice": "Adaptez ces mesures au mode de transmission suspecte, a la severite du signal et aux consignes officielles en vigueur.",
+            "measures": [
+                "Renforcer le signalement precoce des cas suspects et la verification quotidienne des donnees terrain.",
+                "Appliquer strictement l'hygiene des mains et les precautions standards.",
+                "Verifier les intrants essentiels et la capacite de reference locale.",
+                "Informer rapidement la communaute des signes d'alerte et des conduites a tenir.",
+            ],
+            "actions": [
+                ("0-12 h", "Confirmer le signal et verifier la capacite locale de reponse."),
+                ("12-24 h", "Mettre a jour les consignes de prevention et l'information communautaire."),
+                ("24-48 h", "Documenter les besoins et suivre l'evolution du signal."),
+            ],
+            "checklist": [
+                ["Action", "Delai attendu", "Responsable cible"],
+                ["Confirmer le signal", "Immediat", "Surveillance / Zone"],
+                ["Verifier intrants et reference", "Meme jour", "Logistique / Clinique"],
+                ["Informer la communaute", "Sous 24 heures", "Relais communautaires"],
+                ["Suivre l'evolution des cas", "Continu", "District / Province"],
+            ],
+        }
+
     def _decorate_page(self, canvas, doc):
         canvas.saveState()
         page_width, _ = A4
@@ -28,7 +407,9 @@ class BarrierMeasuresPDF:
         canvas.drawRightString(page_width - doc.rightMargin, footer_y, f"Page {canvas.getPageNumber()}")
         canvas.restoreState()
 
-    def _sinusoidal_band(self, width=18.2*cm, height=1.0*cm):
+    def _sinusoidal_band(self, width=None, height=None):
+        width = width if width is not None else 18.2 * cm
+        height = height if height is not None else 1.0 * cm
         from reportlab.graphics.shapes import Path
         drawing = Drawing(width, height)
         drawing.add(Rect(0, 0, width, height, fillColor=colors.HexColor("#0b4d95"), strokeColor=colors.HexColor("#0b4d95")))
@@ -53,7 +434,8 @@ class BarrierMeasuresPDF:
             drawing.add(path)
         return drawing
 
-    def _build_logo(self, size=2.2 * cm):
+    def _build_logo(self, size=None):
+        size = size if size is not None else 2.2 * cm
         from reportlab.graphics.shapes import Path
 
         drawing = Drawing(size, size)
@@ -219,7 +601,8 @@ class BarrierMeasuresPDF:
             return "Acceptable"
         return "Faible"
 
-    def _recommended_measures(self, alert_level):
+    def _recommended_measures(self, disease, alert_level):
+        profile = self._disease_profile(disease)
         common = [
             "Laver frequemment les mains a l'eau et au savon ou avec une solution hydroalcoolique.",
             "Renforcer la sensibilisation communautaire et le signalement precoce des cas suspects.",
@@ -242,9 +625,10 @@ class BarrierMeasuresPDF:
                 "Renforcer les messages de prevention dans la communaute et les structures de premiere ligne.",
             ],
         }
-        return specific.get((alert_level or "").upper(), ["Maintenir une veille rapprochee et confirmer les prochains points de donnees."]) + common
+        return profile["measures"] + specific.get((alert_level or "").upper(), ["Maintenir une veille rapprochee et confirmer les prochains points de donnees."]) + common
 
-    def _priority_actions(self, alert_level):
+    def _priority_actions(self, disease, alert_level):
+        profile = self._disease_profile(disease)
         actions = {
             "CRITIQUE": [
                 ("0-6 h", "Confirmer le signal, activer la chaine d'alerte et notifier la coordination provinciale."),
@@ -266,9 +650,9 @@ class BarrierMeasuresPDF:
             ("24 h", "Maintenir la surveillance de routine et confirmer les prochains signaux utiles."),
             ("48 h", "Verifier la qualite de la remontee d'information."),
             ("72 h", "Mettre a jour la synthese et les consignes si necessaire."),
-        ])
+        ]) + profile["actions"]
 
-    def _measure_rows(self, alert_level, body_style):
+    def _measure_rows(self, disease, alert_level, body_style):
         objectives = [
             "Limiter la transmission et proteger les cas suspects.",
             "Mieux detecter et documenter les nouveaux signaux.",
@@ -277,7 +661,7 @@ class BarrierMeasuresPDF:
             "Assurer une coordination et un reporting reguliers.",
         ]
         rows = [["Priorite", "Mesure barriere", "Objectif"]]
-        for index, measure in enumerate(self._recommended_measures(alert_level), start=1):
+        for index, measure in enumerate(self._recommended_measures(disease, alert_level), start=1):
             priority = "Immediate" if index <= 3 else ("Renforcee" if index <= 5 else "Suivi")
             objective = objectives[min(index - 1, len(objectives) - 1)]
             rows.append([
@@ -287,8 +671,18 @@ class BarrierMeasuresPDF:
             ])
         return rows
 
-    def _flyer_action_grid(self, alert_level, body_style):
-        measures = self._recommended_measures(alert_level)
+    def _paragraph_cells(self, row, style, header=False):
+        cells = []
+        for value in row:
+            text = str(value or "")
+            if header:
+                cells.append(Paragraph(f"<b>{text}</b>", style))
+            else:
+                cells.append(Paragraph(text, style))
+        return cells
+
+    def _flyer_action_grid(self, disease, alert_level, body_style):
+        measures = self._recommended_measures(disease, alert_level)
         blocks = [
             ("01 | PROTEGER", measures[0] if len(measures) > 0 else "Proteger les personnes exposees et les cas suspects."),
             ("02 | SIGNALER", measures[1] if len(measures) > 1 else "Signaler rapidement tout nouveau cas suspect aux equipes competentes."),
@@ -322,7 +716,10 @@ class BarrierMeasuresPDF:
         return grid
 
     def generate_alert_pdf(self, disease, province, zone_sante, current_cases, predicted_cases, growth_rate, alert_level, r2_score):
+        if not REPORTLAB_AVAILABLE:
+            raise RuntimeError("Le moteur PDF ReportLab n'est pas disponible dans cet environnement.") from REPORTLAB_IMPORT_ERROR
         palette = self._severity_palette(alert_level)
+        profile = self._disease_profile(disease)
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1.6 * cm, bottomMargin=1.6 * cm, leftMargin=1.7 * cm, rightMargin=1.7 * cm)
         styles = getSampleStyleSheet()
@@ -332,6 +729,9 @@ class BarrierMeasuresPDF:
         subtitle_style = ParagraphStyle("PdfSubtitle", parent=styles["Normal"], fontSize=9.8, leading=13, textColor=colors.HexColor("#5e7691"), alignment=TA_LEFT, spaceAfter=6)
         section_style = ParagraphStyle("PdfSection", parent=styles["Heading3"], fontSize=12.5, leading=16, textColor=colors.HexColor("#123e6b"), spaceAfter=8)
         body_style = ParagraphStyle("PdfBody", parent=styles["Normal"], fontSize=9.5, leading=14, textColor=colors.HexColor("#41576f"), alignment=TA_LEFT)
+        table_body_style = ParagraphStyle("PdfTableBody", parent=body_style, fontSize=8.9, leading=12.2, wordWrap="CJK")
+        table_header_style = ParagraphStyle("PdfTableHeader", parent=body_style, fontSize=8.5, leading=11, textColor=colors.white, alignment=TA_LEFT, wordWrap="CJK")
+        compact_style = ParagraphStyle("PdfCompact", parent=body_style, fontSize=8.5, leading=11.5, wordWrap="CJK")
         footer_style = ParagraphStyle("PdfFooter", parent=styles["Normal"], fontSize=7.8, leading=11, textColor=colors.HexColor("#7a8ca0"), alignment=TA_CENTER)
         badge_style = ParagraphStyle("Badge", parent=styles["Heading2"], alignment=TA_CENTER, textColor=colors.white, fontSize=14, leading=17)
         kicker_style = ParagraphStyle("Kicker", parent=body_style, fontSize=8.5, leading=10, textColor=colors.HexColor("#0a5fab"))
@@ -385,7 +785,8 @@ class BarrierMeasuresPDF:
         story.append(Paragraph("Resume executif", section_style))
         executive_copy = (
             f"SAFE CONGO signale une situation de niveau <b>{display_level}</b> pour <b>{disease}</b> dans la zone de sante de <b>{zone_sante}</b>, province de <b>{province}</b>. "
-            f"Cette fiche fournit des mesures barrieres simples, des priorites de coordination et une checklist terrain pour soutenir la riposte locale. "
+            f"Cette fiche fournit des mesures barrieres specifiees pour cette maladie, des priorites de coordination et une checklist terrain pour soutenir la riposte locale. "
+            f"<br/><br/><b>Focus sanitaire :</b> {profile['focus']} "
             f"Le volume observe actuellement est de <b>{current_cases:,}</b> cas et doit etre confirme par la surveillance sanitaire officielle."
         )
         story.append(Paragraph(executive_copy, body_style))
@@ -407,11 +808,11 @@ class BarrierMeasuresPDF:
         story.append(Spacer(1, 12))
 
         story.append(Paragraph("Consignes rapides", section_style))
-        story.append(self._flyer_action_grid(display_level, body_style))
+        story.append(self._flyer_action_grid(disease, display_level, body_style))
         story.append(Spacer(1, 14))
 
         priority_lines = "<br/>".join(
-            [f"<b>{slot}</b> - {action}" for slot, action in self._priority_actions(display_level)]
+            [f"<b>{slot}</b> - {action}" for slot, action in self._priority_actions(disease, display_level)]
         )
         essential_table = Table(
             [[Paragraph(f"<b>Priorites de coordination</b><br/>{priority_lines}", body_style)]],
@@ -428,8 +829,10 @@ class BarrierMeasuresPDF:
         story.append(essential_table)
         story.append(Spacer(1, 12))
 
-        story.append(Paragraph("Mesures barrieres detaillees", section_style))
-        measures_table = Table(self._measure_rows(display_level, body_style), colWidths=[2.6 * cm, 8.4 * cm, 5.8 * cm], repeatRows=1)
+        story.append(Paragraph(f"Mesures barrieres detaillees - {disease}", section_style))
+        measures_rows = self._measure_rows(disease, display_level, table_body_style)
+        measures_rows[0] = self._paragraph_cells(measures_rows[0], table_header_style, header=False)
+        measures_table = Table(measures_rows, colWidths=[2.4 * cm, 8.8 * cm, 5.6 * cm], repeatRows=1)
         measures_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), palette["accent"]),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -438,21 +841,19 @@ class BarrierMeasuresPDF:
             ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#e4edf7")),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, palette["soft"]]),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
             ("TOPPADDING", (0, 0), (-1, -1), 7),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
         ]))
         story.append(measures_table)
         story.append(Spacer(1, 14))
 
-        story.append(Paragraph("Checklist operationnelle", section_style))
-        checklist = [
-            ["Action", "Delai attendu", "Responsable cible"],
-            ["Notifier l'autorite hierarchique et les equipes de terrain", "Immediat", "Zone / Province"],
-            ["Verifier la qualite des donnees de la zone concernee", "Meme jour", "Surveillance epidemiologique"],
-            ["Evaluer les besoins en intrants et personnel", "Sous 24 heures", "Coordination logistique"],
-            ["Mettre a jour le suivi communautaire et les mesures de prevention", "Continu", "Equipes terrain"],
-        ]
-        checklist_table = Table(checklist, colWidths=[9.8 * cm, 3.2 * cm, 3.8 * cm])
+        story.append(Paragraph(f"Checklist operationnelle - {disease}", section_style))
+        checklist = profile["checklist"]
+        checklist_rows = [self._paragraph_cells(checklist[0], table_header_style)]
+        checklist_rows.extend(self._paragraph_cells(row, compact_style) for row in checklist[1:])
+        checklist_table = Table(checklist_rows, colWidths=[8.6 * cm, 3.6 * cm, 4.6 * cm], repeatRows=1)
         checklist_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f3f73")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -460,6 +861,9 @@ class BarrierMeasuresPDF:
             ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#d9e6f2")),
             ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#e4edf7")),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f7fbff")]),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
             ("TOPPADDING", (0, 0), (-1, -1), 7),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
         ]))
@@ -467,7 +871,7 @@ class BarrierMeasuresPDF:
         story.append(Spacer(1, 14))
 
         advice_box = Table(
-            [[Paragraph("<b>Conseil SAFE CONGO</b><br/>Adaptez ces mesures a la maladie signalee, au contexte local et aux consignes officielles en vigueur. Cette fiche soutient la coordination terrain et la prevention immediate.", body_style)]],
+            [[Paragraph(f"<b>Conseil SAFE CONGO</b><br/>{profile['advice']} Cette fiche soutient la coordination terrain et la prevention immediate.", body_style)]],
             colWidths=[16.8 * cm],
         )
         advice_box.setStyle(TableStyle([

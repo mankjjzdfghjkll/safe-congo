@@ -56,3 +56,36 @@ data/raw/drc-2022_sem40.xlsx
 models/best_model.pkl
 models/evaluation/*.csv
 models/evaluation/*.png
+
+# Runtime databases
+database/*.db
+
+# Local analytics / exploratory files
+eda_check.py
+inspect_*.py
+inspect_data.py
+_check*.py
+
+# Temporary or academic working folders
+TP machine learning/
+'
+
+# Raw and processed local data
+data/raw/
+data/processed/*.csv
+
+# Runtime logs and exported analysis
+logs/
+
+# Local trained models and evaluation artifacts
+models/trained/*.pkl
+models/evaluation/
+
+# Non-core scripts for exploration or presentation
+scripts/check_province_zones.py
+scripts/create_director_presentation.py
+scripts/gen_director_ppt_clean.py
+scripts/gen_director_ppt_min.py
+scripts/run_director_ppt.cmd
+scripts/run_eda.py
+scripts/run_eda_clean.py

@@ -6,7 +6,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.public_ui import apply_public_theme, get_public_database_metrics, render_public_hero, render_public_steps
+from utils.public_ui import apply_public_theme, get_public_reference_metrics, render_public_hero, render_public_steps
 from utils.sidebar_brand import render_public_sidebar
 
 
@@ -27,7 +27,7 @@ steps = [
 apply_public_theme()
 render_public_sidebar(**SIDEBAR_KWARGS)
 
-database_metrics = get_public_database_metrics()
+reference_metrics = get_public_reference_metrics()
 
 render_public_hero(
     "Mecanique intelligente",
@@ -35,8 +35,8 @@ render_public_hero(
     "SAFE CONGO fonctionne comme une salle de pilotage silencieuse: il capte, ordonne, analyse et restitue. L'objectif est simple: donner a chaque acteur sanitaire une lecture plus nette, plus rapide et plus exploitable.",
     [
         (str(len(steps)), "etapes structurees"),
-        (str(database_metrics.get("alerts_total", 0)), "alertes diffusees"),
-        (str(database_metrics.get("prediction_runs_total", 0)), "previsions tracees"),
+    (str(reference_metrics.get("diseases", 0)), "maladies suivies"),
+    (str(reference_metrics.get("zones", 0)), "zones observees"),
     ],
     tone="flow",
 )

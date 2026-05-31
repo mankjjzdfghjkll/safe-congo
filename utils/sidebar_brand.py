@@ -109,6 +109,49 @@ PUBLIC_SIDEBAR_THEME = """
   box-shadow:0 0 0 3px rgba(26,162,226,.22),0 12px 28px rgba(10,95,171,.24)!important;
   transform:translateX(2px)!important;
 }
+[data-testid="stSidebar"] .public-sidebar-label{
+  margin:4px 0 10px 2px;
+  font-size:.7rem;
+  font-weight:800;
+  letter-spacing:1.9px;
+  text-transform:uppercase;
+  color:#5d86a8!important;
+}
+[data-testid="stSidebar"] .public-sidebar-active-card{
+  margin-top:6px;
+  padding:16px 16px 15px;
+  border-radius:18px;
+  background:linear-gradient(135deg,#083f73 0%,#0a5fab 52%,#1aa2e2 100%);
+  border:1px solid rgba(12,86,149,.45);
+  box-shadow:0 16px 36px rgba(10,95,171,.24);
+}
+[data-testid="stSidebar"] .public-sidebar-active-kicker{
+  display:inline-flex;
+  align-items:center;
+  padding:5px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.18);
+  color:rgba(255,255,255,.82)!important;
+  font-size:.64rem;
+  font-weight:800;
+  letter-spacing:1.4px;
+  text-transform:uppercase;
+}
+[data-testid="stSidebar"] .public-sidebar-active-title{
+  margin-top:11px;
+  color:#ffffff!important;
+  font-family:'Sora',sans-serif;
+  font-size:1rem;
+  font-weight:800;
+  line-height:1.3;
+}
+[data-testid="stSidebar"] .public-sidebar-active-copy{
+  margin-top:7px;
+  color:rgba(235,246,255,.9)!important;
+  font-size:.79rem;
+  line-height:1.55;
+}
 [data-testid="stSidebar"] .element-container:first-child{
   margin-top:1.2rem!important;
 }
@@ -185,27 +228,31 @@ def render_public_sidebar(active_page: Optional[str] = None, show_home_button: b
         st.markdown(PUBLIC_SIDEBAR_BRAND, unsafe_allow_html=True)
         st.markdown("---")
 
-        button_index = 1
         if show_home_button and st.button(
             "Retour vers l'accueil central",
             use_container_width=True,
             key="sidebar_back_home",
         ):
             switch_to_home_page()
-        if show_home_button:
-            button_index += 1
+    active_entry = next((item for item in PUBLIC_NAV_ITEMS if item[0] == active_page), None)
+    if active_entry is None:
+      active_entry = (None, None, "Espace public SAFE CONGO", "Un parcours editorial simplifie, sans suggestions encombrantes dans la sidebar.")
 
-        active_index = next(
-            (index for index, (slug, _, _, _) in enumerate(PUBLIC_NAV_ITEMS, start=button_index) if slug == active_page),
-            None,
-        )
-        if active_index is not None:
-            render_sidebar_active_button(active_index)
+    _, _, active_title, active_description = active_entry
+    st.markdown('<div class="public-sidebar-label">Page ouverte</div>', unsafe_allow_html=True)
+    st.markdown(
+      f'''
+<div class="public-sidebar-active-card">
+  <div class="public-sidebar-active-kicker">Navigation concentree</div>
+  <div class="public-sidebar-active-title">{active_title}</div>
+  <div class="public-sidebar-active-copy">{active_description}</div>
+</div>
+''',
+      unsafe_allow_html=True,
+    )
 
-        for slug, page_path, title, description in PUBLIC_NAV_ITEMS:
-            if st.button(title, use_container_width=True, key=f"public_sidebar_{slug}"):
-                st.switch_page(page_path)
-            st.markdown(
-                f'<div style="margin:-6px 0 10px 14px;font-size:.68rem;line-height:1.25;color:#7a9ab8">{description}</div>',
-                unsafe_allow_html=True,
-            )
+    st.markdown('<div class="public-sidebar-label" style="margin-top:16px">Parcours</div>', unsafe_allow_html=True)
+    st.markdown(
+      '<div style="margin:0 2px 0 2px;font-size:.78rem;line-height:1.55;color:#6e8baa">La page reste seule a l\'ecran. Revenez a l\'accueil pour changer de section.</div>',
+      unsafe_allow_html=True,
+    )

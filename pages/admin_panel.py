@@ -14,7 +14,6 @@ from utils.admin_ui import (
     make_plotly_layout,
     panel_title,
     recent_entries_frame,
-    render_admin_inbox_expander,
     render_admin_hero,
     render_admin_sidebar,
     render_kpi_cards,
@@ -151,12 +150,16 @@ def main() -> None:
         chips=["Commandement central", "Vue temps court", "Actions rapides"],
         eyebrow="Pilotage systeme",
         notification_count=admin_unread,
+        auth=auth,
+        user_id=user["id"],
+        inbox_key_prefix="admin_panel_inbox",
+        inbox_limit=8,
     )
 
     entries_df = recent_entries_frame(auth.db_path)
     alerts_df = alerts_frame(auth.db_path)
     users_df = users_frame(auth)
-    db_size_kb = Path(auth.db_path).stat().st_size / 1024 if Path(auth.db_path).exists() else 0
+    db_is_available = Path(auth.db_path).exists()
 
     prepared_alerts = prepare_periodic_alerts(alerts_df)
     active_users = int((users_df["is_active"] == 1).sum()) if not users_df.empty and "is_active" in users_df.columns else len(users_df)
@@ -166,9 +169,9 @@ def main() -> None:
         [
             {
                 "label": "Base systeme",
-                "value": f"{db_size_kb:,.0f} Ko",
-                "delta": "Empreinte locale",
-                "copy": "Lecture instantanee de la taille actuelle du socle SQLite utilise en exploitation.",
+                "value": "Active" if db_is_available else "A verifier",
+                "delta": "Stockage local",
+                "copy": "Etat general du socle de donnees utilise par la plateforme en exploitation.",
                 "accent": "#0a5fab",
                 "accent_soft": "#49acef",
                 "pill": "rgba(10,95,171,.12)",
@@ -200,26 +203,7 @@ def main() -> None:
                 "accent_soft": "#a78bfa",
                 "pill": "rgba(124,58,237,.12)",
             },
-            {
-                "label": "Notifications admin",
-                "value": f"{admin_unread}",
-                "delta": "Suivi diffusion",
-                "copy": "Les confirmations de diffusion et retours systeme restent a portee depuis le centre de pilotage.",
-                "accent": "#ce1126",
-                "accent_soft": "#f87171",
-                "pill": "rgba(206,17,38,.12)",
-            },
         ]
-    )
-
-    render_admin_inbox_expander(
-        auth,
-        user["id"],
-        key_prefix="admin_panel_inbox",
-        unread_count=admin_unread,
-        title="Messagerie admin",
-        intro="Les confirmations de diffusion et retours systeme restent accessibles ici sans quitter la salle de controle.",
-        limit=6,
     )
 
     st.markdown(
@@ -244,7 +228,7 @@ def main() -> None:
         panel_title("Connexions et disponibilite")
         logins_df = _recent_login_table(users_df)
         if logins_df.empty:
-            st.info("Aucune connexion recente disponible dans la base.")
+            st.markdown('<div class="admin-empty-state">Aucune connexion recente disponible dans la base.</div>', unsafe_allow_html=True)
         else:
             st.dataframe(logins_df.head(15), use_container_width=True, hide_index=True, height=340)
         st.markdown("</div>", unsafe_allow_html=True)
@@ -263,7 +247,7 @@ def main() -> None:
     st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
     panel_title("Dernieres alertes pour arbitrage")
     if alerts_df.empty:
-        st.info("Aucune alerte disponible dans la base.")
+        st.markdown('<div class="admin-empty-state">Aucune alerte disponible dans la base.</div>', unsafe_allow_html=True)
     else:
         view_df = prepared_alerts.copy().sort_values(["year", "week"], ascending=False) if {"year", "week"}.issubset(prepared_alerts.columns) else prepared_alerts.copy()
         if {"year", "week"}.issubset(view_df.columns):

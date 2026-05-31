@@ -1,3 +1,16 @@
+import re
+import sqlite3
+from pathlib import Path
+from typing import Iterable, List, Optional
+
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
+from utils.navigation import switch_to_home_page
+from utils.sidebar_brand import PUBLIC_SIDEBAR_BRAND, render_sidebar_active_button
+
+
 ADMIN_THEME = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
@@ -54,10 +67,67 @@ box-shadow:none!important;
 .admin-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .admin-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);font-size:.64rem;font-weight:800;letter-spacing:1.7px;text-transform:uppercase;color:#fff}
 .admin-eyebrow-dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#fff,#cce8ff)}
-.admin-hero-notif{display:inline-flex;align-items:center;gap:10px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#ffffff;box-shadow:0 10px 24px rgba(3,26,54,.14)}
-.admin-hero-notif svg{width:16px;height:16px;fill:#ffffff;flex:none}
-.admin-hero-notif-label{font-size:.68rem;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:rgba(255,255,255,.9)}
-.admin-hero-notif-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#ffffff;color:#0b4d95;font:800 .74rem Sora,sans-serif}
+.admin-hero-actions{display:flex;justify-content:flex-end;align-items:flex-start;height:100%}
+.admin-bell-wrap{display:grid;gap:8px;width:100%;max-width:320px;padding-top:4px;margin-left:auto}
+.admin-bell-panel{position:relative;overflow:hidden;border-radius:20px;padding:12px 12px 10px;background:linear-gradient(145deg,#d7f0ff 0%,#9fd8ff 52%,#dff6ff 100%);border:1px solid rgba(42,124,186,.38);box-shadow:0 18px 36px rgba(15,87,129,.18),inset 0 1px 0 rgba(255,255,255,.62)}
+.admin-bell-panel::before{content:'';position:absolute;inset:-12% -10% auto auto;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.38),transparent 66%)}
+.admin-bell-panel::after{content:'';position:absolute;inset:auto auto -30% -18%;width:90px;height:90px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.1),transparent 70%)}
+.admin-bell-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.admin-bell-icon-wrap{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,#0b4d95,#1677c8);border:1px solid rgba(11,77,149,.25);box-shadow:0 8px 16px rgba(11,77,149,.22);flex:none}
+.admin-bell-kicker{display:inline-flex;align-items:center;gap:8px;font-size:.62rem;font-weight:900;letter-spacing:1.35px;text-transform:uppercase;color:#111827}
+.admin-bell-count{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 9px;border-radius:999px;font:900 .76rem 'Sora',sans-serif;transition:all .3s ease}
+.admin-bell-count.has-unread{background:linear-gradient(135deg,#ff4d4d 0%,#f97316 100%);color:#fff;box-shadow:0 0 0 0 rgba(255,77,77,.55);animation:pulseRed 2.2s ease-in-out infinite}
+.admin-bell-count.no-unread{background:rgba(255,255,255,.96);color:#0f172a;box-shadow:0 4px 12px rgba(15,87,129,.12)}
+.admin-bell-divider{height:1px;background:linear-gradient(90deg,rgba(27,92,138,.28),rgba(27,92,138,.08));margin:0 0 7px}
+.admin-bell-note{position:relative;font-size:.72rem;line-height:1.45;color:#111827;margin-bottom:5px}
+.admin-bell-note strong{color:#020617;font-weight:900}
+.admin-bell-status-row{display:flex;align-items:center;gap:6px;font-size:.61rem;font-weight:700;letter-spacing:.35px;color:#1f2937;margin-bottom:8px}
+.admin-bell-status-dot{width:6px;height:6px;border-radius:50%;flex:none;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.22)}
+[data-testid="stPopover"],[data-testid="stPopover"]>div{width:100%}
+[data-testid="stPopover"] button[kind="secondary"],.admin-bell-wrap .stButton>button{position:relative;width:100%!important;background:linear-gradient(135deg,#0b4d95 0%,#1376c8 55%,#25a8e0 100%)!important;color:#ffffff!important;border:1px solid rgba(10,95,171,.28)!important;border-radius:16px!important;min-height:56px!important;padding:10px 14px!important;font-weight:900!important;font-size:.86rem!important;line-height:1.06!important;text-align:left!important;justify-content:flex-start!important;box-shadow:0 14px 26px rgba(15,87,129,.22),inset 0 1px 0 rgba(255,255,255,.18)!important;transition:all .22s cubic-bezier(.4,0,.2,1)!important;letter-spacing:.05px!important}
+[data-testid="stPopover"] button[kind="secondary"]::after,.admin-bell-wrap .stButton>button::after{content:'Centre de notifications';display:block;font-size:.6rem;font-weight:700;letter-spacing:.28px;color:rgba(255,255,255,.82);margin-top:4px}
+[data-testid="stPopover"] button[kind="secondary"]:hover,.admin-bell-wrap .stButton>button:hover{transform:translateY(-1px)!important;background:linear-gradient(135deg,#0d5aa7 0%,#1684d6 55%,#2fc0f3 100%)!important;box-shadow:0 18px 30px rgba(15,87,129,.24),inset 0 1px 0 rgba(255,255,255,.2)!important;color:#ffffff!important}
+[data-testid="stPopover"] button[kind="secondary"]:active,.admin-bell-wrap .stButton>button:active{transform:translateY(-1px)!important}
+.admin-bell-chip{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#ffffff;color:#0b4d95;font:800 .74rem Sora,sans-serif}
+.admin-inbox-shell{padding:2px 0 0}
+.admin-inbox-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:0 0 10px;border-bottom:1px solid #e4edf7;margin-bottom:12px}
+.admin-inbox-title{font-family:'Sora',sans-serif;font-size:.98rem;font-weight:800;color:#0f3f73;margin:0 0 4px}
+.admin-inbox-subtitle{font-size:.74rem;color:#718ea4;line-height:1.52;margin:0;max-width:280px}
+.admin-inbox-stats{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;gap:6px;flex-shrink:0}
+.admin-inbox-stat{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;font-size:.65rem;font-weight:800;letter-spacing:.35px;border:1px solid transparent}
+.admin-inbox-stat.total{background:#eef6ff;border-color:#d0e4f7;color:#0a5fab}
+.admin-inbox-stat.unread{background:#eefcf5;border-color:#c8f0e0;color:#047857}
+.admin-inbox-item{padding:12px 14px;border-radius:16px;border:1px solid rgba(180,208,232,.5);border-left-width:4px;border-left-color:#22c55e;background:linear-gradient(165deg,#ffffff 0%,#f9fbff 100%);box-shadow:0 6px 16px rgba(15,23,42,.05);transition:transform .18s ease,box-shadow .18s ease}
+.admin-inbox-item:hover{transform:translateX(3px);box-shadow:0 10px 22px rgba(15,23,42,.09)}
+.admin-inbox-item.niveau-critique{border-left-color:#ef4444}
+.admin-inbox-item.niveau-haute{border-left-color:#f97316}
+.admin-inbox-item.niveau-moderee{border-left-color:#f59e0b}
+.admin-inbox-item.niveau-faible{border-left-color:#22c55e}
+.admin-inbox-item.unread.niveau-critique{background:linear-gradient(165deg,#fff8f7 0%,#fffdfd 100%);border-color:rgba(239,68,68,.22);border-left-color:#ef4444}
+.admin-inbox-item.unread.niveau-haute{background:linear-gradient(165deg,#fff9f5 0%,#fffefb 100%);border-color:rgba(249,115,22,.2);border-left-color:#f97316}
+.admin-inbox-item.unread.niveau-moderee{background:linear-gradient(165deg,#fffef3 0%,#fffffe 100%);border-color:rgba(245,158,11,.2);border-left-color:#f59e0b}
+.admin-inbox-item.unread.niveau-faible{background:linear-gradient(165deg,#f0fdf4 0%,#fafdfb 100%);border-color:rgba(34,197,94,.2);border-left-color:#22c55e}
+.admin-inbox-item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+.admin-inbox-item-left{display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0}
+.admin-inbox-dot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:6px;animation:dotBlink 2.4s ease-in-out infinite}
+.admin-inbox-dot.critique{background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.18)}
+.admin-inbox-dot.haute{background:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.18)}
+.admin-inbox-dot.moderee{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+.admin-inbox-dot.faible{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.15)}
+.admin-inbox-dot{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.15)}
+.admin-inbox-item-title-col{flex:1;min-width:0}
+.admin-inbox-level-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:.57rem;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;border:1px solid transparent}
+.admin-inbox-level-badge.critique{background:rgba(239,68,68,.1);color:#b91c1c;border-color:rgba(239,68,68,.2)}
+.admin-inbox-level-badge.haute{background:rgba(249,115,22,.1);color:#c2410c;border-color:rgba(249,115,22,.2)}
+.admin-inbox-level-badge.moderee{background:rgba(245,158,11,.1);color:#92400e;border-color:rgba(245,158,11,.2)}
+.admin-inbox-level-badge.faible{background:rgba(34,197,94,.1);color:#15803d;border-color:rgba(34,197,94,.2)}
+.admin-inbox-item-title{font-size:.82rem;font-weight:900;color:#0f3f73;line-height:1.42;overflow-wrap:anywhere;word-break:break-word}
+.admin-inbox-item.unread .admin-inbox-item-title{color:#0a4d8a}
+.admin-inbox-date{font-size:.65rem;color:#96afc4;white-space:nowrap;flex-shrink:0;margin-top:2px}
+.admin-inbox-text{font-size:.76rem;color:#587391;line-height:1.62;overflow-wrap:anywhere;word-break:break-word;padding-left:16px;margin-top:5px}
+.admin-inbox-action-sep{height:1px;background:#edf2f8;margin:8px 0 7px}
+.admin-inbox-actions .stButton>button{min-height:32px!important;padding:6px 10px!important;font-size:.7rem!important;font-weight:700!important;border-radius:9px!important}
+.admin-inbox-more{margin-top:8px;font-size:.7rem;color:#7c94ab;text-align:center;padding:6px 8px;border-radius:10px;background:rgba(230,240,250,.5)}
 .admin-title{font-family:'Sora',sans-serif;font-size:2.2rem;line-height:1.02;color:#fff;margin:16px 0 10px;max-width:760px}
 .admin-subtitle{max-width:760px;color:rgba(255,255,255,.86);font-size:.97rem;line-height:1.74;margin:0}
 .admin-chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
@@ -126,19 +196,6 @@ box-shadow:none!important;
 @media (max-width: 720px){.admin-kpi-grid,.admin-grid-3,.admin-form-grid,.admin-form-stats{grid-template-columns:1fr}.admin-hero{padding:18px 16px}.admin-title{font-size:1.6rem}.admin-panel{padding:12px}.admin-form-hero{grid-template-columns:1fr}}
 </style>
 """
-import sqlite3
-from pathlib import Path
-from typing import Iterable, List, Optional
-
-import pandas as pd
-import plotly.graph_objects as go
-import streamlit as st
-
-from utils.navigation import switch_to_home_page
-from utils.sidebar_brand import PUBLIC_SIDEBAR_BRAND, render_sidebar_active_button
-
-
-
 
 
 def apply_admin_theme() -> None:
@@ -184,33 +241,65 @@ def render_admin_hero(
     chips: Iterable[str],
     eyebrow: str = "Administration",
     notification_count: Optional[int] = None,
+    auth=None,
+    user_id: Optional[int] = None,
+    inbox_key_prefix: str = "admin_inbox",
+    inbox_limit: int = 8,
 ) -> None:
     chip_markup = "".join(f'<span class="admin-chip">{chip}</span>' for chip in chips)
-    notif_markup = ""
-    if notification_count is not None:
-        notif_markup = (
-            '<div class="admin-hero-notif">'
-            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.7 2.7 0 0 0 2.7-2.7h-5.4A2.7 2.7 0 0 0 12 22Zm7-5.4V11a7 7 0 1 0-14 0v5.6L3 18.7v.6h18v-.6l-2-2.1Zm-2-.8H7V11a5 5 0 1 1 10 0v4.8Z"/></svg>'
-            '<span class="admin-hero-notif-label">Notifications</span>'
-            f'<span class="admin-hero-notif-count">{int(notification_count)}</span>'
-            '</div>'
-        )
-    st.markdown(
-        f"""
-<div class="admin-shell">
-  <div class="admin-hero">
-    <div class="admin-hero-top">
-      <div class="admin-eyebrow"><span class="admin-eyebrow-dot"></span>{eyebrow}</div>
-            {notif_markup}
-    </div>
-    <div class="admin-title">{title}</div>
-    <p class="admin-subtitle">{subtitle}</p>
-    <div class="admin-chip-row">{chip_markup}</div>
+    shell = st.container()
+    hero_col, bell_col = shell.columns([0.8, 0.2], gap="small")
+    with hero_col:
+        st.markdown(
+            f"""
+<div class="admin-hero">
+  <div class="admin-hero-top">
+    <div class="admin-eyebrow"><span class="admin-eyebrow-dot"></span>{eyebrow}</div>
   </div>
+  <div class="admin-title">{title}</div>
+  <p class="admin-subtitle">{subtitle}</p>
+  <div class="admin-chip-row">{chip_markup}</div>
 </div>
 """,
-        unsafe_allow_html=True,
-    )
+            unsafe_allow_html=True,
+        )
+    should_show_fallback = False
+    if notification_count is not None and auth is not None and user_id is not None:
+        state_key = f"{inbox_key_prefix}_open"
+        unread_total = int(notification_count)
+        unread_label = "Aucune notification en attente." if unread_total == 0 else f"<strong>{unread_total}</strong> message(s) prioritaire(s) a consulter."
+        count_class = "has-unread" if unread_total > 0 else "no-unread"
+        bell_svg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#ffffff"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>'
+        with bell_col:
+            st.markdown(
+                f'<div class="admin-hero-actions"><div class="admin-bell-wrap"><div class="admin-bell-panel"><div class="admin-bell-head"><span class="admin-bell-kicker"><span class="admin-bell-icon-wrap">{bell_svg}</span>Messagerie SAFE</span><span class="admin-bell-count {count_class}">{unread_total}</span></div><div class="admin-bell-divider"></div><div class="admin-bell-note">{unread_label}</div><div class="admin-bell-status-row"><span class="admin-bell-status-dot"></span>Canal administratif securise</div></div></div></div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+            bell_label = "Ouvrir la messagerie SAFE"
+            if hasattr(st, "popover"):
+                with st.popover(bell_label, use_container_width=True):
+                    render_admin_notifications_panel(
+                        auth,
+                        user_id,
+                        key_prefix=inbox_key_prefix,
+                        title="Boite de reception",
+                        intro="",
+                        limit=inbox_limit,
+                    )
+            else:
+                if st.button(bell_label, key=f"{inbox_key_prefix}_toggle", use_container_width=True):
+                    st.session_state[state_key] = not st.session_state.get(state_key, False)
+                should_show_fallback = st.session_state.get(state_key, False)
+    if should_show_fallback and auth is not None and user_id is not None:
+        render_admin_notifications_panel(
+            auth,
+            user_id,
+            key_prefix=inbox_key_prefix,
+            title="Boite de reception",
+            intro="",
+            limit=inbox_limit,
+        )
 
 
 def render_kpi_cards(cards: List[dict]) -> None:
@@ -247,48 +336,111 @@ def admin_notifications_snapshot(auth, user_id: int) -> tuple[list[dict], int]:
     return notifications, unread_count
 
 
+def _admin_notification_level(title: str, message: str = "") -> tuple[str, str, str]:
+    haystack = f"{title} {message}".upper()
+    if "CRITIQUE" in haystack:
+        return "critique", "CRITIQUE", "🔴"
+    if "HAUTE" in haystack or "HIGH" in haystack:
+        return "haute", "HAUTE", "🟠"
+    if "MODER" in haystack:
+        return "moderee", "MODEREE", "🟡"
+    if "FAIBLE" in haystack or "LOW" in haystack:
+        return "faible", "FAIBLE", "🟢"
+    return "faible", "FAIBLE", "🟢"
+
+
+def _clean_admin_notification_text(text: str, preserve_newlines: bool = False) -> str:
+    cleaned = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    if "<" in cleaned and ">" in cleaned:
+        cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+    cleaned = cleaned.replace("&nbsp;", " ")
+    if preserve_newlines:
+        lines = [" ".join(line.split()) for line in cleaned.split("\n")]
+        return "\n".join(line for line in lines if line).strip()
+    return " ".join(cleaned.split()).strip()
+
+
+def _admin_display_title(title: str) -> str:
+    cleaned = _clean_admin_notification_text(title)
+    upper = cleaned.upper()
+    legacy_tokens = ("ALERTE INFO", "INFORMATION TERRAIN", "NOUVELLE_DONNEE", "NOUVELLE DONNEE")
+    if any(token in upper for token in legacy_tokens):
+        if " - " in cleaned:
+            suffix = cleaned.split(" - ", 1)[1].strip()
+        elif "-" in cleaned:
+            suffix = cleaned.split("-", 1)[1].strip()
+        else:
+            suffix = ""
+        return f"ALERTE FAIBLE - {suffix}" if suffix else "ALERTE FAIBLE"
+    return cleaned or "ALERTE FAIBLE"
+
+
 def render_admin_notifications_panel(
     auth,
     user_id: int,
     key_prefix: str,
-    title: str = "Notifications admin",
-    intro: str = "Les confirmations de diffusion et retours systeme restent visibles ici pour eviter toute perte de suivi.",
-    limit: int = 4,
+    title: str = "Boite de reception",
+    intro: str = "",
+    limit: int = 6,
 ) -> tuple[list[dict], int]:
-    notifications, unread_count = admin_notifications_snapshot(auth, user_id)
-    panel_title(title)
-    st.markdown(
-        f'<div class="admin-support-copy">{intro} {unread_count} notification(s) non lue(s).</div>',
-        unsafe_allow_html=True,
-    )
+    notifications = auth.get_notifications(user_id, unread_only=False)
+    unread_count = auth.get_unread_count(user_id)
+    visible_count = min(len(notifications), limit)
+    intro_text = intro or "Alertes admin, confirmations d'emission et messages internes de pilotage."
+    head_left, head_right = st.columns([0.72, 0.28])
+    with head_left:
+        st.markdown(f"**📬 {title}**")
+        st.caption(intro_text)
+    with head_right:
+        st.markdown(f"**📨 {len(notifications)} message(s)**")
+        st.markdown(f"**🔴 {unread_count} non lu(s)**")
+    st.divider()
+
     if not notifications:
-        st.markdown('<div class="admin-empty-state">Aucune notification admin disponible pour le moment.</div>', unsafe_allow_html=True)
+        st.info("📭 Boite vide\n\nAucun message pour le moment. Les confirmations admin et alertes internes s'afficheront ici.")
         return notifications, unread_count
 
-    for notification in notifications[:limit]:
-        status_label = 'NON LUE' if notification['is_read'] == 0 else 'LUE'
-        with st.expander(f"{status_label} • {notification['title']}"):
-            st.markdown(
-                f"""
-<div class="admin-highlight" style="margin-bottom:10px">
-  <strong>{notification['title']}</strong>
-  <span>{notification['message']}</span>
-  <span style="display:block;margin-top:8px;font-size:.74rem;color:#7b91a5">{notification['created_at']}</span>
-</div>
-""",
-                unsafe_allow_html=True,
-            )
-            if notification['is_read'] == 0 and st.button(
-                "Marquer cette notification comme lue",
-                use_container_width=True,
-                key=f"{key_prefix}_notif_{int(notification['id'])}",
-            ):
-                auth.mark_notification_read(int(notification['id']))
-                st.rerun()
+    for index, notif in enumerate(notifications[:limit]):
+        is_unread = int(notif["is_read"]) == 0
+        date_str = str(notif.get("created_at") or "")[:16]
+        clean_title = _admin_display_title(str(notif.get("title") or ""))
+        clean_message = _clean_admin_notification_text(str(notif.get("message") or ""), preserve_newlines=True)
+        _, lvl_text, lvl_dot = _admin_notification_level(clean_title, clean_message)
 
-    if unread_count > 0 and st.button("Marquer mes notifications comme lues", use_container_width=True, key=f"{key_prefix}_mark_admin_notifications"):
-        auth.mark_all_notifications_read(user_id)
-        st.rerun()
+        item_box = st.container()
+        top_left, top_right = item_box.columns([0.76, 0.24])
+        status_prefix = "• " if is_unread else ""
+        with top_left:
+            st.markdown(f"**{lvl_dot} {lvl_text}**")
+            st.markdown(f"**{status_prefix}{clean_title}**")
+        with top_right:
+            st.caption(date_str or "-")
+        item_box.write(clean_message or "Message indisponible.")
+        btn_c1, btn_c2 = item_box.columns([1, 1])
+        with btn_c1:
+            if is_unread and st.button("✓ Lu", key=f"{key_prefix}_rd_{notif['id']}", use_container_width=True):
+                auth.mark_notification_read(int(notif["id"]))
+                st.rerun()
+        with btn_c2:
+            if st.button("🗑 Supp.", key=f"{key_prefix}_rm_{notif['id']}", use_container_width=True):
+                auth.delete_notification(int(notif["id"]))
+                st.rerun()
+        if index < visible_count - 1:
+            st.divider()
+    if len(notifications) > visible_count:
+        st.caption(f"{len(notifications) - visible_count} autre(s) message(s) sont conserves dans la boite de reception.")
+
+    st.divider()
+    foot1, foot2 = st.columns(2)
+    with foot1:
+        if unread_count > 0 and st.button("✓✓ Tout marquer lu", use_container_width=True, key=f"{key_prefix}_all_read"):
+            auth.mark_all_notifications_read(user_id)
+            st.rerun()
+    with foot2:
+        if notifications and st.button("🗑 Tout supprimer", use_container_width=True, key=f"{key_prefix}_all_del"):
+            auth.delete_all_notifications(user_id)
+            st.rerun()
+
     return notifications, unread_count
 
 
@@ -297,12 +449,14 @@ def render_admin_inbox_expander(
     user_id: int,
     key_prefix: str,
     unread_count: Optional[int] = None,
-    title: str = "Messagerie admin",
-    intro: str = "Les confirmations de diffusion et retours systeme restent accessibles ici sans surcharger la page.",
+    title: str = "Boite de reception",
+    intro: str = "",
     limit: int = 6,
 ) -> tuple[list[dict], int]:
     effective_unread = auth.get_unread_count(user_id) if unread_count is None else unread_count
-    with st.expander(f"Boite de messagerie admin ({effective_unread} non lue(s))", expanded=effective_unread > 0):
+    icon = "📬" if effective_unread > 0 else "📭"
+    label = f"{icon}  Messagerie — {effective_unread} non lue(s)" if effective_unread > 0 else f"{icon}  Messagerie — aucun message non lu"
+    with st.expander(label, expanded=effective_unread > 0):
         return render_admin_notifications_panel(
             auth,
             user_id,
@@ -315,17 +469,17 @@ def render_admin_inbox_expander(
 
 def make_plotly_layout(fig: go.Figure, title: Optional[str] = None) -> go.Figure:
     fig.update_layout(
-        title=title,
+        title=dict(text=title, x=0.02, xanchor="left", y=0.98, yanchor="top", pad=dict(t=6, b=20)) if title else None,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=18, r=18, t=58 if title else 20, b=18),
+        margin=dict(l=18, r=18, t=78 if title else 20, b=18),
         font=dict(family="Manrope", color="#17314f"),
         title_font=dict(family="Sora", size=15, color="#0f3f73"),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, bgcolor="rgba(255,255,255,.68)", bordercolor="rgba(185,212,234,.65)", borderwidth=1),
         hoverlabel=dict(bgcolor="#ffffff", bordercolor="rgba(10,95,171,.18)", font=dict(color="#15304d")),
     )
-    fig.update_xaxes(showgrid=False, zeroline=False, automargin=True)
-    fig.update_yaxes(gridcolor="rgba(151,195,228,.22)", zeroline=False, automargin=True)
+    fig.update_xaxes(showgrid=False, zeroline=False, automargin=True, title_standoff=16)
+    fig.update_yaxes(gridcolor="rgba(151,195,228,.22)", zeroline=False, automargin=True, title_standoff=16)
     return fig
 
 

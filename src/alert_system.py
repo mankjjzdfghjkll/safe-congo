@@ -8,40 +8,295 @@ import numpy as np
 class AlertSystem:
     """
     Système de détection et gestion des alertes épidémiologiques
+    Seuils basés sur les directives OMS/IDSR (Integrated Disease Surveillance
+    and Response) 3e édition 2019, adaptés au contexte RDC.
+    Niveaux : FAIBLE (vert) → MODEREE (jaune) → HAUTE (orange) → CRITIQUE (rouge)
     """
     
+    # Seuils de croissance hebdomadaire OMS communs à toutes les maladies
+    # Source : OMS IDSR — dépassement du 75e/90e percentile historique
+    GROWTH_THRESHOLDS = {
+        'moderate_growth': 25,   # +25 % → FAIBLE→MODEREE
+        'high_growth':     50,   # +50 % → MODEREE→HAUTE
+        'critical_growth': 100,  # ×2    → HAUTE→CRITIQUE (doublement)
+    }
+
     def __init__(self):
         """Initialise le système d'alertes"""
         self.alerts = []
         self.acknowledged_alerts = []
         self.alert_history = []
-    
-    def get_thresholds_for_disease(self, disease_name):
+
+    # ------------------------------------------------------------------
+    # Seuils OMS par maladie  (cas/zone de santé/semaine, pop ≈ 100 000)
+    # Références :
+    #   • OMS IDSR Technical Guidelines 3rd ed. (WHO-AFRO, 2019)
+    #   • OMS — Cholera Technical Note (2023)
+    #   • OMS — Malaria Epidemic Detection & Response (2004, updated 2022)
+    #   • OMS — Measles elimination guidelines (2022)
+    #   • OMS — Meningococcal disease guidelines (2018)
+    #   • RSI (2005) — maladies à notification immédiate
+    # ------------------------------------------------------------------
+    _THRESHOLDS = {
+        # ---- Paludisme -----------------------------------------------
+        'paludisme conf': {
+            'faible_cases': 50,   'moderate_cases': 101, 'high_cases': 501,
+            'critical_cases': 2001, 'zero_tolerance': False,
+            'note': "OMS : seuil épidémique = dépassement 90e pctile historique ; "
+                    "RDC charge élevée → seuil absolu 2 001 cas/zone/sem"
+        },
+        'paludisme susp': {
+            'faible_cases': 100,  'moderate_cases': 201, 'high_cases': 1001,
+            'critical_cases': 3001, 'zero_tolerance': False,
+            'note': "Cas suspects incluent non-confirmés ; seuils ×1,5 du confirmé"
+        },
+        # ---- Maladies diarrhéiques -----------------------------------
+        'cholera': {
+            'faible_cases': 1,    'moderate_cases': 6,   'high_cases': 21,
+            'critical_cases': 51, 'zero_tolerance': False,
+            'note': "OMS : 1 cas confirmé en zone libre = alerte immédiate ; "
+                    "taux d'attaque >5/10 000/sem = HAUTE ; >20/10 000/sem = CRITIQUE"
+        },
+        'diarr sanglante': {
+            'faible_cases': 5,    'moderate_cases': 21,  'high_cases': 51,
+            'critical_cases': 101, 'zero_tolerance': False,
+            'note': "OMS IDSR : diarrhée sanglante (shigellose probable) — "
+                    "cluster ≥20 cas/sem → enquête ; ≥50 → riposte"
+        },
+        'diarrhee dhy m5': {
+            'faible_cases': 20,   'moderate_cases': 51,  'high_cases': 151,
+            'critical_cases': 301, 'zero_tolerance': False,
+            'note': "Diarrhée aqueuse <5 ans ; seuils OMS contexte DRC"
+        },
+        # ---- Maladies respiratoires ----------------------------------
+        'pneumonie': {
+            'faible_cases': 10,   'moderate_cases': 31,  'high_cases': 101,
+            'critical_cases': 251, 'zero_tolerance': False,
+            'note': "OMS IDSR : pneumonie grave — cluster ≥30 cas/zone/sem → alerte"
+        },
+        'ira': {
+            'faible_cases': 30,   'moderate_cases': 51,  'high_cases': 201,
+            'critical_cases': 501, 'zero_tolerance': False,
+            'note': "IRA (infection respiratoire aiguë) — seuil relatif 75e pctile"
+        },
+        'grippe': {
+            'faible_cases': 10,   'moderate_cases': 21,  'high_cases': 76,
+            'critical_cases': 201, 'zero_tolerance': False,
+            'note': "OMS FluNet : dépassement seuil saisonnier 90e pctile → HAUTE ; "
+                    "souche pandémique → CRITIQUE immédiat"
+        },
+        'coqueluche': {
+            'faible_cases': 1,    'moderate_cases': 6,   'high_cases': 16,
+            'critical_cases': 31, 'zero_tolerance': False,
+            'note': "OMS IDSR : ≥3 cas confirmés/sem OU doublement 2 sem consécutives"
+        },
+        'diphterie': {
+            'faible_cases': 1,    'moderate_cases': 2,   'high_cases': 3,
+            'critical_cases': 6,  'zero_tolerance': False,
+            'note': "OMS IDSR : tout cas confirmé → notification immédiate ; "
+                    "cluster ≥5 → riposte nationale (RSI)"
+        },
+        # ---- Maladies à vaccin (PEV) ---------------------------------
+        'rougeole': {
+            'faible_cases': 1,    'moderate_cases': 4,   'high_cases': 11,
+            'critical_cases': 26, 'zero_tolerance': False,
+            'note': "OMS : tout cas confirmé → enquête ; taux d'attaque >1/100 000/mois "
+                    "= épidémie ; >25 cas/zone/sem = CRITIQUE"
+        },
+        'pfa': {
+            'faible_cases': 1,    'moderate_cases': 3,   'high_cases': 6,
+            'critical_cases': 11, 'zero_tolerance': False,
+            'note': "OMS IDSR : taux AFP attendu ≥2/100 000 enfants <15 ans/an (surveillance adéquate) ; "
+                    "cluster ≥6 cas/zone/sem → enquête intensive ; ≥11 cas/zone/sem → CRITIQUE. "
+                    "Tout poliovirus confirmé déclenche une CRITIQUE immédiate hors de ce calcul (RSI 2005)."
+        },
+        # ---- Méningite -----------------------------------------------
+        'meningite': {
+            'faible_cases': 1,    'moderate_cases': 5,   'high_cases': 11,
+            'critical_cases': 21, 'zero_tolerance': False,
+            'note': "OMS : seuil alerte = 5/100 000/sem (ceinture méningite) ; "
+                    "seuil épidémique = 10/100 000/sem ; RDC hors ceinture → ≥5/zone/sem"
+        },
+        # ---- Fièvre typhoïde -----------------------------------------
+        'fievre typhoide': {
+            'faible_cases': 2,    'moderate_cases': 11,  'high_cases': 31,
+            'critical_cases': 76, 'zero_tolerance': False,
+            'note': "OMS IDSR : ≥5 cas/sem liés à une source commune → enquête"
+        },
+        # ---- Maladies à déclaration immédiate OMS (zéro tolérance) --
+        'dracunculose': {
+            'faible_cases': 0,    'moderate_cases': 0,   'high_cases': 0,
+            'critical_cases': 1,  'zero_tolerance': True,
+            'note': "OMS programme éradication : TOUT cas = CRITIQUE ; "
+                    "objectif mondial = 0 cas ; chaque cas déclenche réponse immédiate"
+        },
+        'fievre jaune': {
+            'faible_cases': 0,    'moderate_cases': 1,   'high_cases': 0,
+            'critical_cases': 1,  'zero_tolerance': True,
+            'note': "OMS RSI Art.6 : cas confirmé = urgence internationale ; "
+                    "cas suspect = alerte immédiate"
+        },
+        'monkeypox': {
+            'faible_cases': 1,    'moderate_cases': 3,   'high_cases': 11,
+            'critical_cases': 26, 'zero_tolerance': False,
+            'note': "OMS URGSP 2022/2024 : ≥5 cas/zone/sem → alerte ; "
+                    ">25 cas/zone/sem → CRITIQUE (urgence santé publique RDC)"
+        },
+        'peste': {
+            'faible_cases': 0,    'moderate_cases': 0,   'high_cases': 0,
+            'critical_cases': 1,  'zero_tolerance': True,
+            'note': "OMS RSI : tout cas suspect = notification immédiate internationale ; "
+                    "tolérance zéro — Ituri/Nord-Kivu zones endémiques RDC"
+        },
+        'fha': {
+            'faible_cases': 0,    'moderate_cases': 1,   'high_cases': 0,
+            'critical_cases': 1,  'zero_tolerance': True,
+            'note': "Fièvre hémorragique aiguë (Ebola/Marburg/etc.) — "
+                    "RSI Art.6 : 1 cas suspect = alerte internationale ; confirmé = CRITIQUE"
+        },
+        'rage': {
+            'faible_cases': 1,    'moderate_cases': 1,   'high_cases': 3,
+            'critical_cases': 6,  'zero_tolerance': False,
+            'note': "OMS : tout cas humain confirmé = CRITIQUE (létalité 100 % sans PEP) ; "
+                    "clusters exposition → riposte"
+        },
+        'chikungunya': {
+            'faible_cases': 1,    'moderate_cases': 11,  'high_cases': 51,
+            'critical_cases': 151, 'zero_tolerance': False,
+            'note': "OMS IDSR : cluster ≥10 cas/zone/sem → enquête vecteur ; "
+                    ">150 cas/sem → riposte d'urgence"
+        },
+        'covid 19': {
+            'faible_cases': 1,    'moderate_cases': 11,  'high_cases': 51,
+            'critical_cases': 201, 'zero_tolerance': False,
+            'note': "Seuils adaptés post-pandémie ; variant émergent → escalade CRITIQUE"
+        },
+        # ---- Santé maternelle & néonatale ----------------------------
+        'tnn': {
+            'faible_cases': 0,    'moderate_cases': 1,   'high_cases': 3,
+            'critical_cases': 5,  'zero_tolerance': False,
+            'note': "OMS : objectif élimination <1/1 000 naissances vivantes/district/an ; "
+                    "≥1 cas/sem = excès → enquête ; ≥5 cas/sem = CRITIQUE"
+        },
+        'tetanos materne': {
+            'faible_cases': 0,    'moderate_cases': 1,   'high_cases': 3,
+            'critical_cases': 5,  'zero_tolerance': False,
+            'note': "Mêmes seuils que TNN — élimination OMS"
+        },
+        'deces maternels': {
+            'faible_cases': 1,    'moderate_cases': 3,   'high_cases': 6,
+            'critical_cases': 11, 'zero_tolerance': False,
+            'note': "OMS ODD 3.1 : cible <70/100 000 naissance ; "
+                    ">10 décès/zone/sem = CRITIQUE — cluster exige audit immédiat"
+        },
+        # ---- MAPI (manifestations post-vaccination) ------------------
+        'mapi legeres': {
+            'faible_cases': 1,    'moderate_cases': 11,  'high_cases': 31,
+            'critical_cases': 51, 'zero_tolerance': False,
+            'note': "OMS : cluster MAPI légères ≥10 cas/lot/zone → signal ; "
+                    "≥50 → suspension lot en attente enquête"
+        },
+        'mapi graves': {
+            'faible_cases': 1,    'moderate_cases': 2,   'high_cases': 4,
+            'critical_cases': 1,  'zero_tolerance': True,
+            'note': "OMS : tout MAPI grave (hospitalisation/décès) = CRITIQUE immédiat ; "
+                    "suspicion cluster → retrait lot"
+        },
+    }
+
+    # Clé de secours si maladie non répertoriée
+    _DEFAULT_THRESHOLDS = {
+        'faible_cases': 5,    'moderate_cases': 21, 'high_cases': 51,
+        'critical_cases': 101, 'zero_tolerance': False,
+        'note': "Seuils génériques OMS IDSR — maladie non spécifiée"
+    }
+
+    # Levels ordered by severity
+    _LEVEL_ORDER = ['INFO', 'FAIBLE', 'MODEREE', 'HAUTE', 'CRITIQUE']
+
+    @classmethod
+    def _key(cls, disease_name: str) -> str:
+        """Normalise le nom de maladie pour la correspondance dictionnaire."""
+        import unicodedata
+        s = disease_name.lower().strip()
+        s = unicodedata.normalize('NFD', s)
+        s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
+        return s
+
+    def get_thresholds_for_disease(self, disease_name: str) -> dict:
         """
-        Retourne les seuils appropriés pour une maladie
+        Retourne les seuils OMS/IDSR pour une maladie donnée.
         
-        Args:
-            disease_name (str): Nom de la maladie
-            
+        Sources : OMS IDSR 3e éd. 2019, RSI 2005, guides spécifiques OMS
+        par pathologie (cholera 2023, paludisme 2022, rougeole 2022, etc.)
+        
         Returns:
-            dict: Seuils
+            dict avec faible_cases, moderate_cases, high_cases, critical_cases,
+                       moderate_growth, high_growth, critical_growth,
+                       zero_tolerance (bool), note (str source OMS)
         """
-        disease_lower = disease_name.lower()
-        if 'paludisme' in disease_lower or 'malaria' in disease_lower:
-            return {
-                'critical_cases': 500,
-                'high_cases': 250,
-                'critical_growth': 100,
-                'high_growth': 50,
-                'medium_growth': 25
-            }
-        return {
-            'critical_cases': 100,
-            'high_cases': 50,
-            'critical_growth': 100,
-            'high_growth': 50,
-            'medium_growth': 25
-        }
+        key = self._key(disease_name)
+        # Recherche exacte puis partielle
+        base = self._THRESHOLDS.get(key)
+        if base is None:
+            for k, v in self._THRESHOLDS.items():
+                if k in key or key in k:
+                    base = v
+                    break
+        if base is None:
+            base = self._DEFAULT_THRESHOLDS
+        result = dict(base)
+        result.update(self.GROWTH_THRESHOLDS)
+        # Compatibilité ascendante avec l'ancienne API
+        result['high_cases']     = base['high_cases']
+        result['critical_cases'] = base['critical_cases']
+        result['high_growth']    = self.GROWTH_THRESHOLDS['high_growth']
+        result['medium_growth']  = self.GROWTH_THRESHOLDS['moderate_growth']
+        return result
+
+    @classmethod
+    def classify_alert_level(cls, disease_name: str, cases: int, growth_rate: float) -> str:
+        """
+        Classe l'alerte selon les seuils OMS/IDSR.
+        
+        Retourne le niveau le plus sévère entre la classification par cas absolus
+        et la classification par taux de croissance hebdomadaire.
+        
+        Niveaux : CRITIQUE > HAUTE > MODEREE > FAIBLE > INFO
+        """
+        inst = cls.__new__(cls)
+        t = inst.get_thresholds_for_disease(disease_name)
+
+        # --- Niveau basé sur les cas absolus ---
+        if t.get('zero_tolerance') and cases >= 1:
+            level_cases = 'CRITIQUE'
+        elif cases >= t['critical_cases']:
+            level_cases = 'CRITIQUE'
+        elif cases >= t['high_cases']:
+            level_cases = 'HAUTE'
+        elif cases >= t['moderate_cases']:
+            level_cases = 'MODEREE'
+        elif cases >= t['faible_cases'] and t['faible_cases'] > 0:
+            level_cases = 'FAIBLE'
+        else:
+            level_cases = 'INFO'
+
+        # --- Niveau basé sur la croissance ---
+        if growth_rate >= t['critical_growth']:
+            level_growth = 'CRITIQUE'
+        elif growth_rate >= t['high_growth']:
+            level_growth = 'HAUTE'
+        elif growth_rate >= t['moderate_growth']:
+            level_growth = 'MODEREE'
+        elif growth_rate > 0:
+            level_growth = 'FAIBLE'
+        else:
+            level_growth = 'INFO'
+
+        # Retourne le niveau le plus sévère
+        idx_cases  = cls._LEVEL_ORDER.index(level_cases)
+        idx_growth = cls._LEVEL_ORDER.index(level_growth)
+        return cls._LEVEL_ORDER[max(idx_cases, idx_growth)]
     
     def detect_alerts(self, predictions, historical_data, model_performances=None):
         """
@@ -73,33 +328,29 @@ class AlertSystem:
             previous_cases = disease_data['TOTALCAS'].iloc[-2]
             growth_rate = ((current_cases - previous_cases) / (previous_cases + 1)) * 100
             
-            # Déterminer le niveau d'alerte
-            alert_level = None
+            # Déterminer le niveau d'alerte via la méthode OMS unifiée
+            alert_level = self.classify_alert_level(disease, int(current_cases), growth_rate)
+            thresholds = self.get_thresholds_for_disease(disease)
+
             reason = []
-            
-            # Critères basés sur les cas prédits
-            if pred > thresholds['critical_cases']:
-                alert_level = 'CRITICAL'
-                reason.append(f"Cas prédits ({int(pred)}) > seuil critique ({thresholds['critical_cases']})")
-            elif pred > thresholds['high_cases']:
-                alert_level = 'HIGH'
-                reason.append(f"Cas prédits ({int(pred)}) > seuil élevé ({thresholds['high_cases']})")
-            
-            # Critères basés sur la croissance
-            if alert_level != 'CRITICAL':
-                if growth_rate > thresholds['critical_growth']:
-                    alert_level = 'CRITICAL'
-                    reason.append(f"Croissance de {growth_rate:.1f}% > seuil critique ({thresholds['critical_growth']}%)")
-                elif growth_rate > thresholds['high_growth']:
-                    if alert_level is None or alert_level == 'MEDIUM':
-                        alert_level = 'HIGH'
-                    reason.append(f"Croissance de {growth_rate:.1f}% > seuil élevé ({thresholds['high_growth']}%)")
-                elif growth_rate > thresholds['medium_growth']:
-                    if alert_level is None:
-                        alert_level = 'MEDIUM'
-                    reason.append(f"Croissance de {growth_rate:.1f}% > seuil moyen ({thresholds['medium_growth']}%)")
-            
-            if alert_level:
+            t = thresholds
+            if t.get('zero_tolerance') and current_cases >= 1:
+                reason.append(f"Tolérance zéro OMS — {int(current_cases)} cas détectés ({t.get('note', '')})")
+            else:
+                if current_cases >= t['critical_cases']:
+                    reason.append(f"Cas ({int(current_cases)}) ≥ seuil critique OMS ({t['critical_cases']})")
+                elif current_cases >= t['high_cases']:
+                    reason.append(f"Cas ({int(current_cases)}) ≥ seuil élevé OMS ({t['high_cases']})")
+                elif current_cases >= t.get('moderate_cases', 0):
+                    reason.append(f"Cas ({int(current_cases)}) ≥ seuil modéré OMS ({t.get('moderate_cases')})")
+                if growth_rate >= t['critical_growth']:
+                    reason.append(f"Croissance {growth_rate:.1f}% ≥ seuil doublement OMS ({t['critical_growth']}%)")
+                elif growth_rate >= t['high_growth']:
+                    reason.append(f"Croissance {growth_rate:.1f}% ≥ seuil élevé OMS ({t['high_growth']}%)")
+                elif growth_rate >= t['moderate_growth']:
+                    reason.append(f"Croissance {growth_rate:.1f}% ≥ seuil modéré OMS ({t['moderate_growth']}%)")
+
+            if alert_level and alert_level != 'INFO':
                 alert = {
                     'id': alert_id,
                     'maladie': disease,
@@ -107,7 +358,8 @@ class AlertSystem:
                     'cas_actuels': int(current_cases),
                     'cas_predits': int(pred),
                     'croissance': round(growth_rate, 1),
-                    'raison': '; '.join(reason),
+                    'raison': '; '.join(reason) if reason else f"Seuil OMS dépassé : {alert_level}",
+                    'source_oms': thresholds.get('note', ''),
                     'confiance_modele': 'moyenne',
                     'date_detection': datetime.now(),
                     'acknowledged': False

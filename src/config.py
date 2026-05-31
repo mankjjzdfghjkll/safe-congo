@@ -42,30 +42,112 @@ UI_CONFIG = {
 }
 
 # ============================================
-# SEUILS D'ALERTE PAR MALADIE
+# NIVEAUX D'ALERTE OMS/IDSR — DÉFINITIONS OFFICIELLES
 # ============================================
-ALERT_THRESHOLDS = {
-    'paludisme': {
-        'critical_cases': 500,
-        'high_cases': 250,
-        'critical_growth': 100,
-        'high_growth': 50,
-        'medium_growth': 25
+# Sources :
+#   • OMS IDSR Technical Guidelines 3ème édition (WHO-AFRO, 2019)
+#   • OMS — Integrated Disease Surveillance and Response (IDSR) Framework
+#   • RSI (Règlement Sanitaire International, 2005) — cas à notification immédiate
+#   • OMS — Epidemic preparedness and response guidelines (2022)
+#
+# Dans l'IDSR, chaque maladie dispose de deux seuils relatifs :
+#   — Seuil d'alerte  : dépassement du 75e percentile historique → investigation
+#   — Seuil épidémique: dépassement du 90e percentile historique → riposte
+# Des seuils absolus (cas/zone de santé/semaine, population ≈ 100 000 habitants)
+# complètent les seuils relatifs pour les maladies à fort potentiel épidémique.
+# ============================================
+WHO_ALERT_LEVELS = {
+    'FAIBLE': {
+        'label':      'Surveillance renforcée',
+        'color':      '#22c55e',
+        'icon':       '🟢',
+        'who_criterion': (
+            "Cas dépassant le niveau habituel mais inférieurs au seuil d'alerte OMS IDSR. "
+            "Correspond au dépassement ponctuel du 50e percentile historique. "
+            "Aucun doublement observé."
+        ),
+        'action':     (
+            "Renforcer la collecte des données hebdomadaires, "
+            "vérifier la complétude des rapports de zones de santé, "
+            "informer le point focal provincial."
+        ),
+        'who_source': "OMS IDSR 3e éd. 2019 — Chapitre 4 : Niveaux de signal"
     },
-    'cholera': {
-        'critical_cases': 50,
-        'high_cases': 20,
-        'critical_growth': 100,
-        'high_growth': 50,
-        'medium_growth': 25
+    'MODEREE': {
+        'label':      "Seuil d'alerte OMS",
+        'color':      '#fcd116',
+        'icon':       '🟡',
+        'who_criterion': (
+            "Dépassement du seuil d'alerte OMS/IDSR : nombre de cas ≥ 75e percentile "
+            "historique pour la même semaine épidémiologique, OU croissance hebdomadaire "
+            "≥ 25 % par rapport à la semaine précédente. "
+            "Signale qu'une épidémie peut se développer."
+        ),
+        'action':     (
+            "Déclencher une investigation épidémiologique de terrain. "
+            "Vérifier la source (eau, alimentation, vecteur). "
+            "Préparer les stocks de riposte (médicaments, matériel). "
+            "Notifier le niveau provincial dans les 24 heures."
+        ),
+        'who_source': (
+            "OMS IDSR 3e éd. 2019 — Seuil d'alerte (Alert Threshold) : "
+            "75e percentile historique / croissance +25 %/semaine"
+        )
     },
-    'default': {
-        'critical_cases': 100,
-        'high_cases': 50,
-        'critical_growth': 100,
-        'high_growth': 50,
-        'medium_growth': 25
-    }
+    'HAUTE': {
+        'label':      'Seuil épidémique OMS',
+        'color':      '#f59e0b',
+        'icon':       '🟠',
+        'who_criterion': (
+            "Dépassement du seuil épidémique OMS/IDSR : nombre de cas ≥ 90e percentile "
+            "historique OU doublement sur deux semaines consécutives (croissance ≥ 50 %). "
+            "Confirme le début d'une flambée épidémique."
+        ),
+        'action':     (
+            "Activer le Comité de Riposte aux Épidémies (CRE) provincial. "
+            "Déployer une équipe d'intervention rapide. "
+            "Notifier le niveau national et l'OMS dans les 48 heures. "
+            "Mobiliser les partenaires humanitaires (OMS, UNICEF, MSF)."
+        ),
+        'who_source': (
+            "OMS IDSR 3e éd. 2019 — Seuil épidémique (Epidemic Threshold) : "
+            "90e percentile historique / doublement en 2 semaines"
+        )
+    },
+    'CRITIQUE': {
+        'label':      'Urgence de santé publique',
+        'color':      '#ce1126',
+        'icon':       '🔴',
+        'who_criterion': (
+            "Dépassement du seuil de crise OMS : cas > 2× le seuil épidémique, "
+            "OU doublement hebdomadaire consécutif (croissance ≥ 100 %), "
+            "OU maladie à tolérance zéro (RSI Art. 6 : peste, FHA/Ebola, fièvre jaune, "
+            "dracunculose, cas confirmé de polio, MAPI grave). "
+            "Constitue une Urgence de Santé Publique de Portée Nationale ou Internationale."
+        ),
+        'action':     (
+            "Notification immédiate au Ministère de la Santé Publique de la RDC. "
+            "Activation du Plan de Contingence National. "
+            "Notification obligatoire à l'OMS via le RSI (≤ 24 h pour maladies RSI). "
+            "Coordination HEOC (Health Emergency Operations Centre). "
+            "Déploiement logistique d'urgence et isolement si applicable."
+        ),
+        'who_source': (
+            "RSI (2005) Art. 6 & Annexe 2 — Urgence de santé publique de portée internationale. "
+            "OMS IDSR 3e éd. 2019 — Seuil de crise : doublement hebdomadaire / maladies RSI"
+        )
+    },
+    'INFO': {
+        'label':      'Information de routine',
+        'color':      '#0a5fab',
+        'icon':       '🔵',
+        'who_criterion': (
+            "Niveau normal de surveillance : cas en-dessous des seuils OMS IDSR. "
+            "Aucune tendance anormale détectée."
+        ),
+        'action':     "Maintenir la surveillance épidémiologique hebdomadaire standard.",
+        'who_source': "OMS IDSR 3e éd. 2019 — Surveillance de routine"
+    },
 }
 
 # ============================================
@@ -88,14 +170,16 @@ ALERT_LEVEL_ORDER = [
     'CRITIQUE',
     'HAUTE',
     'MODEREE',
+    'FAIBLE',
     'INFO',
 ]
 
 ALERT_LEVEL_COLORS = {
-    'CRITIQUE': '#ce1126',
-    'HAUTE': '#f59e0b',
-    'MODEREE': '#fcd116',
-    'INFO': '#0a5fab',
+    'CRITIQUE': '#ce1126',   # Rouge OMS — urgence
+    'HAUTE':    '#f59e0b',   # Orange OMS — alerte épidémique
+    'MODEREE':  '#fcd116',   # Jaune OMS — seuil d'alerte
+    'FAIBLE':   '#22c55e',   # Vert OMS — surveillance renforcée
+    'INFO':     '#0a5fab',   # Bleu — information de routine
 }
 
 # ============================================

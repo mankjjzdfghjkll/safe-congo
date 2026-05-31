@@ -164,11 +164,6 @@ CSS = """
 .auth-form-helper{margin-top:12px;padding:12px 14px;border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#f8fcff 100%);border:1px dashed #c8dff0;font-size:.77rem;line-height:1.6;color:#67839c}
 .auth-section-note{margin-top:16px;padding:12px 14px;border-radius:14px;background:#f0f8ff;border:1px solid #c8dff0;font-size:.78rem;line-height:1.6;color:#5a8aaa}
 .auth-register-note{margin-bottom:16px;padding:13px 14px;border-radius:14px;background:linear-gradient(135deg,#eef7ff,#f7fbff);border:1px solid #d3e6f4;font-size:.8rem;line-height:1.65;color:#62819c}
-.auth-access-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:560px;margin:0 auto 16px auto}
-.auth-access-card{padding:14px 15px;border-radius:16px;border:1px solid #d6e6f4;background:linear-gradient(180deg,#ffffff 0%,#f7fbff 100%);box-shadow:0 8px 22px rgba(10,60,120,.05)}
-.auth-access-card strong{display:block;font-size:.72rem;letter-spacing:1.2px;text-transform:uppercase;color:#0a5fab;margin-bottom:6px}
-.auth-access-card span{display:block;font-size:.8rem;line-height:1.58;color:#64809a}
-.auth-access-card.admin{background:linear-gradient(180deg,#f8fbff 0%,#eef6ff 100%)}
 [data-testid="stForm"]{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);border:1px solid #d8e9f6;border-radius:22px;padding:18px 18px 10px;box-shadow:0 12px 28px rgba(10,60,120,.05);margin:0 auto 12px auto;max-width:560px}
 [data-testid="stForm"] [data-testid="stVerticalBlock"]{gap:.35rem}
 .stFormSubmitButton{max-width:560px;margin:0 auto}
@@ -186,67 +181,35 @@ CSS = """
 .reg-s-t{font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:800;color:#065f46;margin-bottom:6px}
 .reg-s-c{font-size:.86rem;color:#047857;line-height:1.58}
 
-@media(max-width:860px){
-  .auth-page{grid-template-columns:1fr;margin:8px}
-  .auth-left{padding:32px 24px;min-height:auto!important}
-  .auth-right{padding:32px 24px}
-  .al-headline{font-size:2rem}
-  .al-headline em{font-size:1.7rem}
-  .block-container{padding-left:1rem!important;padding-right:1rem!important;padding-top:.75rem!important}
-  [data-testid="stHorizontalBlock"]{flex-direction:column!important;gap:1rem!important}
-  [data-testid="column"]{width:100%!important;flex:1 1 100%!important;min-width:100%!important}
-  [data-testid="stForm"]{padding:16px 14px 10px!important}
-  .auth-form-shell,.auth-form-helper,.auth-section-note,.auth-register-note,.register-success,.no-account,.stFormSubmitButton,.auth-access-split{max-width:100%!important}
-  .auth-access-split{grid-template-columns:1fr!important}
-}
+@media(max-width:860px){.auth-page{grid-template-columns:1fr;margin:8px}.auth-left{padding:32px 24px}.auth-right{padding:32px 24px}.al-headline{font-size:2rem}.al-headline em{font-size:1.7rem}}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-DATASET_GEO_PATH = Path(__file__).resolve().parents[1] / "data" / "processed" / "donnees_agregees_nettoyees.csv"
-REQUIRED_GEO_COLUMNS = {"PROVINCE", "ZONE_SANTE"}
+DEFAULT_PROVINCES = [
+    "Kinshasa","Kongo Central","Kwango","Kwilu","Mai-Ndombe",
+    "Equateur","Sud-Ubangi","Nord-Ubangi","Mongala","Tshopo",
+    "Bas-Uele","Haut-Uele","Ituri","Nord-Kivu","Sud-Kivu",
+    "Maniema","Tanganyika","Haut-Lomami","Lualaba","Haut-Katanga",
+    "Lomami","Sankuru","Kasai","Kasai Central","Kasai Oriental",
+]
 
-
-def _clean_geo_value(value):
-    if pd.isna(value):
-        return ""
-    cleaned = str(value).strip()
-    if not cleaned or cleaned.lower() == "nan":
-        return ""
-    return cleaned
-
-
-# Source unique des provinces et zones: dataset géographique
-df_geo = pd.DataFrame()
-PROVINCES = []
-ZONES_BY_PROVINCE = {}
-GEO_DATA_ERROR = ""
-
+# Charger les provinces et zones de santé depuis le dataset
 try:
-    df_geo = pd.read_csv(DATASET_GEO_PATH)
-    if not REQUIRED_GEO_COLUMNS.issubset(df_geo.columns):
-        missing = REQUIRED_GEO_COLUMNS.difference(set(df_geo.columns))
-        raise ValueError(f"Colonnes manquantes dans le dataset: {', '.join(sorted(missing))}")
-
-    province_order = []
-    zones_by_province = {}
-    for raw_province, raw_zone in df_geo[["PROVINCE", "ZONE_SANTE"]].itertuples(index=False, name=None):
-        province = _clean_geo_value(raw_province)
-        zone = _clean_geo_value(raw_zone)
-        if not province or not zone:
-            continue
-        if province not in zones_by_province:
-            zones_by_province[province] = set()
-            province_order.append(province)
-        zones_by_province[province].add(zone)
-
-    PROVINCES = province_order
-    ZONES_BY_PROVINCE = {
-        province: sorted(zones_by_province[province], key=lambda item: item.casefold())
-        for province in province_order
-    }
-except Exception as exc:
-    GEO_DATA_ERROR = str(exc)
+    df_geo = pd.read_csv("data/processed/donnees_agregees_nettoyees.csv")
+    # Liste stricte de toutes les provinces présentes dans le dataset (aucun filtrage)
+    provinces_from_data = []
+    seen = set()
+    for p in df_geo["PROVINCE"].dropna():
+      p_clean = str(p).strip()
+      if p_clean and p_clean.lower() != "nan" and p_clean not in seen:
+        provinces_from_data.append(p_clean)
+        seen.add(p_clean)
+    PROVINCES = provinces_from_data
+    ZONES = sorted({str(z).strip() for z in df_geo["ZONE_SANTE"].dropna() if str(z).strip() and str(z).strip().lower() != "nan"})
+except Exception:
+    PROVINCES = DEFAULT_PROVINCES
+    ZONES = []
 
 SHIELD_SVG = """<svg width="44" height="52" viewBox="0 0 110 128" xmlns="http://www.w3.org/2000/svg" class="al-shield">
   <defs>
@@ -316,10 +279,6 @@ def main():
         st.session_state.register_success = False
 
     auth = AuthSystem()
-    db_snapshot = auth.database_snapshot()
-    province_count = len(PROVINCES)
-    zone_count = sum(len(zones) for zones in ZONES_BY_PROVINCE.values())
-    user_count = int(db_snapshot.get("users_total", 0))
 
     # Already logged in → route to dashboard
     if st.session_state.user is not None:
@@ -356,16 +315,16 @@ def main():
 
             # features
             f'<div class="al-features">'
-            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Detection precoce</div><div class="al-feat-c">Lecture des signaux sur {province_count} provinces chargees dans le referentiel.</div></div></div>'
-            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Analyse territoriale</div><div class="al-feat-c">Suivi structure autour de {zone_count} zones de sante disponibles dans la base de reference.</div></div></div>'
-            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.7-7 10-4-2.3-7-5.5-7-10V6l7-3Z"/><path d="m9.5 12 1.8 1.8 3.2-3.6"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Acces securise</div><div class="al-feat-c">Connexion reservee aux comptes actifs deja presents dans la base locale.</div></div></div>'
+            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Detection precoce</div><div class="al-feat-c">Signaux consolides pour une lecture rapide et utile.</div></div></div>'
+            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Analyse intelligente</div><div class="al-feat-c">Tendances, visualisations et previsions fiables.</div></div></div>'
+            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.7-7 10-4-2.3-7-5.5-7-10V6l7-3Z"/><path d="m9.5 12 1.8 1.8 3.2-3.6"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Acces securise</div><div class="al-feat-c">Espace personnel protege, role adapte.</div></div></div>'
             f'</div>'
 
             # stats
             f'<div class="al-stats">'
-            f'<div class="al-stat"><div class="al-stat-v">{province_count}</div><div class="al-stat-k">Provinces</div></div>'
-            f'<div class="al-stat"><div class="al-stat-v">{zone_count}</div><div class="al-stat-k">Zones</div></div>'
-            f'<div class="al-stat"><div class="al-stat-v">{user_count}</div><div class="al-stat-k">Comptes</div></div>'
+            f'<div class="al-stat"><div class="al-stat-v">Prive</div><div class="al-stat-k">Acces</div></div>'
+            f'<div class="al-stat"><div class="al-stat-v">Guidee</div><div class="al-stat-k">Lecture</div></div>'
+            f'<div class="al-stat"><div class="al-stat-v">Active</div><div class="al-stat-k">Veille</div></div>'
             f'</div>'
             f'</div>'
 
@@ -408,14 +367,8 @@ def main():
                 unsafe_allow_html=True,
             )
 
-            if db_snapshot.get("database_exists"):
-                st.markdown(
-                    f'<div class="auth-section-note">Base locale detectee: <b>{db_snapshot.get("users_total", 0)}</b> compte(s), <b>{db_snapshot.get("alerts_total", 0)}</b> alerte(s), <b>{db_snapshot.get("entries_total", 0)}</b> saisie(s) terrain et <b>{db_snapshot.get("prediction_runs_total", 0)}</b> prevision(s) historisee(s). Taille courante: <b>{db_snapshot.get("database_size_kb", 0)}</b> Ko.</div>',
-                    unsafe_allow_html=True,
-                )
-
             with st.form("login_form_page"):
-                username = st.text_input("Nom d'utilisateur ou email", placeholder="Votre identifiant ou email")
+                username = st.text_input("Nom d'utilisateur", placeholder="Votre identifiant")
                 password = st.text_input("Mot de passe", type="password", placeholder="Votre mot de passe")
                 submitted = st.form_submit_button("Acceder a mon espace", use_container_width=True)
 
@@ -432,15 +385,7 @@ def main():
                         st.session_state.user = user
                         st.rerun()
                     else:
-                        diagnostic = auth.diagnose_login_attempt(username)
-                        if diagnostic.get("status") == "disabled":
-                            st.error("Compte trouve, mais desactive. Demandez sa reactivation a l'administration.")
-                        elif diagnostic.get("status") == "password_mismatch":
-                            st.error("Compte reconnu, mais mot de passe incorrect. Vous pouvez utiliser votre identifiant ou votre email.")
-                        elif diagnostic.get("status") == "not_found":
-                            st.error("Aucun compte correspondant n'a ete trouve dans la base locale.")
-                        else:
-                            st.error("Connexion impossible pour le moment. Verifiez vos identifiants puis reessayez.")
+                        st.error("Identifiants incorrects ou compte désactivé.")
                 else:
                     st.warning("Veuillez remplir tous les champs.")
 
@@ -487,10 +432,6 @@ def main():
 
                 st.markdown(
                     '<div class="auth-register-note">Chaque demande est rattachee a une province et a une zone de sante afin de garantir un acces adapte au bon niveau de responsabilite.</div>'
-                  '<div class="auth-access-split">'
-                  '<div class="auth-access-card"><strong>Acces public</strong><span>Cette page sert a demander un compte d\'autorite sanitaire rattache a une province et une zone de sante.</span></div>'
-                  '<div class="auth-access-card admin"><strong>Compte admin</strong><span>Les administrateurs SAFE CONGO sont crees uniquement depuis la gouvernance interne par un autre administrateur.</span></div>'
-                  '</div>'
                     '<div class="auth-form-shell">'
                     '<div class="auth-form-topline">'
                     '<div class="auth-form-chip"><span class="auth-form-chip-dot"></span>Nouvel acces</div>'
@@ -501,74 +442,92 @@ def main():
                     unsafe_allow_html=True,
                 )
 
-                provinces_options = [""] + PROVINCES if PROVINCES else [""]
+                with st.form("register_form_page"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        r_username  = st.text_input("Identifiant *", placeholder="ex: dr.kabongo")
+                        r_nom       = st.text_input("Nom *")
+                        r_prenom    = st.text_input("Prénom *")
+                        r_email     = st.text_input("Email *")
+                    with c2:
+                        r_password  = st.text_input("Mot de passe *", type="password")
+                        r_confirm   = st.text_input("Confirmer *", type="password")
+                        r_telephone = st.text_input("Téléphone *")
+                        r_province = st.selectbox(
+                            "Province *",
+                            PROVINCES,
+                            index=0,
+                            key="register_province_unique"
+                        )
 
-                if GEO_DATA_ERROR:
-                    st.warning("Le dataset géographique n'a pas pu être chargé.")
-                c1, c2 = st.columns(2)
-                with c1:
-                  r_username = st.text_input("Identifiant *", placeholder="ex: dr.kabongo", key="register_username")
-                  r_nom = st.text_input("Nom *", key="register_nom")
-                  r_prenom = st.text_input("Prénom *", key="register_prenom")
-                  r_email = st.text_input("Email *", key="register_email")
-                with c2:
-                  r_password = st.text_input("Mot de passe *", type="password", key="register_password")
-                  r_confirm = st.text_input("Confirmer *", type="password", key="register_confirm")
-                  r_telephone = st.text_input("Téléphone *", key="register_telephone")
+                    def _sorted_unique(values):
+                      cleaned = {
+                        str(value).strip()
+                        for value in values
+                        if pd.notna(value) and str(value).strip() and str(value).strip().lower() != "nan"
+                      }
+                      return sorted(cleaned, key=lambda item: item.casefold())
 
-                current_province = st.selectbox(
-                  "Province *",
-                  options=provinces_options,
-                  key="register_province_dynamic",
-                  format_func=lambda value: "Sélectionnez une province" if value == "" else value,
-                )
+                    def _zone_options(reference_df, province, fallback_zones):
+                        import unicodedata
+                        def normalize(s):
+                          if not isinstance(s, str):
+                            s = str(s)
+                          s = s.strip().casefold()
+                          s = unicodedata.normalize('NFKD', s)
+                          s = ''.join(c for c in s if not unicodedata.combining(c))
+                          return s
 
-                filtered_zones = ZONES_BY_PROVINCE.get(current_province, []) if current_province else []
-                if current_province and not filtered_zones:
-                  st.warning("Aucune zone de santé trouvée pour cette province dans le dataset.")
+                        if not province:
+                          return []
+                        if not reference_df.empty and "PROVINCE" in reference_df.columns and "ZONE_SANTE" in reference_df.columns:
+                          norm_province = normalize(province)
+                          prov_series = reference_df["PROVINCE"].astype(str).apply(normalize)
+                          mask = prov_series == norm_province
+                          matches = reference_df.loc[mask, "ZONE_SANTE"]
+                          zones = matches.dropna().astype(str).str.strip().tolist()
+                          if zones:
+                            return _sorted_unique(zones)
+                        return []
 
-                zone_options = [""] + filtered_zones if current_province else [""]
-                r_zone = st.selectbox(
-                  "Zone de santé *",
-                  options=zone_options,
-                  index=0,
-                  key=f"register_zone_form_{current_province or 'none'}",
-                  format_func=lambda value: (
-                    "Choisissez d'abord une province" if not current_province else "Sélectionnez une zone de santé" if value == "" else value
-                  ),
-                  disabled=not current_province,
-                )
+                    filtered_zones = _zone_options(df_geo if 'df_geo' in locals() else pd.DataFrame(), r_province, ZONES if 'ZONES' in locals() else [])
+                    if not filtered_zones:
+                        st.warning("Aucune zone de santé trouvée pour cette province dans le dataset.")
+                        r_zone = ""
+                    else:
+                        r_zone = st.selectbox(
+                            "Zone de santé *",
+                            filtered_zones,
+                            index=0,
+                            key="register_zone_unique"
+                        )
+                    reg_submit = st.form_submit_button("Soumettre ma demande", use_container_width=True)
+
 
                 st.markdown(
-                  '<div class="auth-form-helper">Les champs marques d\'un asterisque sont obligatoires. Votre demande pourra etre activee apres verification des informations fournies.</div>',
-                  unsafe_allow_html=True,
+                    '<div class="auth-form-helper">Les champs marques d\'un asterisque sont obligatoires. Votre demande pourra etre activee apres verification des informations fournies.</div>'
+                  ,
+                    unsafe_allow_html=True,
                 )
-                reg_submit = st.button("Soumettre ma demande", use_container_width=True, key="register_authority_submit")
 
                 if reg_submit:
-                  if all([r_username, r_password, r_confirm, r_nom, r_prenom, r_email, r_telephone, current_province, r_zone]):
-                    if r_password != r_confirm:
-                      st.error("Les mots de passe ne correspondent pas.")
-                    elif len(r_password) < 6:
-                      st.error("Mot de passe trop court (minimum 6 caractères).")
+                    if all([r_username, r_password, r_confirm, r_nom, r_prenom, r_email, r_telephone, r_province, r_zone]):
+                        if r_password != r_confirm:
+                            st.error("Les mots de passe ne correspondent pas.")
+                        elif len(r_password) < 6:
+                            st.error("Mot de passe trop court (minimum 6 caractères).")
+                        else:
+                            ok, msg = auth.register_authority(
+                                r_username, r_password, r_nom, r_prenom,
+                                r_email, r_telephone, r_province, r_zone,
+                            )
+                            if ok:
+                                st.session_state.register_success = True
+                                st.rerun()
+                            else:
+                                st.error(msg)
                     else:
-                      ok, msg = auth.register_authority(
-                        r_username,
-                        r_password,
-                        r_nom,
-                        r_prenom,
-                        r_email,
-                        r_telephone,
-                        current_province,
-                        r_zone,
-                      )
-                      if ok:
-                        st.session_state.register_success = True
-                        st.rerun()
-                      else:
-                        st.error(msg)
-                  else:
-                    st.warning("Veuillez remplir tous les champs obligatoires (*).")
+                        st.warning("Veuillez remplir tous les champs obligatoires (*).")
 
                 st.markdown(
                   '<div class="auth-section-note">Deja inscrit ? Revenez simplement a la connexion pour acceder a votre espace des que votre compte est actif.</div>',

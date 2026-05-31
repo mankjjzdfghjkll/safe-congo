@@ -6,7 +6,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.public_ui import apply_public_theme, get_public_database_metrics, render_public_hero
+from utils.public_ui import apply_public_theme, get_public_reference_metrics, render_public_hero
 from utils.sidebar_brand import render_public_sidebar
 
 
@@ -18,7 +18,7 @@ SIDEBAR_KWARGS = {"active_page": "contact"} if "active_page" in inspect.signatur
 apply_public_theme()
 render_public_sidebar(**SIDEBAR_KWARGS)
 
-database_metrics = get_public_database_metrics()
+reference_metrics = get_public_reference_metrics()
 
 render_public_hero(
     "Alliance & coordination",
@@ -26,8 +26,8 @@ render_public_hero(
     "SAFE CONGO s'inscrit dans une logique d'ecosysteme. La valeur de la plateforme grandit lorsqu'elle relie institutions, partenaires et equipes techniques autour d'un meme langage de vigilance et d'action.",
     [
         ("4", "partenaires de reference"),
-        (str(database_metrics.get("users_total", 0)), "comptes en base"),
-        (str(database_metrics.get("alerts_total", 0)), "alertes historisees"),
+    (str(reference_metrics.get("provinces", 0)), "provinces suivies"),
+    (str(reference_metrics.get("zones", 0)), "zones observees"),
     ],
     tone="contact",
 )

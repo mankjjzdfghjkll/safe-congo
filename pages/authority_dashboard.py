@@ -8,10 +8,9 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.config import ALERT_LEVEL_COLORS, ALERT_LEVEL_ORDER
+from src.config import ALERT_LEVEL_COLORS
 from utils.auth import AuthSystem, require_auth
 from utils.authority_ui import (
-    alert_delivery_health,
     alerts_for_user,
     apply_authority_theme,
     authority_panel_title,
@@ -24,6 +23,9 @@ from utils.authority_ui import (
 )
 from utils.chart_helpers import empty_state_figure
 from utils.navigation import switch_to_home_page
+
+
+VISIBLE_ALERT_LEVELS = ["CRITIQUE", "HAUTE", "MODEREE", "FAIBLE"]
 
 
 def _prepare_history(history_df: pd.DataFrame) -> pd.DataFrame:
@@ -48,7 +50,8 @@ def _prepare_alerts(alerts_df: pd.DataFrame) -> pd.DataFrame:
             prepared[column] = pd.to_numeric(prepared[column], errors="coerce").fillna(0)
     if "created_at" in prepared.columns:
         prepared["created_at"] = pd.to_datetime(prepared["created_at"], errors="coerce")
-    prepared["alert_level"] = prepared["alert_level"].astype(str).str.upper().str.strip().replace({"NOUVELLE_DONNEE": "INFO"})
+    prepared["alert_level"] = prepared["alert_level"].astype(str).str.upper().str.strip().replace({"NOUVELLE_DONNEE": "FAIBLE", "INFO": "FAIBLE"})
+    prepared.loc[~prepared["alert_level"].isin(VISIBLE_ALERT_LEVELS), "alert_level"] = "FAIBLE"
     return prepared
 
 
@@ -126,7 +129,7 @@ def _assigned_levels_chart(alerts_df: pd.DataFrame) -> go.Figure:
         return empty_state_figure("Intensite des alertes", "Aucune alerte ciblee disponible.", make_plotly_layout)
 
     grouped = prepared.groupby("alert_level", as_index=False).size().rename(columns={"size": "count"})
-    chart_df = pd.DataFrame({"alert_level": ALERT_LEVEL_ORDER}).merge(grouped, on="alert_level", how="left").fillna(0)
+    chart_df = pd.DataFrame({"alert_level": VISIBLE_ALERT_LEVELS}).merge(grouped, on="alert_level", how="left").fillna(0)
     chart_df["count"] = chart_df["count"].astype(int)
     fig = go.Figure(
         go.Bar(
@@ -140,26 +143,6 @@ def _assigned_levels_chart(alerts_df: pd.DataFrame) -> go.Figure:
         )
     )
     return make_plotly_layout(fig, "Intensite des alertes")
-
-
-def _read_status_chart(alerts_df: pd.DataFrame) -> go.Figure:
-    prepared = _prepare_alerts(alerts_df)
-    if prepared.empty:
-        return empty_state_figure("Lecture du flux", "Aucune notification a mesurer.", make_plotly_layout)
-
-    prepared["Statut"] = prepared["is_read"].map({1: "Lue", 0: "Non lue"}).fillna("Non lue")
-    chart_df = prepared.groupby("Statut", as_index=False).size().rename(columns={"size": "count"})
-    fig = go.Figure(
-        go.Pie(
-            labels=chart_df["Statut"],
-            values=chart_df["count"],
-            hole=0.68,
-            marker=dict(colors=["#059669", "#f59e0b"]),
-            textinfo="percent",
-            hovertemplate="<b>%{label}</b><br>Alertes: %{value}<extra></extra>",
-        )
-    )
-    return make_plotly_layout(fig, "Lecture du flux")
 
 
 def _province_summary(auth: AuthSystem, province: str) -> tuple[int, int, int]:
@@ -197,12 +180,15 @@ def main() -> None:
         subtitle="Une console territoriale plus nette pour lire vos alertes ciblees, replacer les signaux dans le contexte provincial et accelerer les decisions de terrain.",
         chips=["Veille locale", user.get("province", "—"), user.get("zone_sante", "—")],
         eyebrow="Surveillance territoriale",
+        auth=auth,
+        user_id=user["id"],
+        notification_count=auth.get_unread_count(user["id"]),
+        inbox_key_prefix="authority_dashboard_inbox",
+        inbox_limit=8,
     )
 
     history_df = load_historical_province(user.get("province", ""))
     assigned_alerts_df = alerts_for_user(auth.db_path, user["id"])
-    unread_count = auth.get_unread_count(user["id"])
-    delivery_health = alert_delivery_health(auth.db_path, user["id"])
     prov_cases, prov_deaths, prov_entries = _province_summary(auth, user.get("province", ""))
 
     prepared_alerts = _prepare_alerts(assigned_alerts_df)
@@ -219,15 +205,6 @@ def main() -> None:
                 "accent": "#0a5fab",
                 "accent_soft": "#49acef",
                 "pill": "rgba(10,95,171,.12)",
-            },
-            {
-                "label": "Non lues",
-                "value": str(unread_count),
-                "delta": "Priorites immediates",
-                "copy": "Le compteur non lu sert de file d'attente claire pour prioriser votre reaction terrain.",
-                "accent": "#059669",
-                "accent_soft": "#34d399",
-                "pill": "rgba(5,150,105,.12)",
             },
             {
                 "label": "Cas provinciaux",
@@ -250,83 +227,37 @@ def main() -> None:
         ]
     )
 
-    health_class = "dot-ok" if delivery_health.get("ok") else "dot-warn"
-    st.markdown(
-        f'<div class="authority-status-chip {health_class}">{delivery_health.get("message")} ({delivery_health.get("linked_alert_count", 0)}/{delivery_health.get("notification_count", 0)} liees, {delivery_health.get("unread_count", 0)} non lues)</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f"""
-<div class="authority-grid-3">
-  <div class="authority-mini-card"><h4>Lecture ciblee</h4><p>Votre cockpit met en avant les alertes qui vous ont effectivement ete diffusees, puis les replace dans le contexte provincial.</p></div>
-  <div class="authority-highlight"><strong>Pression actuelle</strong><span>{'Escalade active' if max_growth >= 30 else 'Sous tension' if max_growth >= 10 else 'Sous controle'} avec un pic de croissance observe a {max_growth:.1f}%.</span></div>
-  <div class="authority-mini-card"><h4>Decision rapide</h4><p>Depuis cette page, vous identifiez les critiques, les signaux non lus et l'ouverture directe vers le centre d'alertes detaillees.</p></div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
     authority_section_label("Vue territoriale")
-    left_col, right_col = st.columns([1.18, 0.92], gap="large")
+    left_col, right_col = st.columns(2, gap="large")
     with left_col:
         st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
         st.plotly_chart(_historical_trend_chart(history_df), use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
-        authority_panel_title("Dernieres notifications")
-        preview_notifications = auth.get_notifications(user["id"], unread_only=False)
-        if not preview_notifications:
-            st.markdown('<div class="authority-empty-state">Aucune notification disponible pour le moment.</div>', unsafe_allow_html=True)
-        else:
-            for notification in preview_notifications[:5]:
-                status_label = "NON LUE" if int(notification["is_read"]) == 0 else "LUE"
-                with st.expander(f"{status_label} • {notification['title']}"):
-                    st.markdown(
-                        f'<div class="authority-highlight" style="margin-bottom:12px"><strong>{notification["title"]}</strong><span>{notification["message"]}</span><span style="display:block;margin-top:8px;font-size:.74rem;color:#7b91a5">{notification["created_at"]}</span></div>',
-                        unsafe_allow_html=True,
-                    )
-                    if int(notification["is_read"]) == 0 and st.button(
-                        "Marquer cette notification comme lue",
-                        use_container_width=True,
-                        key=f"authority_preview_read_{int(notification['id'])}",
-                    ):
-                        auth.mark_notification_read(int(notification["id"]))
-                        st.rerun()
-            if unread_count > 0 and st.button("Tout marquer comme lu", use_container_width=True, key="authority_mark_all_read"):
-                auth.mark_all_notifications_read(user["id"])
-                st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with right_col:
-        st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
         st.plotly_chart(_top_diseases_chart(history_df), use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
+    with right_col:
         st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
         st.plotly_chart(_assigned_levels_chart(assigned_alerts_df), use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
-        st.plotly_chart(_read_status_chart(assigned_alerts_df), use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
         authority_panel_title("Capsule terrain")
+        pressure_label = "Escalade active" if max_growth >= 30 else "Sous tension" if max_growth >= 10 else "Sous controle"
         st.markdown(
-            f'<div class="authority-highlight"><strong>Province: {user.get("province", "—")}</strong><span>Zone de sante de reference: {user.get("zone_sante", "—")}.</span></div><div style="height:12px"></div><div class="authority-highlight"><strong>{len(assigned_alerts_df)} alertes a suivre</strong><span>Les signaux diffuses a votre compte peuvent depasser la seule province d\'affectation si l\'administration le decide.</span></div>',
+            f'<div class="authority-highlight"><strong>Province : {user.get("province", "—")}</strong>'
+            f'<span>Zone de sante : {user.get("zone_sante", "—")} &nbsp;|&nbsp; {pressure_label} (pic +{max_growth:.0f}%)</span></div>'
+            f'<div style="height:10px"></div>'
+            f'<div class="authority-highlight"><strong>{len(assigned_alerts_df)} alertes a suivre</strong>'
+            f'<span>{critical_count} critique(s) dans votre file.</span></div>',
             unsafe_allow_html=True,
         )
+        st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
         if st.button("Ouvrir mes alertes detaillees", use_container_width=True, key="authority_to_alerts"):
             st.switch_page("pages/authority_alerts.py")
         st.markdown('</div>', unsafe_allow_html=True)
-
-    authority_section_label("Assistance")
-    st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
-    authority_panel_title("Aide et contact")
-    st.markdown('<div class="authority-support-copy">Pour toute question sur l\'utilisation du tableau de bord ou pour signaler un probleme technique, passez par l\'administration SAFE CONGO et par votre circuit de coordination provincial. La page Contact presente les partenaires institutionnels et le parcours d\'acces deja retenu dans l\'application.</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

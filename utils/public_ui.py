@@ -114,22 +114,6 @@ def get_public_reference_metrics() -> dict[str, int]:
     return metrics
 
 
-@st.cache_data(show_spinner=False, ttl=30)
-def get_public_database_metrics() -> dict[str, int]:
-    try:
-        from utils.auth import AuthSystem
-
-        snapshot = AuthSystem().database_snapshot()
-    except Exception:
-        snapshot = {}
-    return {
-        "users_total": int(snapshot.get("users_total", 0)),
-        "alerts_total": int(snapshot.get("alerts_total", 0)),
-        "entries_total": int(snapshot.get("entries_total", 0)),
-        "prediction_runs_total": int(snapshot.get("prediction_runs_total", 0)),
-    }
-
-
 def apply_public_theme() -> None:
     st.markdown(PUBLIC_THEME, unsafe_allow_html=True)
 

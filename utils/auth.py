@@ -1,6 +1,7 @@
 # utils/auth.py - Version complète avec toutes les fonctions exportées
 import hashlib
 import os
+import re
 import secrets
 import sqlite3
 import time
@@ -44,6 +45,60 @@ class AuthSystem:
 
     def _clean_text(self, value):
         return " ".join(str(value or "").strip().split())
+
+    def _strip_html(self, value):
+        text = str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+        if "<" in text and ">" in text:
+            text = re.sub(r"<[^>]+>", " ", text)
+        text = text.replace("&nbsp;", " ")
+        lines = [" ".join(line.split()) for line in text.split("\n")]
+        return "\n".join(line for line in lines if line).strip()
+
+    def _normalize_notification_title(self, value):
+        cleaned = self._clean_text(self._strip_html(value))
+        upper = cleaned.upper()
+        legacy_tokens = ("ALERTE INFO", "INFORMATION TERRAIN", "NOUVELLE_DONNEE", "NOUVELLE DONNEE")
+        if any(token in upper for token in legacy_tokens):
+            suffix = ""
+            if " - " in cleaned:
+                suffix = cleaned.split(" - ", 1)[1].strip()
+            elif "-" in cleaned:
+                suffix = cleaned.split("-", 1)[1].strip()
+            return f"ALERTE FAIBLE - {suffix}" if suffix else "ALERTE FAIBLE"
+        return cleaned
+
+    def _normalize_notification_message(self, value):
+        return self._strip_html(value)
+
+    def _normalize_legacy_notifications(self, cursor):
+        cursor.execute(
+            """
+            UPDATE alerts
+            SET alert_level = 'FAIBLE'
+            WHERE upper(trim(coalesce(alert_level, ''))) IN ('INFO', 'NOUVELLE_DONNEE', 'NOUVELLE DONNEE')
+            """
+        )
+
+        cursor.execute(
+            """
+            SELECT id, title, message
+            FROM notifications
+            WHERE instr(upper(coalesce(title, '')), 'INFO') > 0
+               OR instr(upper(coalesce(title, '')), 'INFORMATION TERRAIN') > 0
+               OR instr(upper(coalesce(title, '')), 'NOUVELLE_DONNEE') > 0
+               OR instr(upper(coalesce(title, '')), 'NOUVELLE DONNEE') > 0
+               OR instr(coalesce(title, ''), '<') > 0
+               OR instr(coalesce(message, ''), '<') > 0
+            """
+        )
+        for notif_id, title, message in cursor.fetchall():
+            normalized_title = self._normalize_notification_title(title)
+            normalized_message = self._normalize_notification_message(message)
+            if normalized_title != (title or "") or normalized_message != (message or ""):
+                cursor.execute(
+                    "UPDATE notifications SET title = ?, message = ? WHERE id = ?",
+                    (normalized_title, normalized_message, notif_id),
+                )
 
     def _normalize_login_identifier(self, value):
         return self._clean_text(value).casefold()
@@ -147,6 +202,7 @@ class AuthSystem:
                 conn.executescript(self._load_schema_sql())
                 cursor = conn.cursor()
                 self._bootstrap_default_users(cursor)
+                self._normalize_legacy_notifications(cursor)
                 
                 conn.commit()
                 conn.close()
@@ -365,6 +421,28 @@ class AuthSystem:
         except:
             return False
     
+    def delete_notification(self, notif_id):
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM notifications WHERE id = ?', (notif_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except:
+            return False
+
+    def delete_all_notifications(self, user_id):
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM notifications WHERE user_id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except:
+            return False
+
     def get_unread_count(self, user_id):
         try:
             conn = self._get_connection()

@@ -236,6 +236,14 @@ html, body, .stApp, .main, .block-container {
   background: linear-gradient(135deg, #dff0ff, #eaf6ff) !important;
   box-shadow: 0 4px 16px rgba(10,132,208,.14) !important;
 }
+[data-testid="stSidebar"] .stButton > button:focus-visible,
+[data-testid="stSidebar"] .stButton > button:active {
+  background: linear-gradient(135deg, #083f73 0%, #0a5fab 52%, #1aa2e2 100%) !important;
+  color: #ffffff !important;
+  border-color: #0a5fab !important;
+  box-shadow: 0 0 0 3px rgba(26,162,226,.18), 0 10px 24px rgba(10,95,171,.22) !important;
+  transform: translateX(2px) !important;
+}
 
 /* ─── SIDEBAR LOGO ─────────────────────────────────────────────────────── */
 .sidebar-logo-wrap {
@@ -1559,7 +1567,7 @@ def show_login(auth):
       }
       .home-footer-shell{
         width:100vw;
-        margin:14px calc(50% - 50vw) 0;
+        margin:52px calc(50% - 50vw) 0;
         padding:0;
         border-radius:0;
         background:linear-gradient(135deg,#073d73 0%,#0a5ba8 44%,#1196d4 100%);
@@ -1570,47 +1578,47 @@ def show_login(auth):
       .home-footer-top{
         display:grid;
         grid-template-columns:1fr;
-        gap:14px;
-        padding:16px min(6vw,64px) 8px;
+        gap:8px;
+        padding:10px min(6vw,64px) 4px;
         background:radial-gradient(circle at top right,rgba(152,228,255,.24),transparent 44%);
       }
       .home-footer-badge{
         display:inline-flex;
         align-items:center;
-        gap:9px;
-        padding:9px 14px;
+        gap:6px;
+        padding:4px 10px;
         border-radius:999px;
         background:rgba(255,255,255,.16);
         border:1px solid rgba(202,236,255,.45);
         color:#d7f2ff;
-        font:800 .73rem Sora,sans-serif;
+        font:800 .68rem Sora,sans-serif;
         letter-spacing:1.2px;
         text-transform:uppercase;
       }
-      .home-footer-title{margin-top:8px;font:800 1.22rem/1.16 Sora,sans-serif;color:#ffffff}
-      .home-footer-copy{margin-top:6px;color:#d7ecf9;font:600 .86rem/1.62 Manrope,sans-serif;max-width:760px}
+      .home-footer-title{margin-top:4px;font:800 1rem/1.1 Sora,sans-serif;color:#ffffff}
+      .home-footer-copy{margin-top:3px;color:#d7ecf9;font:600 .79rem/1.45 Manrope,sans-serif;max-width:760px}
       .home-footer-copy b{color:#ffffff}
-      .home-footer-social-label{color:#d6efff;font:800 .76rem Sora,sans-serif;letter-spacing:.9px;text-transform:uppercase}
-      .home-footer-socials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+      .home-footer-social-label{color:#d6efff;font:800 .69rem Sora,sans-serif;letter-spacing:.9px;text-transform:uppercase}
+      .home-footer-socials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
       .home-footer-social{
         display:flex;
         align-items:center;
-        gap:11px;
-        padding:8px 10px;
-        border-radius:10px;
+        gap:8px;
+        padding:5px 8px;
+        border-radius:8px;
         background:rgba(255,255,255,.12);
         border:1px solid rgba(208,237,255,.38);
         color:#dff3ff;
-        font:700 .76rem Manrope,sans-serif;
+        font:700 .69rem Manrope,sans-serif;
       }
-      .home-footer-social svg{width:20px;height:20px;fill:#ffffff;flex:none}
-      .home-footer-social strong{display:block;color:#ffffff;font:800 .74rem Sora,sans-serif}
-      .home-footer-links{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}
+      .home-footer-social svg{width:15px;height:15px;fill:#ffffff;flex:none}
+      .home-footer-social strong{display:block;color:#ffffff;font:800 .68rem Sora,sans-serif}
+      .home-footer-links{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
       .home-footer-links a{
         color:#f2fbff;
         text-decoration:none;
-        padding:6px 9px;
-        border-radius:10px;
+        padding:4px 8px;
+        border-radius:8px;
         background:rgba(255,255,255,.16);
         border:1px solid rgba(208,237,255,.38);
         font:800 .69rem Manrope,sans-serif;
@@ -1621,15 +1629,15 @@ def show_login(auth):
       .home-footer-bottom{
         display:flex;
         justify-content:space-between;
-        gap:14px;
+        gap:10px;
         flex-wrap:wrap;
         align-items:center;
-        padding:8px min(6vw,64px) 9px;
+        padding:5px min(6vw,64px) 6px;
         border-top:1px solid rgba(195,233,252,.34);
         background:rgba(2,28,58,.18);
       }
-      .home-footer-bottom strong{color:#ffffff;font:800 .84rem Sora,sans-serif;letter-spacing:.8px;text-transform:uppercase}
-      .home-footer-bottom span{color:#d8ecfb;font:700 .8rem/1.6 Manrope,sans-serif}
+      .home-footer-bottom strong{color:#ffffff;font:800 .76rem Sora,sans-serif;letter-spacing:.8px;text-transform:uppercase}
+      .home-footer-bottom span{color:#d8ecfb;font:700 .72rem/1.4 Manrope,sans-serif}
       @media(max-width:840px){
         .home-footer-socials{grid-template-columns:1fr}
       }
@@ -1787,7 +1795,7 @@ def show_login(auth):
         </div>
         <div>
           <div class="home-footer-social-label">Reseaux sociaux</div>
-          <div class="home-footer-socials" style="margin-top:8px">
+          <div class="home-footer-socials" style="margin-top:4px">
             <div class="home-footer-social">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.6 1.7-1.6H17V3.8c-.3 0-1.2-.1-2.4-.1-2.4 0-4 1.4-4 4.2V10H8v3h2.6v8h2.9Z"/></svg>
               <div><strong>Facebook</strong>Communication institutionnelle</div>
@@ -1807,9 +1815,9 @@ def show_login(auth):
           </div>
         </div>
       </div>
-      <div style="padding:0 min(6vw,64px) 12px;">
+      <div style="padding:0 min(6vw,64px) 6px;">
         <div class="home-footer-social-label">Liens officiels</div>
-        <div class="home-footer-links" style="margin-top:7px;">
+        <div class="home-footer-links" style="margin-top:4px;">
           <a href="https://www.minisanterdc.cd" target="_blank">Ministere de la Sante</a>
           <a href="https://www.who.int/fr" target="_blank">OMS</a>
           <a href="https://www.unicef.org/drcongo" target="_blank">UNICEF RDC</a>

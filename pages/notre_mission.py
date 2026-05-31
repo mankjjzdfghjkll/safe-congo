@@ -6,7 +6,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.public_ui import apply_public_theme, get_public_database_metrics, get_public_reference_metrics, render_public_hero
+from utils.public_ui import apply_public_theme, get_public_reference_metrics, render_public_hero
 from utils.sidebar_brand import render_public_sidebar
 
 
@@ -19,7 +19,6 @@ apply_public_theme()
 render_public_sidebar(**SIDEBAR_KWARGS)
 
 reference_metrics = get_public_reference_metrics()
-database_metrics = get_public_database_metrics()
 
 render_public_hero(
     "Cap strategique",
@@ -28,7 +27,7 @@ render_public_hero(
     [
         (str(reference_metrics.get("provinces", 0)), "provinces structurees"),
         (str(reference_metrics.get("zones", 0)), "zones observees"),
-        (str(database_metrics.get("users_total", 0)), "comptes relies"),
+      (str(reference_metrics.get("diseases", 0)), "maladies suivies"),
     ],
     tone="mission",
 )

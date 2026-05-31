@@ -8,7 +8,6 @@ from utils.admin_ui import (
     make_plotly_layout,
     panel_title,
     reference_catalog_frame,
-    render_admin_inbox_expander,
     render_admin_hero,
     render_admin_sidebar,
     render_kpi_cards,
@@ -175,6 +174,10 @@ def main() -> None:
         chips=["Activation guidee", "Cycle de vie des comptes", "Couverture territoriale"],
         eyebrow="Utilisateurs",
         notification_count=admin_unread,
+        auth=auth,
+        user_id=user["id"],
+        inbox_key_prefix="admin_users_inbox",
+        inbox_limit=8,
     )
 
     users_df = users_frame(auth)
@@ -223,26 +226,7 @@ def main() -> None:
                 "accent_soft": "#fcd116",
                 "pill": "rgba(217,119,6,.12)",
             },
-            {
-                "label": "Notifications admin",
-                "value": f"{admin_unread}",
-                "delta": "Suivi diffusion",
-                "copy": "Les confirmations de diffusion et retours systeme restent visibles meme depuis la gouvernance des comptes.",
-                "accent": "#7c3aed",
-                "accent_soft": "#a78bfa",
-                "pill": "rgba(124,58,237,.12)",
-            },
         ]
-    )
-
-    render_admin_inbox_expander(
-        auth,
-        user["id"],
-        key_prefix="admin_users_inbox",
-        unread_count=admin_unread,
-        title="Messagerie admin",
-        intro="Les confirmations de diffusion et retours systeme restent accessibles ici pendant la gouvernance des comptes.",
-        limit=6,
     )
 
     st.markdown(
@@ -275,7 +259,7 @@ def main() -> None:
     panel_title("Registre des comptes")
     registry_df = _registry_table(users_df)
     if registry_df.empty:
-        st.info("Aucun utilisateur enregistre.")
+        st.markdown('<div class="admin-empty-state">Aucun utilisateur enregistre.</div>', unsafe_allow_html=True)
     else:
         st.dataframe(registry_df.head(40), use_container_width=True, hide_index=True, height=360)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -379,7 +363,7 @@ def main() -> None:
     with tab2:
         actifs = users_df[(users_df.get("is_active", 1) == 1) & (users_df["username"] != "admin")].copy() if not users_df.empty else pd.DataFrame()
         if actifs.empty:
-            st.info("Aucun utilisateur actif a suspendre.")
+            st.markdown('<div class="admin-empty-state">Aucun utilisateur actif a suspendre.</div>', unsafe_allow_html=True)
         else:
             actifs["Libelle"] = actifs["nom"].fillna("") + " " + actifs["prenom"].fillna("") + " (" + actifs["username"] + ")"
             with st.form("disable_user_form"):
@@ -408,7 +392,7 @@ def main() -> None:
     with tab3:
         inactifs = users_df[(users_df.get("is_active", 1) == 0) & (users_df["username"] != "admin")].copy() if not users_df.empty else pd.DataFrame()
         if inactifs.empty:
-            st.info("Aucun utilisateur inactif a reactiver.")
+            st.markdown('<div class="admin-empty-state">Aucun utilisateur inactif a reactiver.</div>', unsafe_allow_html=True)
         else:
             inactifs["Libelle"] = inactifs["nom"].fillna("") + " " + inactifs["prenom"].fillna("") + " (" + inactifs["username"] + ")"
             with st.form("reactivate_user_form"):
