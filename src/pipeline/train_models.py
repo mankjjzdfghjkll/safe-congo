@@ -560,7 +560,7 @@ class DiseasePredictor:
             import matplotlib.pyplot as plt
         except ModuleNotFoundError:
             print(
-                "matplotlib absent: image combinee des matrices non generee. "
+                "matplotlib absent: image combinee des matrices non produite. "
                 "(Optionnel) Installe-le avec: conda install matplotlib"
             )
             return None

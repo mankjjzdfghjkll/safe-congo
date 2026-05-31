@@ -3,7 +3,7 @@
 Plateforme de surveillance epidemiologique et de coordination sanitaire pour la Republique Democratique du Congo.
 
 ## Objectif du projet
-SAFE CONGO centralise la lecture des signaux sanitaires, facilite la saisie terrain, produit des alertes lisibles pour les autorites et soutient la coordination des actions de reponse. Le depot GitHub versionne volontairement le coeur applicatif et l'architecture technique du projet, pas les donnees locales d'exploitation ni les artefacts generes pendant les essais.
+SAFE CONGO centralise la lecture des signaux sanitaires, facilite la saisie terrain, produit des alertes lisibles pour les autorites et soutient la coordination des actions de reponse. Le depot GitHub versionne volontairement le coeur applicatif et l'architecture technique du projet, pas les donnees locales d'exploitation ni les artefacts produits pendant les essais.
 
 ## Architecture 3 tiers
 Le projet suit une lecture en 3 tiers simple et defendable.
@@ -93,4 +93,4 @@ Les elements suivants ne sont pas obliges d'etre publies sur GitHub et sont excl
 - `requirements.txt`
 
 ## Note de depot
-Ce depot GitHub est un depot de code et d'architecture. Les fichiers d'exploitation locale et les sorties generees pendant les tests sont volontairement exclus pour conserver un historique propre, lisible et professionnel.
+Ce depot GitHub est un depot de code et d'architecture. Les fichiers d'exploitation locale et les sorties produites pendant les tests sont volontairement exclus pour conserver un historique propre, lisible et professionnel.

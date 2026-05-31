@@ -794,7 +794,7 @@ def show_admin_panel():
     with col1:
         st.metric("Autorités sanitaires", stats['total_authorities'])
     with col2:
-        st.metric("Alertes générées", stats['total_alerts'])
+        st.metric("Alertes diffusees", stats['total_alerts'])
     with col3:
         st.metric("Saisies épidémio", stats['total_entries'])
     

@@ -21,7 +21,7 @@ steps = [
     ("03", "Lecture predictive", "Le moteur analytique compare le present a l'historique, calcule les tendances et isole les comportements epidemiologiques inhabituels.", "Modeles filtres"),
     ("04", "Graduation du risque", "Le systeme traduit la complexite en niveaux d'alerte lisibles pour faciliter la priorisation et la mobilisation.", "Priorisation rapide"),
     ("05", "Diffusion instantanee", "Les autorites concernees recoivent des signaux contextualises avec localisation, gravite et mesures recommandees.", "Notification utile"),
-    ("06", "Suivi executable", "Des rapports et syntheses sont generes pour prolonger l'analyse dans les reunions, les cellules de crise et les equipes terrain.", "Rapport activable"),
+    ("06", "Suivi executable", "Des rapports et syntheses sont prepares pour prolonger l'analyse dans les reunions, les cellules de crise et les equipes terrain.", "Rapport activable"),
 ]
 
 apply_public_theme()

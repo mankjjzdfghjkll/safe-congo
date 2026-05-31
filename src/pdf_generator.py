@@ -885,7 +885,7 @@ class BarrierMeasuresPDF:
         story.append(advice_box)
         story.append(Spacer(1, 18))
 
-        story.append(Paragraph(f"Document genere par SAFE CONGO le {datetime.now().strftime('%d/%m/%Y a %H:%M')}", footer_style))
+        story.append(Paragraph(f"Document emis par SAFE CONGO le {datetime.now().strftime('%d/%m/%Y a %H:%M')}", footer_style))
         story.append(Paragraph("Ce bulletin soutient la decision mais ne remplace pas les consignes officielles du systeme de sante.", footer_style))
 
         doc.title = f"SAFE CONGO - Mesures barrieres {display_level} {disease}"
