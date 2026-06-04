@@ -514,8 +514,8 @@ def main():
                     if all([r_username, r_password, r_confirm, r_nom, r_prenom, r_email, r_telephone, r_province, r_zone]):
                         if r_password != r_confirm:
                             st.error("Les mots de passe ne correspondent pas.")
-                        elif len(r_password) < 6:
-                            st.error("Mot de passe trop court (minimum 6 caractères).")
+                        elif len(r_password) < 8:
+                            st.error("Mot de passe trop court (minimum 8 caractères).")
                         else:
                             ok, msg = auth.register_authority(
                                 r_username, r_password, r_nom, r_prenom,

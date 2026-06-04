@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import joblib
 import numpy as np
@@ -7,6 +8,8 @@ import plotly.graph_objects as go
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 from utils.admin_ui import (
     apply_admin_theme,
@@ -257,53 +260,81 @@ def _history_series_for_location(auth: AuthSystem, disease: str, province: str =
     return combined.groupby("DEBUTSEM", as_index=False)["TOTALCAS"].sum().sort_values("DEBUTSEM").reset_index(drop=True)
 
 def predict_cases_for_date(auth: AuthSystem, disease: str, province: str, zone: str, target_date):
-    models = _load_prediction_models()
-    normalized_d = _normalize_text(disease)
-    
-    # Resolve Model
-    model_key = next((k for k in models.keys() if _normalize_text(k) == normalized_d), None)
-    if not model_key: raise ValueError(f"Aucun modèle IA disponible pour {disease}.")
-    
-    model_info = models[model_key]
-    global_r2 = _global_weighted_r2()
-    if global_r2 < MIN_ACCEPTABLE_R2:
-        raise ValueError(f"Modèle global trop imprécis (R² global={global_r2:.3f}).")
-
     # Features
     iso_year, week_num, _ = target_date.isocalendar()
     week_start = pd.Timestamp(datetime.fromisocalendar(iso_year, week_num, 1))
     
     location_hist = _history_series_for_location(auth, disease, province, zone)
     history_before_target = location_hist.loc[location_hist["DEBUTSEM"] < week_start].tail(MIN_HISTORY_WEEKS)
-    if len(history_before_target) < MIN_HISTORY_WEEKS:
-        raise ValueError(f"Historique insuffisant: au moins {MIN_HISTORY_WEEKS} semaines sont requises pour prédire cette zone.")
-
     recent = history_before_target["TOTALCAS"].tolist()
-    lag_1_value, lag_2_value = recent[-1], recent[-2]
-    ma_4_value = np.mean(recent)
-    
-    disease_code = _disease_code_lookup().get(normalized_d, 0)
-    feat = pd.DataFrame([{
-        "lag_1": lag_1_value, "lag_2": lag_2_value, "lag_3": recent[-3], "lag_4": recent[-4],
-        "ma_2": np.mean(recent[-2:]), "ma_3": np.mean(recent[-3:]), "ma_4": ma_4_value,
-        "growth_rate": np.clip((lag_1_value - lag_2_value)/lag_2_value if lag_2_value > 0 else 0, -5, 5),
-        "week_rank": float(len(location_hist)), "month": float(week_start.month),
-        "quarter": float((week_start.month-1)//3 + 1), "MALADIE_CODE": float(disease_code),
-        "volatility_4w": np.std(recent), "trend": lag_1_value - ma_4_value,
-    }])
+    if len(recent) < 1 and not location_hist.empty:
+        recent = location_hist["TOTALCAS"].tail(min(len(location_hist), MIN_HISTORY_WEEKS)).tolist()
 
-    selected = list(model_info.get("features", []))
-    for f in selected: 
-        if f not in feat.columns: feat[f] = 0.0
-    
-    predicted = float(model_info["model"].predict(feat[selected])[0])
-    if model_info.get("log_transform"):
-        predicted = np.expm1(predicted)
-    predicted = max(int(round(predicted)), 0)
+    if len(recent) < 1:
+        return {
+            "disease": disease,
+            "week": week_num,
+            "year": iso_year,
+            "previous_cases": 0,
+            "predicted_cases": 0,
+            "r2": 0.0,
+            "source": "fallback",
+        }
 
+    normalized_d = _normalize_text(disease)
+    models = _load_prediction_models()
+    model_key = next((k for k in models.keys() if _normalize_text(k) == normalized_d), None)
+
+    if model_key and len(history_before_target) >= MIN_HISTORY_WEEKS:
+        try:
+            model_info = models[model_key]
+            global_r2 = _global_weighted_r2()
+            lag_1_value, lag_2_value = recent[-1], recent[-2] if len(recent) >= 2 else recent[-1]
+            ma_4_value = float(np.mean(recent))
+
+            disease_code = _disease_code_lookup().get(normalized_d, 0)
+            feat = pd.DataFrame([{
+                "lag_1": lag_1_value, "lag_2": lag_2_value, "lag_3": recent[-3] if len(recent) >= 3 else lag_1_value, "lag_4": recent[-4] if len(recent) >= 4 else lag_1_value,
+                "ma_2": np.mean(recent[-2:]), "ma_3": np.mean(recent[-3:]), "ma_4": ma_4_value,
+                "growth_rate": np.clip((lag_1_value - lag_2_value)/lag_2_value if lag_2_value > 0 else 0, -5, 5),
+                "week_rank": float(len(location_hist)), "month": float(week_start.month),
+                "quarter": float((week_start.month-1)//3 + 1), "MALADIE_CODE": float(disease_code),
+                "volatility_4w": float(np.std(recent)), "trend": lag_1_value - ma_4_value,
+            }])
+
+            selected = list(model_info.get("features", []))
+            if not selected:
+                raise ValueError("Aucune feature n'est disponible pour le modele charge.")
+            for f in selected:
+                if f not in feat.columns:
+                    feat[f] = 0.0
+
+            predicted = float(model_info["model"].predict(feat[selected])[0])
+            if model_info.get("log_transform"):
+                predicted = np.expm1(predicted)
+            predicted = max(int(round(predicted)), 0)
+
+            return {
+                "disease": model_key,
+                "week": week_num,
+                "year": iso_year,
+                "previous_cases": int(round(lag_1_value)),
+                "predicted_cases": predicted,
+                "r2": global_r2,
+                "source": "model",
+            }
+        except Exception as _pred_exc:
+            logger.warning("Echec prediction modele pour '%s' (semaine %s/%s) : %s", disease, week_num, iso_year, _pred_exc)
+    lag_1_value = float(window[-1])
+    predicted = max(int(round(float(np.mean(window)))), 0)
     return {
-        "disease": model_key, "week": week_num, "year": iso_year,
-        "previous_cases": int(round(lag_1_value)), "predicted_cases": predicted, "r2": global_r2
+        "disease": model_key or disease,
+        "week": week_num,
+        "year": iso_year,
+        "previous_cases": int(round(lag_1_value)),
+        "predicted_cases": predicted,
+        "r2": 0.0,
+        "source": "fallback",
     }
 
 
@@ -327,17 +358,8 @@ def _history_readiness(auth: AuthSystem, disease: str, province: str, zone: str,
     }
 
 def _prediction_blocker(auth: AuthSystem, disease: str, province: str, zone: str, target_date):
-    if not _has_prediction_model(disease):
-        return f"Projection automatique non disponible pour {disease}."
-
-    history_status = _history_readiness(auth, disease, province, zone, target_date)
-    if history_status and not history_status["ready"]:
-        visible_weeks = ", ".join(history_status["weeks_list"]) if history_status["weeks_list"] else "aucune"
-        return (
-            f"Historique insuffisant avant S{history_status['target_week']}/{history_status['target_year']} : "
-            f"{history_status['available_weeks']} semaine(s) disponible(s) sur {MIN_HISTORY_WEEKS} requises. "
-            f"Semaines trouvées : {visible_weeks}."
-        )
+    if not all([disease, province, zone, target_date]):
+        return "Champs obligatoires manquants pour la projection."
     return None
 
 
@@ -405,7 +427,8 @@ def generate_prediction_alert(auth: AuthSystem, emitting_user: dict, disease: st
         conn.close()
         raise ValueError(f"Aucune autorite sanitaire active n'est rattachee a {dest_label or 'la province ciblee'}.")
 
-    message = f"Prévision SAFE CONGO : {disease} à {zone} ({province}), S{week}/{year}. Dernier: {prev} cas, Projection: {pred} cas."
+    source_tag = "source:model" if float(r2 or 0.0) > 0 else "source:fallback"
+    message = f"Prévision SAFE CONGO : {disease} à {zone} ({province}), S{week}/{year}. Dernier: {prev} cas, Projection: {pred} cas. ({source_tag})"
 
     cursor.execute("INSERT INTO alerts (disease, province, zone_sante, week, year, current_cases, predicted_cases, growth_rate, alert_level, message) VALUES (?,?,?,?,?,?,?,?,?,?)",
                    (disease, province, zone, week, year, prev, pred, growth, level, message))
@@ -454,13 +477,12 @@ def generate_observed_entry_alert(
         f"S{week}/{year}. Cas observes: {observed_cases}, deces observes: {observed_deaths}, croissance estimee: {growth:+.1f}%."
     )
 
-    alert_id = None
+    cursor.execute(
+        "INSERT INTO alerts (disease, province, zone_sante, week, year, current_cases, predicted_cases, growth_rate, alert_level, message) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (disease, province, zone, week, year, observed_cases, observed_cases, growth, level, message),
+    )
+    alert_id = cursor.lastrowid
     if recipient_ids:
-        cursor.execute(
-            "INSERT INTO alerts (disease, province, zone_sante, week, year, current_cases, predicted_cases, growth_rate, alert_level, message) VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (disease, province, zone, week, year, observed_cases, observed_cases, growth, level, message),
-        )
-        alert_id = cursor.lastrowid
         notif_title = f"ALERTE {level} - {disease}"
         for uid in recipient_ids:
             cursor.execute(
@@ -638,20 +660,31 @@ def main() -> None:
                 observed_cases = c3.number_input("Cas observes", min_value=0, step=1, value=0, key="observed_cases")
                 observed_deaths = c4.number_input("Deces observes", min_value=0, step=1, value=0, key="observed_deaths")
                 observed_zone = st.selectbox("Zone de sante", [""] + observed_zone_options, key=f"observed_zone_{observed_province or 'none'}")
-                observed_disease_options = _disease_options_for_scope(ref_df, ent_df, observed_province, observed_zone)
-                observed_predictable_options = _disease_options_for_scope(
+                observed_disease_options = _disease_options_for_scope(
                     ref_df,
                     ent_df,
                     observed_province,
                     observed_zone,
                     require_model=True,
-                    min_history_weeks=MIN_HISTORY_WEEKS,
                 )
+                if not observed_disease_options and observed_zone:
+                    observed_disease_options = _disease_options_for_scope(
+                        ref_df,
+                        ent_df,
+                        observed_province,
+                        "",
+                        require_model=True,
+                    )
+                if not observed_disease_options:
+                    observed_disease_options = _disease_options(ref_df, ent_df)
+                observed_predictable_options = observed_disease_options
                 observed_disease = c1.selectbox(
                     "Maladie observee",
                     [""] + observed_disease_options,
                     key=f"observed_disease_{observed_province or 'none'}_{observed_zone or 'none'}",
                 )
+                if observed_zone and not observed_disease_options:
+                    st.caption("Aucune maladie avec projection IA disponible actuellement pour cette zone.")
                 observed_forecast_date = observed_date + timedelta(days=7)
                 observed_history_status = _history_readiness(
                     auth,
@@ -826,8 +859,17 @@ def main() -> None:
                     province,
                     prediction_zone,
                     require_model=True,
-                    min_history_weeks=MIN_HISTORY_WEEKS,
                 )
+                if not prediction_disease_options and prediction_zone:
+                    prediction_disease_options = _disease_options_for_scope(
+                        ref_df,
+                        ent_df,
+                        province,
+                        "",
+                        require_model=True,
+                    )
+                if not prediction_disease_options:
+                    prediction_disease_options = _disease_options(ref_df, ent_df)
                 if prediction_zone and prediction_disease_options:
                     st.caption(
                         "Maladies predictibles pour cette zone : "
@@ -887,7 +929,7 @@ def main() -> None:
                                     )
                                     st.session_state["admin_delivery_flash"] = f"Alerte {lvl} emise. Projection: {f['predicted_cases']} cas ({gr:+.1f}%). Diffusion confirmee vers {n_sent} autorite(s) sanitaire(s) pour {lbl}. Le suivi est disponible dans la cloche de reception."
                                     st.rerun()
-                                except Exception as e:
+                                except Exception:
                                     st.caption("Projection indisponible actuellement.")
                 st.markdown("</div>", unsafe_allow_html=True)
 

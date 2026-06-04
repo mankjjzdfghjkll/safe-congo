@@ -297,6 +297,8 @@ class AuthSystem:
                 return False, "Role invalide"
             if normalized_role == "autorite_sanitaire" and not all([normalized_province, normalized_zone]):
                 return False, "La province et la zone de sante sont obligatoires pour une autorite sanitaire"
+            if len(password.strip()) < 8:
+                return False, "Le mot de passe doit contenir au moins 8 caracteres."
 
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -333,6 +335,26 @@ class AuthSystem:
 
     def register_authority(self, username, password, nom, prenom, email, telephone, province, zone_sante):
         return self.register_user(username, password, nom, prenom, email, telephone, "autorite_sanitaire", province, zone_sante)
+
+    def change_password(self, user_id: int, new_password: str) -> tuple:
+        if len(new_password.strip()) < 8:
+            return False, "Le mot de passe doit contenir au moins 8 caracteres."
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+            if not cursor.fetchone():
+                conn.close()
+                return False, "Utilisateur introuvable."
+            cursor.execute(
+                "UPDATE users SET password = ? WHERE id = ?",
+                (self._hash_password(new_password.strip()), user_id),
+            )
+            conn.commit()
+            conn.close()
+            return True, "Mot de passe mis a jour avec succes."
+        except Exception as exc:
+            return False, f"Erreur: {exc}"
     
     def get_all_authorities(self):
         try:
@@ -347,7 +369,7 @@ class AuthSystem:
             return [{'id': u[0], 'username': u[1], 'nom': u[2], 'prenom': u[3], 
                      'email': u[4], 'telephone': u[5], 'province': u[6], 
                      'zone_sante': u[7], 'created_at': u[8], 'last_login': u[9]} for u in users]
-        except:
+        except Exception:
             return []
     
     def get_all_users(self):
@@ -363,7 +385,7 @@ class AuthSystem:
             return [{'id': u[0], 'username': u[1], 'role': u[2], 'nom': u[3], 'prenom': u[4],
                      'email': u[5], 'telephone': u[6], 'province': u[7], 'zone_sante': u[8],
                      'created_at': u[9], 'last_login': u[10], 'is_active': u[11]} for u in users]
-        except:
+        except Exception:
             return []
     
     def save_alert_notification(self, user_id, alert_id, title, message):
@@ -376,7 +398,7 @@ class AuthSystem:
             ''', (user_id, alert_id, title, message))
             conn.commit()
             conn.close()
-        except:
+        except Exception:
             pass
     
     def get_notifications(self, user_id, unread_only=False):
@@ -396,7 +418,7 @@ class AuthSystem:
             notifs = cursor.fetchall()
             conn.close()
             return [{'id': n[0], 'title': n[1], 'message': n[2], 'is_read': n[3], 'created_at': n[4]} for n in notifs]
-        except:
+        except Exception:
             return []
     
     def mark_notification_read(self, notif_id):
@@ -407,7 +429,7 @@ class AuthSystem:
             conn.commit()
             conn.close()
             return True
-        except:
+        except Exception:
             return False
     
     def mark_all_notifications_read(self, user_id):
@@ -418,7 +440,7 @@ class AuthSystem:
             conn.commit()
             conn.close()
             return True
-        except:
+        except Exception:
             return False
     
     def delete_notification(self, notif_id):
@@ -429,7 +451,7 @@ class AuthSystem:
             conn.commit()
             conn.close()
             return True
-        except:
+        except Exception:
             return False
 
     def delete_all_notifications(self, user_id):
@@ -440,7 +462,7 @@ class AuthSystem:
             conn.commit()
             conn.close()
             return True
-        except:
+        except Exception:
             return False
 
     def get_unread_count(self, user_id):
@@ -451,7 +473,7 @@ class AuthSystem:
             count = cursor.fetchone()[0]
             conn.close()
             return count
-        except:
+        except Exception:
             return 0
     
     def delete_user(self, user_id):
@@ -495,7 +517,7 @@ class AuthSystem:
                 'total_entries': total_entries,
                 'total_prediction_runs': total_prediction_runs,
             }
-        except:
+        except Exception:
             return {'total_authorities': 0, 'total_alerts': 0, 'total_entries': 0, 'total_prediction_runs': 0}
 
     def database_snapshot(self):

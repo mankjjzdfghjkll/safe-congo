@@ -41,14 +41,17 @@ class DataCleaner:
     ]
 
     # Normalisation des noms de maladies (codes bruts → noms lisibles)
+    # Supporte les variantes de casse (IRA, Ira, ira, etc.)
     _DISEASE_MAPPING = {
+        "IRA": "Infection respiratoire aiguë",
+        "Ira": "Infection respiratoire aiguë",
+        "ira": "Infection respiratoire aiguë",
         "PALUDISME SUSP": "Paludisme (suspect)",
         "PALUDISME CONF": "Paludisme (confirmé)",
         "DIARRHEE DHY M5": "Diarrhée aqueuse",
         "DIARR SANGLANTE": "Diarrhée sanglante",
         "FIEVRE TYPHOIDE": "Fièvre typhoïde",
         "GRIPPE": "Grippe",
-        "IRA": "Infection respiratoire aiguë",
         "MENINGITE": "Méningite",
         "ROUGEOLE": "Rougeole",
         "CHOLERA": "Choléra",

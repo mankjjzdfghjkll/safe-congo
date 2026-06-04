@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import unicodedata
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -69,6 +70,32 @@ def _level_distribution_chart(alerts_df) -> go.Figure:
         )
     )
     return make_plotly_layout(fig, "Repartition des niveaux")
+
+
+def _is_terrain_signal(message: str) -> bool:
+    text = str(message or "").strip().lower()
+    return text.startswith("nouveau signal terrain safe congo")
+
+
+def _is_fallback_prediction(row: pd.Series) -> bool:
+    raw_message = str(row.get("message", "") or "").strip().lower()
+    message = "".join(
+        ch for ch in unicodedata.normalize("NFKD", raw_message)
+        if unicodedata.category(ch) != "Mn"
+    )
+    if "source:model" in message:
+        return False
+    if "source:fallback" in message:
+        return True
+    if "prevision safe congo" not in message:
+        return False
+    try:
+        current_cases = int(row.get("current_cases", 0) or 0)
+        predicted_cases = int(row.get("predicted_cases", 0) or 0)
+        growth = float(row.get("growth_rate", 0.0) or 0.0)
+    except Exception:
+        return False
+    return current_cases == predicted_cases and abs(growth) < 1e-9
 
 
 def main() -> None:
@@ -219,10 +246,22 @@ def main() -> None:
         if growth_value > 0:
             growth_label = f"+{growth_label}"
 
+        terrain_signal = _is_terrain_signal(row.get("message", ""))
+        fallback_prediction = _is_fallback_prediction(row)
+        if terrain_signal:
+            projection_value_label = "Non disponible"
+            projection_caption = "Projection IA"
+        elif fallback_prediction:
+            projection_value_label = f"{int(row['predicted_cases']):,}"
+            projection_caption = "IA-secours"
+        else:
+            projection_value_label = f"{int(row['predicted_cases']):,}"
+            projection_caption = "Projection IA"
+
         summary_label = f"{level} • {row['disease']} • {row['province']} • {int(row['current_cases']):,} cas"
         with st.expander(summary_label):
             st.markdown(
-                f'<div class="authority-alert-card {css_level}"><div class="authority-alert-top"><div><div class="authority-alert-badge {css_level}">{level}</div><div class="authority-alert-title">{row["disease"]}</div><div class="authority-alert-meta">Observation source: {row["province"]} • {row["zone_sante"]} • Semaine {int(row["week"])}' + f'/{int(row["year"])}' + f'</div></div><div class="authority-alert-meta">Emission: {row["created_at"]}</div></div><div class="authority-alert-stats"><div class="authority-alert-stat"><strong>{int(row["current_cases"]):,}</strong><span>Cas actuels</span></div><div class="authority-alert-stat"><strong>{int(row["predicted_cases"]):,}</strong><span>Projection</span></div><div class="authority-alert-stat"><strong>{growth_label}</strong><span>Croissance</span></div></div><div class="authority-alert-meta" style="font-size:.86rem;color:#566f88">{row["message"]}</div></div>',
+                f'<div class="authority-alert-card {css_level}"><div class="authority-alert-top"><div><div class="authority-alert-badge {css_level}">{level}</div><div class="authority-alert-title">{row["disease"]}</div><div class="authority-alert-meta">Observation source: {row["province"]} • {row["zone_sante"]} • Semaine {int(row["week"])}' + f'/{int(row["year"])}' + f'</div></div><div class="authority-alert-meta">Emission: {row["created_at"]}</div></div><div class="authority-alert-stats"><div class="authority-alert-stat"><strong>{int(row["current_cases"]):,}</strong><span>Cas actuels</span></div><div class="authority-alert-stat"><strong>{projection_value_label}</strong><span>{projection_caption}</span></div><div class="authority-alert-stat"><strong>{growth_label}</strong><span>Croissance</span></div></div><div class="authority-alert-meta" style="font-size:.86rem;color:#566f88">{row["message"]}</div></div>',
                 unsafe_allow_html=True,
             )
 
@@ -235,7 +274,9 @@ def main() -> None:
                     predicted_cases=int(row["predicted_cases"]),
                     growth_rate=float(row["growth_rate"]),
                     alert_level=level,
-                    r2_score=float(row.get("r2_score", 0.0) or 0.0),
+                    r2_score=(float(row["r2_score"]) if row.get("r2_score") not in (None, "") else None),
+                    week=int(row["week"]),
+                    year=int(row["year"]),
                 )
                 st.download_button(
                     "Telecharger la fiche barrieres",

@@ -18,6 +18,9 @@
         "**/__pycache__",
         "**/*.pyc"
     ],
+    "ignore": [
+        "pages/admin_data_entry.py"
+    ],
     "executionEnvironments": [
         {
             "root": ".",

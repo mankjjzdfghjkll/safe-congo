@@ -1,7 +1,6 @@
 from typing import Optional
 
 import streamlit as st
-import streamlit.components.v1 as components
 from utils.navigation import switch_to_home_page
 
 
@@ -224,7 +223,7 @@ def render_sidebar_active_button(button_index: int) -> None:
 def render_public_sidebar(active_page: Optional[str] = None, show_home_button: bool = True) -> None:
     with st.sidebar:
         st.markdown(PUBLIC_SIDEBAR_THEME, unsafe_allow_html=True)
-        components.html(PUBLIC_SIDEBAR_NAV_CLEANUP, height=0)
+        st.html(PUBLIC_SIDEBAR_NAV_CLEANUP, unsafe_allow_javascript=True)
         st.markdown(PUBLIC_SIDEBAR_BRAND, unsafe_allow_html=True)
         st.markdown("---")
 

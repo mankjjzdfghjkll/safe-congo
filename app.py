@@ -1,12 +1,21 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import sys
+import logging
 import warnings
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).parent))
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(Path(__file__).parent / "logs" / "app.log", encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
 
 PROCESSED_DATA_CANDIDATES = [
   Path(__file__).parent / "data" / "processed" / "donnees_agregees_nettoyees.csv",
@@ -1188,39 +1197,31 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
           <div class="hero-proof-card"><div class="hero-proof-k">__PROOF_THREE_LABEL__</div><div class="hero-proof-v">__PROOF_THREE_VALUE__</div></div>
         </div>
       </div>
-      <div class="hero-visual">
-        <svg width="148" height="174" viewBox="0 0 110 128" xmlns="http://www.w3.org/2000/svg" overflow="visible">
-          <defs>
-            <linearGradient id="hv1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="rgba(255,255,255,.92)"/>
-              <stop offset="58%" stop-color="rgba(180,230,255,.74)"/>
-              <stop offset="100%" stop-color="rgba(100,180,240,.52)"/>
-            </linearGradient>
-            <filter id="hvf" x="-28%" y="-28%" width="156%" height="156%">
-              <feGaussianBlur stdDeviation="2.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-          </defs>
-          <circle cx="55" cy="64" r="50" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-dasharray="6 5">
-            <animateTransform attributeName="transform" type="rotate" from="0 55 64" to="360 55 64" dur="22s" repeatCount="indefinite"/>
-          </circle>
-          <circle cx="55" cy="64" r="40" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1">
-            <animate attributeName="r" values="40;58" dur="2.6s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values=".5;0" dur="2.6s" repeatCount="indefinite"/>
-          </circle>
-          <path d="M55 8 L92 24 L92 58 Q92 92 55 116 Q18 92 18 58 L18 24 Z" fill="url(#hv1)" filter="url(#hvf)"/>
-          <path d="M55 20 L80 32 L80 56 Q80 80 55 98 Q30 80 30 56 L30 32 Z" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.6"/>
-          <rect x="46" y="64" width="18" height="5" rx="2.2" fill="white"/>
-          <rect x="52" y="57" width="6" height="19" rx="2.2" fill="white"/>
-          <polyline points="16,50 24,50 27,40 31,62 35,50 44,50" fill="none" stroke="#FCD116" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
-            <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" repeatCount="indefinite"/>
-          </polyline>
-          <polyline points="26,50 34,50 37,40 41,62 45,50 54,50" fill="none" stroke="#0055B8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
-            <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin=".3s" repeatCount="indefinite"/>
-          </polyline>
-          <polyline points="56,50 65,50 68,40 72,62 76,50 84,50" fill="none" stroke="#CE1126" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
-            <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin=".6s" repeatCount="indefinite"/>
-          </polyline>
-        </svg>
+      <!-- Logo SAFE CONGO CSS avec sinusoïdes (hero-visual) -->
+      <div class="hero-visual" style="display:flex;align-items:center;justify-content:center;padding:8px 0 8px 20px">
+        <div style="position:relative;width:148px;height:172px;animation:float 5.5s ease-in-out infinite;filter:drop-shadow(0 16px 34px rgba(0,0,0,.2))">
+          <!-- Halo de fond -->
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:148px;height:148px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22) 0%,transparent 70%)"></div>
+          <!-- Anneau tournant CSS -->
+          <div style="position:absolute;top:50%;left:50%;width:160px;height:160px;margin-top:-80px;margin-left:-80px;border:1px dashed rgba(255,255,255,.25);border-radius:50%;animation:spin 22s linear infinite"></div>
+          <!-- Bouclier principal -->
+          <div style="position:absolute;top:6px;left:50%;transform:translateX(-50%);width:110px;height:130px;clip-path:polygon(50% 0%,100% 14%,100% 56%,50% 100%,0% 56%,0% 14%);background:linear-gradient(145deg,rgba(255,255,255,.88) 0%,rgba(175,225,255,.78) 46%,rgba(95,175,238,.58) 100%)"></div>
+          <!-- Bord intérieur du bouclier -->
+          <div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);width:92px;height:110px;clip-path:polygon(50% 0%,100% 14%,100% 56%,50% 100%,0% 56%,0% 14%);background:transparent;outline:1.5px solid rgba(255,255,255,.45);outline-offset:-1px"></div>
+          <!-- Croix médicale -->
+          <div style="position:absolute;top:42px;left:50%;transform:translateX(-50%);width:28px;height:28px">
+            <div style="position:absolute;top:50%;left:0;right:0;height:7px;background:rgba(255,255,255,.95);border-radius:3px;transform:translateY(-50%)"></div>
+            <div style="position:absolute;left:50%;top:0;bottom:0;width:7px;background:rgba(255,255,255,.95);border-radius:3px;transform:translateX(-50%)"></div>
+          </div>
+          <!-- Sinusoïdes couleurs RDC -->
+          <div style="position:absolute;bottom:46px;left:30px;right:30px">
+            <div style="height:3px;background:#FCD116;border-radius:99px;margin-bottom:5px;box-shadow:0 0 6px rgba(252,209,22,.6)"></div>
+            <div style="height:3px;background:rgba(0,85,184,.9);border-radius:99px;margin-bottom:5px;box-shadow:0 0 6px rgba(0,85,184,.4)"></div>
+            <div style="height:3px;background:#CE1126;border-radius:99px;box-shadow:0 0 6px rgba(206,17,38,.5)"></div>
+          </div>
+          <!-- Label SAFE CONGO -->
+          <div style="position:absolute;bottom:20px;left:0;right:0;text-align:center;font-size:8.5px;font-weight:900;letter-spacing:1.5px;color:rgba(10,44,90,.82);font-family:'Sora',sans-serif">SAFE CONGO</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1524,7 +1525,7 @@ def show_login(auth):
     if "auth_view" not in st.session_state:
         st.session_state.auth_view = None
 
-    components.html(build_home_hero_html(auth), height=2520, scrolling=False)
+    st.html(build_home_hero_html(auth))
 
     st.markdown(
         """

@@ -361,7 +361,8 @@ def render_authority_inbox(
         is_unread = int(notif["is_read"]) == 0
         date_str = str(notif.get("created_at") or "")[:16]
         clean_title = _authority_display_title(str(notif.get("title") or ""))
-        clean_message = _clean_notification_text(str(notif.get("message") or ""), preserve_newlines=True)
+        raw_message = str(notif.get("message") or "")
+        clean_message = _clean_notification_text(raw_message, preserve_newlines=True)
         _, lvl_text, lvl_dot = _authority_notification_level(clean_title, clean_message)
 
         item_box = st.container()
@@ -372,7 +373,9 @@ def render_authority_inbox(
             st.markdown(f"**{status_prefix}{clean_title}**")
         with top_right:
             st.caption(date_str or "-")
-        item_box.write(clean_message or "Message indisponible.")
+        # Afficher le message nettoyé, ou un message clair si vide
+        display_message = clean_message if clean_message else ("(Message vide après nettoyage)" if raw_message else "(Pas de contenu disponible)")
+        item_box.write(display_message)
         btn_c1, btn_c2 = item_box.columns([1, 1])
         with btn_c1:
             if is_unread and st.button("✓ Lu", key=f"{key_prefix}_rd_{notif['id']}", use_container_width=True):
@@ -449,15 +452,24 @@ def alerts_for_user(db_path: Path, user_id: int) -> pd.DataFrame:
             COALESCE(a.message, 'Aucun message detaille') AS message,
             COALESCE(a.created_at, n.created_at) AS created_at,
             COALESCE(n.is_read, 0) AS is_read,
-            n.id AS notif_id
+            n.id AS notif_id,
+            pr.model_r2 AS r2_score
         FROM notifications n
         JOIN alerts a ON a.id = n.alert_id
+        LEFT JOIN (
+            SELECT alert_id, model_r2
+            FROM prediction_runs
+            WHERE alert_id IS NOT NULL
+            GROUP BY alert_id
+            HAVING created_at = MAX(created_at)
+        ) pr ON pr.alert_id = a.id
         WHERE n.user_id = ?
         ORDER BY n.created_at DESC
     """
     expected_cols = [
         "id", "disease", "province", "zone_sante", "week", "year", "current_cases",
         "predicted_cases", "growth_rate", "alert_level", "message", "created_at", "is_read", "notif_id",
+        "r2_score",
     ]
     try:
         conn = sqlite3.connect(str(db_path))

@@ -132,7 +132,7 @@ def _registry_table(users_df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     table_df = users_df.copy()
     table_df["Nom complet"] = table_df["nom"].fillna("") + " " + table_df["prenom"].fillna("")
-    table_df["Statut"] = table_df.get("is_active", 1).map({1: "Actif", 0: "Inactif"}).fillna("Inconnu")
+    table_df["Statut"] = table_df["is_active"].map({1: "Actif", 0: "Inactif"}).fillna("Inactif")
     return table_df.rename(
         columns={
             "username": "Identifiant",
@@ -375,7 +375,7 @@ def main() -> None:
                     f"""
 <div class="admin-highlight">
   <strong>{selected_row['nom']} {selected_row['prenom']}</strong>
-  <span>Province: {selected_row.get('province', 'N/A')} | Zone: {selected_row.get('zone_sante', 'N/A')} | Role: {selected_row.get('role', 'N/A')}</span>
+  <span>Province: {selected_row['province']} | Zone: {selected_row['zone_sante']} | Role: {selected_row['role']}</span>
 </div>
 """,
                     unsafe_allow_html=True,
@@ -404,7 +404,7 @@ def main() -> None:
                     f"""
 <div class="admin-highlight">
   <strong>Remise en service prete</strong>
-  <span>{selected_row['nom']} {selected_row['prenom']} sera remis en circulation pour {selected_row.get('province', 'N/A')} / {selected_row.get('zone_sante', 'N/A')}.</span>
+  <span>{selected_row['nom']} {selected_row['prenom']} sera remis en circulation pour {selected_row['province']} / {selected_row['zone_sante']}.</span>
 </div>
 """,
                     unsafe_allow_html=True,

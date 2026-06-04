@@ -715,7 +715,7 @@ class BarrierMeasuresPDF:
         ]))
         return grid
 
-    def generate_alert_pdf(self, disease, province, zone_sante, current_cases, predicted_cases, growth_rate, alert_level, r2_score):
+    def generate_alert_pdf(self, disease, province, zone_sante, current_cases, predicted_cases, growth_rate, alert_level, r2_score, week=None, year=None):
         if not REPORTLAB_AVAILABLE:
             raise RuntimeError("Le moteur PDF ReportLab n'est pas disponible dans cet environnement.") from REPORTLAB_IMPORT_ERROR
         palette = self._severity_palette(alert_level)
@@ -736,12 +736,24 @@ class BarrierMeasuresPDF:
         badge_style = ParagraphStyle("Badge", parent=styles["Heading2"], alignment=TA_CENTER, textColor=colors.white, fontSize=14, leading=17)
         kicker_style = ParagraphStyle("Kicker", parent=body_style, fontSize=8.5, leading=10, textColor=colors.HexColor("#0a5fab"))
         callout_style = ParagraphStyle("Callout", parent=styles["Heading2"], fontSize=15, leading=18, textColor=palette["accent"])
+        epi_value_style = ParagraphStyle("EpiValue", parent=styles["Heading2"], fontSize=12, leading=15, textColor=palette["accent"])
 
         for elt in self._build_header(title_style, subtitle_style, "Mesures barrieres terrain", "Document de riposte structure pour lecture rapide, coordination et action immediate."):
             story.append(elt)
         story.append(Spacer(1, 12))
 
         display_level = "INFO" if (alert_level or "").upper() == "NOUVELLE_DONNEE" else (alert_level or "INFO")
+        growth_sign = "+" if growth_rate > 0 else ""
+        growth_display_raw = f"{growth_sign}{growth_rate:.1f}%" if growth_rate != 0 else "—"
+        if growth_rate > 0:
+            growth_display = f"<font color='#b91c1c'>{growth_display_raw}</font>"
+        elif growth_rate < 0:
+            growth_display = f"<font color='#15803d'>{growth_display_raw}</font>"
+        else:
+            growth_display = growth_display_raw
+        confidence = self._confidence_label(r2_score)
+        period_display = f"Sem. {int(week)}/{int(year)}" if week is not None and year is not None else "—"
+        pred_display = f"{predicted_cases:,}" if predicted_cases and predicted_cases > 0 else "—"
         severity_banner = Table(
             [[Paragraph(f"ALERTE {display_level}", badge_style)]],
             colWidths=[16.8 * cm],
@@ -780,20 +792,54 @@ class BarrierMeasuresPDF:
                 ("RIGHTPADDING", (0, 0), (-1, -1), 10),
             ]))
         story.append(top_strip)
+        story.append(Spacer(1, 8))
+
+        epi_col_w = 4.2 * cm
+        epi_items = [
+            ("<b>PROJECTION IA</b>", pred_display),
+            ("<b>EVOLUTION</b>", growth_display),
+            ("<b>FIABILITE IA</b>", confidence),
+            ("<b>PERIODE</b>", period_display),
+        ]
+        epi_cells = []
+        for epi_kicker, epi_value in epi_items:
+            epi_cell = Table(
+                [[Paragraph(epi_kicker, kicker_style)], [Paragraph(epi_value, epi_value_style)]],
+                colWidths=[epi_col_w],
+            )
+            epi_cell.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f7fbff")),
+                ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#d9e6f2")),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ]))
+            epi_cells.append(epi_cell)
+        epi_strip = Table([epi_cells], colWidths=[epi_col_w] * 4)
+        epi_strip.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        story.append(epi_strip)
         story.append(Spacer(1, 14))
 
         story.append(Paragraph("Resume executif", section_style))
         executive_copy = (
             f"SAFE CONGO signale une situation de niveau <b>{display_level}</b> pour <b>{disease}</b> dans la zone de sante de <b>{zone_sante}</b>, province de <b>{province}</b>. "
             f"Cette fiche fournit des mesures barrieres specifiees pour cette maladie, des priorites de coordination et une checklist terrain pour soutenir la riposte locale. "
-            f"<br/><br/><b>Focus sanitaire :</b> {profile['focus']} "
-            f"Le volume observe actuellement est de <b>{current_cases:,}</b> cas et doit etre confirme par la surveillance sanitaire officielle."
+            f"<br/><br/><b>Focus sanitaire :</b> {profile['focus']}"
+            f"<br/><br/>Volume observe : <b>{current_cases:,}</b> cas | Projection IA : <b>{pred_display}</b> cas | Evolution : <b>{growth_display_raw}</b> | Fiabilite modele : <b>{confidence}</b>. "
+            f"Ces donnees doivent etre confirmees par la surveillance sanitaire officielle."
         )
         story.append(Paragraph(executive_copy, body_style))
         story.append(Spacer(1, 12))
 
         identity_box = Table(
-            [[Paragraph(f"<b>Province :</b> {province}<br/><b>Date d'emission :</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}<br/><b>Priorite :</b> {display_level}", body_style)]],
+            [[Paragraph(f"<b>Province :</b> {province}<br/><b>Periode :</b> {period_display}<br/><b>Date d'emission :</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}<br/><b>Priorite :</b> {display_level}", body_style)]],
             colWidths=[16.8 * cm],
         )
         identity_box.setStyle(TableStyle([
@@ -888,7 +934,7 @@ class BarrierMeasuresPDF:
         story.append(Paragraph(f"Document emis par SAFE CONGO le {datetime.now().strftime('%d/%m/%Y a %H:%M')}", footer_style))
         story.append(Paragraph("Ce bulletin soutient la decision mais ne remplace pas les consignes officielles du systeme de sante.", footer_style))
 
-        doc.title = f"SAFE CONGO - Mesures barrieres {display_level} {disease}"
+        doc.title = f"SAFE CONGO - Mesures barrieres {display_level} {disease} {period_display}"
         doc.author = "SAFE CONGO"
         doc.subject = "Mesures barrieres terrain"
         doc.build(story, onFirstPage=self._decorate_page, onLaterPages=self._decorate_page)

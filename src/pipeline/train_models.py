@@ -637,26 +637,28 @@ class DiseasePredictor:
         return output_file
 
     def save_models(self, path="models/trained/models.pkl"):
-        """Sauvegarde les modèles éligibles (R² >= 0.5)."""
+        """Sauvegarde les modèles entraînés et conserve aussi le sous-ensemble éligible."""
         path_obj = Path(path)
         path_obj.parent.mkdir(parents=True, exist_ok=True)
         
-        # Filtre strict avant sauvegarde
         eligible_models = self.get_filtered_best_models()
-        if not eligible_models:
-            raise RuntimeError(
-                "Aucun modele n'atteint le seuil R2 minimal; le fichier de production existant est conserve."
-            )
+        models_to_save = eligible_models if eligible_models else self.best_models
+        if not models_to_save:
+            raise RuntimeError("Aucun modele n'a ete entraine; impossible de sauvegarder un bundle de production.")
         
         joblib.dump(
             {
-                "best_models": eligible_models,
+                "best_models": models_to_save,
+                "eligible_models": eligible_models,
                 "results": self.results,
                 "comparison_results": self.comparison_results,
             },
             path_obj,
         )
-        print(f"Modeles sauvegardes (filtre R2 >= 0.5 actif): {path_obj} - {len(eligible_models)} maladies retenues")
+        print(
+            f"Modeles sauvegardes: {path_obj} - {len(models_to_save)} maladies dans le bundle"
+            + (f" ({len(eligible_models)} au-dessus du seuil R2 >= 0.5)" if eligible_models else " (aucun modele ne depasse le seuil R2, bundle complet conserve)")
+        )
 
     def load_models(self, path="models/trained/models.pkl"):
         try:

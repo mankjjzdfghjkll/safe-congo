@@ -192,4 +192,3 @@ MODELS_TO_COMPARE = [
     'KNN'
 ]
 
-print(" Configuration SAFE CONGO chargée avec succès!")

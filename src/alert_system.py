@@ -426,9 +426,9 @@ class AlertSystem:
         active = self.get_active_alerts()
         return {
             'total_active': len(active),
-            'critical': len([a for a in active if a['niveau'] == 'CRITICAL']),
-            'high': len([a for a in active if a['niveau'] == 'HIGH']),
-            'medium': len([a for a in active if a['niveau'] == 'MEDIUM'])
+            'critical': len([a for a in active if a['niveau'] == 'CRITIQUE']),
+            'high': len([a for a in active if a['niveau'] == 'HAUTE']),
+            'medium': len([a for a in active if a['niveau'] == 'MODEREE'])
         }
 
 
