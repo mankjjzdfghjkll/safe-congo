@@ -314,6 +314,17 @@ def predict_cases_for_date(auth: AuthSystem, disease: str, province: str, zone: 
                 predicted = np.expm1(predicted)
             predicted = max(int(round(predicted)), 0)
 
+            # Garde-fou : une projection ne peut pas exploser de maniere irrealiste
+            # par rapport a l'historique recent (evite les extrapolations type 1.8M cas).
+            recent_max = max(recent) if recent else 0
+            cap = max(int(round(recent_max * 10)), 100)
+            if predicted > cap:
+                logger.warning(
+                    "Projection plafonnee pour '%s' (S%s/%s) : %s -> %s (max recent: %s)",
+                    disease, week_num, iso_year, predicted, cap, recent_max,
+                )
+                predicted = cap
+
             return {
                 "disease": model_key,
                 "week": week_num,
@@ -325,8 +336,8 @@ def predict_cases_for_date(auth: AuthSystem, disease: str, province: str, zone: 
             }
         except Exception as _pred_exc:
             logger.warning("Echec prediction modele pour '%s' (semaine %s/%s) : %s", disease, week_num, iso_year, _pred_exc)
-    lag_1_value = float(window[-1])
-    predicted = max(int(round(float(np.mean(window)))), 0)
+    lag_1_value = float(recent[-1])
+    predicted = max(int(round(float(np.mean(recent)))), 0)
     return {
         "disease": model_key or disease,
         "week": week_num,
@@ -363,6 +374,40 @@ def _prediction_blocker(auth: AuthSystem, disease: str, province: str, zone: str
     return None
 
 
+def _projection_unavailable_reason(auth: AuthSystem, disease: str, province: str, zone: str, target_date) -> str:
+    """Explique a l'autorite pourquoi aucune projection IA n'accompagne l'alerte."""
+    if not all([disease, province, zone, target_date]):
+        return (
+            "Projection IA indisponible : informations de localisation ou de date incompletes. "
+            "L'alerte repose uniquement sur les cas observes sur le terrain."
+        )
+
+    readiness = _history_readiness(auth, disease, province, zone, target_date)
+    available = readiness["available_weeks"] if readiness else 0
+
+    if available < MIN_HISTORY_WEEKS:
+        return (
+            f"Projection IA indisponible : seulement {available} semaine(s) d'historique disponible(s) "
+            f"pour {disease} a {zone} ({province}), alors que {MIN_HISTORY_WEEKS} semaines consecutives sont "
+            f"requises pour entrainer une prevision fiable. Cette zone n'a pas encore assez de profondeur "
+            f"d'historique : l'alerte repose donc uniquement sur les cas observes sur le terrain."
+        )
+
+    models = _load_prediction_models()
+    normalized_d = _normalize_text(disease)
+    model_key = next((k for k in models.keys() if _normalize_text(k) == normalized_d), None)
+    if not model_key:
+        return (
+            f"Projection IA indisponible : aucun modele predictif n'est entraine pour {disease}. "
+            f"L'alerte repose uniquement sur les cas observes sur le terrain."
+        )
+
+    return (
+        f"Projection IA indisponible pour {disease} a {zone} ({province}) malgre un historique suffisant. "
+        f"L'alerte repose uniquement sur les cas observes sur le terrain."
+    )
+
+
 def _observed_growth_rate(auth: AuthSystem, disease: str, province: str, zone: str, observed_date, observed_cases: int) -> float:
     if observed_date is None:
         return 0.0
@@ -372,11 +417,11 @@ def _observed_growth_rate(auth: AuthSystem, disease: str, province: str, zone: s
     location_hist = _history_series_for_location(auth, disease, province, zone)
     previous_points = location_hist.loc[location_hist["DEBUTSEM"] < week_start].tail(1)
     if previous_points.empty:
-        return 100.0 if observed_cases > 0 else 0.0
+        return 0.0
 
     previous_cases = float(previous_points.iloc[-1]["TOTALCAS"] or 0.0)
     if previous_cases <= 0:
-        return 100.0 if observed_cases > 0 else 0.0
+        return 0.0
     return ((float(observed_cases) - previous_cases) / previous_cases) * 100.0
 
 
@@ -415,7 +460,7 @@ def generate_prediction_alert(auth: AuthSystem, emitting_user: dict, disease: st
     conn = auth._get_connection()
     cursor = conn.cursor()
 
-    growth = ((pred - prev) / prev * 100) if prev > 0 else (100.0 if pred > 0 else 0.0)
+    growth = ((pred - prev) / prev * 100) if prev > 0 else 0.0
     # Classification OMS/IDSR : niveau basé sur cas prédits ET taux de croissance
     level = _authority_visible_level(AlertSystem.classify_alert_level(disease, pred, growth))
 
@@ -427,8 +472,7 @@ def generate_prediction_alert(auth: AuthSystem, emitting_user: dict, disease: st
         conn.close()
         raise ValueError(f"Aucune autorite sanitaire active n'est rattachee a {dest_label or 'la province ciblee'}.")
 
-    source_tag = "source:model" if float(r2 or 0.0) > 0 else "source:fallback"
-    message = f"Prévision SAFE CONGO : {disease} à {zone} ({province}), S{week}/{year}. Dernier: {prev} cas, Projection: {pred} cas. ({source_tag})"
+    message = f"Prévision SAFE CONGO : {disease} à {zone} ({province}), S{week}/{year}. Dernier: {prev} cas, Projection: {pred} cas."
 
     cursor.execute("INSERT INTO alerts (disease, province, zone_sante, week, year, current_cases, predicted_cases, growth_rate, alert_level, message) VALUES (?,?,?,?,?,?,?,?,?,?)",
                    (disease, province, zone, week, year, prev, pred, growth, level, message))
@@ -465,6 +509,7 @@ def generate_observed_entry_alert(
     observed_deaths: int,
     mode: str = "Province de la saisie",
     target_province: str = "",
+    justification: str = "",
 ):
     conn = auth._get_connection()
     cursor = conn.cursor()
@@ -472,10 +517,13 @@ def generate_observed_entry_alert(
     growth = _observed_growth_rate(auth, disease, province, zone, datetime.fromisocalendar(year, week, 1).date(), observed_cases)
     level = _authority_visible_level(AlertSystem.classify_alert_level(disease, observed_cases, growth))
     recipient_ids, dest_label = _resolve_alert_recipients(auth, mode, province, target_province)
+    justification = (justification or "").strip()
     message = (
         f"Nouveau signal terrain SAFE CONGO : {disease} a {zone} ({province}), "
         f"S{week}/{year}. Cas observes: {observed_cases}, deces observes: {observed_deaths}, croissance estimee: {growth:+.1f}%."
     )
+    if justification:
+        message = f"{message} {justification}"
 
     cursor.execute(
         "INSERT INTO alerts (disease, province, zone_sante, week, year, current_cases, predicted_cases, growth_rate, alert_level, message) VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -550,6 +598,19 @@ def main() -> None:
     .terrain-form-subtitle { font-size: .92rem; line-height: 1.7; color: #5d738d; margin: 0 0 .9rem; }
     .terrain-side-note { font-size: .88rem; line-height: 1.66; color: #556f8c; margin: 0; }
     .admin-panel [data-testid="stPlotlyChart"] { margin-top: .35rem; }
+    @media (max-width: 1180px) {
+        div[data-testid="stHorizontalBlock"] { gap: .85rem !important; }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+        .admin-form-hero { grid-template-columns: 1fr !important; }
+        .admin-form-stats { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        [data-testid="stRadio"] [role="radiogroup"] { flex-wrap: wrap; gap: .45rem; }
+    }
+    @media (max-width: 760px) {
+        .context-box { padding: .9rem .9rem; border-radius: .85rem; }
+        .terrain-form-title-lg { font-size: 1.28rem; }
+        .terrain-form-subtitle, .terrain-side-note { font-size: .84rem; }
+        .admin-form-stats { grid-template-columns: 1fr !important; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -750,6 +811,13 @@ def main() -> None:
                                     int(observed_cases),
                                     int(observed_deaths),
                                     observed_delivery_mode,
+                                    justification=_projection_unavailable_reason(
+                                        auth,
+                                        result["disease"],
+                                        result["province"],
+                                        result["zone_sante"],
+                                        forecast_date,
+                                    ),
                                 )
                                 st.session_state["admin_entry_flash"] = (
                                     f"Donnee terrain enregistree ({result['action']}) pour {result['disease']} a {result['zone_sante']} - "
@@ -810,6 +878,13 @@ def main() -> None:
                                         int(observed_cases),
                                         int(observed_deaths),
                                         observed_delivery_mode,
+                                        justification=_projection_unavailable_reason(
+                                            auth,
+                                            result["disease"],
+                                            result["province"],
+                                            result["zone_sante"],
+                                            forecast_date,
+                                        ),
                                     )
                                     st.session_state["admin_entry_flash"] = (
                                         f"Donnee terrain enregistree ({result['action']}) pour {result['disease']} a {result['zone_sante']} - "

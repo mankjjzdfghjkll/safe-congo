@@ -31,11 +31,11 @@ reference_metrics = get_public_reference_metrics()
 
 render_public_hero(
     "Mecanique intelligente",
-    "Une chaine de decision fluide, du terrain jusqu'au signal d'alerte.",
-    "SAFE CONGO fonctionne comme une salle de pilotage silencieuse: il capte, ordonne, analyse et restitue. L'objectif est simple: donner a chaque acteur sanitaire une lecture plus nette, plus rapide et plus exploitable.",
+  "Une chaine de decision lisible, de la saisie au signal d'alerte.",
+  "SAFE CONGO agit comme une chaine de traitement disciplinee: il capte, ordonne, analyse et restitue. L'objectif est simple: offrir a chaque acteur sanitaire une lecture plus nette, plus rapide et plus exploitable.",
     [
         (str(len(steps)), "etapes structurees"),
-    (str(reference_metrics.get("diseases", 0)), "maladies suivies"),
+    (str(reference_metrics.get("diseases", 0)), "maladies retenues"),
     (str(reference_metrics.get("zones", 0)), "zones observees"),
     ],
     tone="flow",
@@ -48,30 +48,41 @@ st.markdown(
 <div class="public-page">
   <div class="public-grid-2">
     <div class="public-panel">
-      <h3>Niveaux d'alerte actuellement utilises</h3>
+      <div class="public-section-head">
+        <div>
+          <div class="public-section-kicker">Graduation</div>
+          <div class="public-section-title">Niveaux d'alerte utilises</div>
+        </div>
+        <p class="public-section-copy">La graduation privilegie une lecture simple, compatible avec une prise de decision rapide.</p>
+      </div>
       <div class="public-auto-grid">
-        <div class="public-card"><div class="public-card-title">Critique</div><p class="public-card-copy">Croissance superieure a 50% et intervention immediate.</p></div>
-        <div class="public-card"><div class="public-card-title">Haute</div><p class="public-card-copy">Croissance superieure a 25% et mobilisation rapide.</p></div>
-        <div class="public-card"><div class="public-card-title">Moderee</div><p class="public-card-copy">Croissance a partir de 10% et surveillance renforcee.</p></div>
-        <div class="public-card"><div class="public-card-title">Info</div><p class="public-card-copy">Signal faible conserve pour le suivi et la lecture de tendance.</p></div>
+        <div class="public-card"><div class="public-card-title">Critique</div><p class="public-card-copy">Croissance tres elevee ou situation exigeant une intervention immediate et une mobilisation forte.</p></div>
+        <div class="public-card"><div class="public-card-title">Haute</div><p class="public-card-copy">Pression nette demandant une reaction rapide, une verification terrain et une coordination resserree.</p></div>
+        <div class="public-card"><div class="public-card-title">Moderee</div><p class="public-card-copy">Signal significatif appelant une surveillance renforcee, une lecture plus fine et un suivi structure.</p></div>
+        <div class="public-card"><div class="public-card-title">Faible</div><p class="public-card-copy">Signal encore limite mais conserve pour suivre la tendance et documenter une possible evolution.</p></div>
       </div>
     </div>
-    <div class="public-panel">
+    <div class="public-accent-card">
       <h3>Ce que la plateforme apporte vraiment</h3>
-      <p class="public-copy">Elle reduit la friction entre information, interpretation et action. Au lieu d'un simple tableau de chiffres, l'utilisateur accede a une narration du risque, lisible et directement exploitable.</p>
-      <p class="public-copy">La page publique n'exagere plus les seuils: elle decrit la graduation effectivement utilisee dans les alertes du systeme.</p>
+      <p>Elle reduit la friction entre information, interpretation et action. Au lieu d'un simple tableau de chiffres, l'utilisateur accede a une lecture du risque plus intelligible, plus responsable et directement exploitable.</p>
     </div>
   </div>
 
   <div class="public-panel">
-    <h3>Socle technologique</h3>
+    <div class="public-section-head">
+      <div>
+        <div class="public-section-kicker">Socle d'execution</div>
+        <div class="public-section-title">Technologies mobilisees</div>
+      </div>
+      <p class="public-section-copy">Le choix technologique privilegie la lisibilite, la tracabilite et la vitesse d'operation plutot qu'une complexite demonstrative.</p>
+    </div>
     <div class="public-auto-grid">
-      <div class="public-card"><div class="public-card-title">Python 3</div><p class="public-card-copy">Pilote l'orchestration applicative et les traitements analytiques.</p></div>
-      <div class="public-card"><div class="public-card-title">Streamlit</div><p class="public-card-copy">Offre une experience web rapide, lisible et operationnelle.</p></div>
-      <div class="public-card"><div class="public-card-title">Modeles filtres</div><p class="public-card-copy">La prediction conserve les modeles qui restent assez solides pour un usage de pilotage.</p></div>
-      <div class="public-card"><div class="public-card-title">SQLite</div><p class="public-card-copy">Garantit un stockage simple, solide et tracable.</p></div>
-      <div class="public-card"><div class="public-card-title">Pandas</div><p class="public-card-copy">Met les donnees en forme pour l'analyse et la restitution.</p></div>
-      <div class="public-card"><div class="public-card-title">ReportLab</div><p class="public-card-copy">Transforme les alertes en rapports distribuables.</p></div>
+      <div class="public-card"><div class="public-card-title">Python 3</div><p class="public-card-copy">Orchestre l'application et supporte les traitements analytiques avec un cadre lisible et maitrisable.</p></div>
+      <div class="public-card"><div class="public-card-title">Streamlit</div><p class="public-card-copy">Fournit une interface web directe, rapide a maintenir et adaptee au pilotage sanitaire.</p></div>
+      <div class="public-card"><div class="public-card-title">Modeles filtres</div><p class="public-card-copy">La prediction ne retient que les modeles juges assez solides pour un usage de decision.</p></div>
+      <div class="public-card"><div class="public-card-title">SQLite</div><p class="public-card-copy">Assure un stockage simple, robuste et tracable pour les flux essentiels de l'application.</p></div>
+      <div class="public-card"><div class="public-card-title">Pandas</div><p class="public-card-copy">Structure et prepare les donnees pour l'analyse, la consolidation et la restitution.</p></div>
+      <div class="public-card"><div class="public-card-title">ReportLab</div><p class="public-card-copy">Transforme les alertes et syntheses en rapports exploitables par les reunions et les cellules terrain.</p></div>
     </div>
   </div>
 </div>

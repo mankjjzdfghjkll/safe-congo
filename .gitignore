@@ -89,3 +89,12 @@ scripts/gen_director_ppt_min.py
 scripts/run_director_ppt.cmd
 scripts/run_eda.py
 scripts/run_eda_clean.py
+_test_pdf_out.txt  
+*.txt  
+*.pdf 
+=  
+conn.cursor\(\)  
+_test_pdf_out.txt  
+*.txt  
+*.pdf  
+rapport/ 

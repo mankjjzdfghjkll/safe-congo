@@ -26,6 +26,19 @@ from utils.data_prep import prepare_periodic_alerts, prepare_periodic_entries
 from utils.navigation import switch_to_home_page
 
 
+def _format_growth_label(row: pd.Series) -> str:
+    if not bool(row.get("has_comparable_growth", True)):
+        return "Non comparee"
+    value = float(row.get("growth_rate", 0.0) or 0.0)
+    return f"{value:+.1f}%" if value > 0 else f"{value:.1f}%"
+
+
+def _format_projection_label(row: pd.Series) -> str:
+    if not bool(row.get("prediction_available", True)):
+        return "Non disponible"
+    return f"{int(row.get('predicted_cases', 0) or 0):,}"
+
+
 def _system_pulse_chart(entries_df: pd.DataFrame, alerts_df: pd.DataFrame, users_df: pd.DataFrame) -> go.Figure:
     entries = prepare_periodic_entries(entries_df)
     alerts = prepare_periodic_alerts(alerts_df)
@@ -135,6 +148,20 @@ def _render_action_ribbon() -> None:
 def main() -> None:
     st.set_page_config(page_title="Centre de pilotage | SAFE CONGO", layout="wide")
     apply_admin_theme()
+    st.markdown(
+        """
+<style>
+    @media (max-width: 1180px) {
+        div[data-testid="stHorizontalBlock"] { gap: .85rem !important; }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+    }
+    @media (max-width: 760px) {
+        .admin-highlight, .admin-mini-card { padding: .95rem !important; }
+    }
+</style>
+""",
+        unsafe_allow_html=True,
+    )
 
     auth = AuthSystem()
     user = require_auth(auth)
@@ -252,7 +279,8 @@ def main() -> None:
         view_df = prepared_alerts.copy().sort_values(["year", "week"], ascending=False) if {"year", "week"}.issubset(prepared_alerts.columns) else prepared_alerts.copy()
         if {"year", "week"}.issubset(view_df.columns):
             view_df["Periode"] = view_df["year"].astype(str) + "-S" + view_df["week"].astype(str).str.zfill(2)
-        view_df["growth_rate"] = view_df["growth_rate"].map(lambda value: f"{value:.1f}%")
+        view_df["growth_rate"] = view_df.apply(_format_growth_label, axis=1)
+        view_df["predicted_cases"] = view_df.apply(_format_projection_label, axis=1)
         st.dataframe(
             view_df.rename(
                 columns={

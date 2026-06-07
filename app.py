@@ -4,6 +4,9 @@ import sys
 import logging
 import warnings
 from pathlib import Path
+from urllib.parse import quote
+
+from src.config import MODEL_RESULT_FILTERS
 
 warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).parent))
@@ -21,11 +24,15 @@ PROCESSED_DATA_CANDIDATES = [
   Path(__file__).parent / "data" / "processed" / "donnees_agregees_nettoyees.csv",
   Path(__file__).parent / "data" / "processed" / "aggregated_data.csv",
 ]
+MODEL_SUMMARY_CANDIDATES = [
+  Path(__file__).parent / "models" / "evaluation" / "model_performance_summary.csv",
+]
+MIN_ACCEPTABLE_R2 = float(MODEL_RESULT_FILTERS.get("min_acceptable_r2", 0.5))
 
 
 @st.cache_data(show_spinner=False)
 def _home_reference_metrics() -> dict[str, int]:
-    metrics = {"diseases": 0, "provinces": 0, "zones": 0}
+    metrics = {"diseases": 0, "provinces": 0, "zones": 0, "observations": 0}
     for candidate in PROCESSED_DATA_CANDIDATES:
         if not candidate.exists():
             continue
@@ -41,23 +48,40 @@ def _home_reference_metrics() -> dict[str, int]:
         province_col = next((column for column in ["PROVINCE", "PROV"] if column in frame.columns), None)
         zone_col = next((column for column in ["ZONE_SANTE", "ZS"] if column in frame.columns), None)
 
+        metrics["observations"] = int(len(frame.index))
         if disease_col:
             metrics["diseases"] = int(frame[disease_col].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique())
         if province_col:
             metrics["provinces"] = int(frame[province_col].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique())
         if zone_col:
             metrics["zones"] = int(frame[zone_col].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique())
-        return metrics
+        break
+
+    for candidate in MODEL_SUMMARY_CANDIDATES:
+        if not candidate.exists():
+            continue
+        try:
+            summary_df = pd.read_csv(candidate, encoding="utf-8-sig")
+        except Exception:
+            continue
+
+        if "R² (Best)" in summary_df.columns:
+            r2_values = pd.to_numeric(summary_df["R² (Best)"], errors="coerce")
+            metrics["diseases"] = int(r2_values.ge(MIN_ACCEPTABLE_R2).fillna(False).sum())
+            break
+
     return metrics
 
 
 def _home_surface_context(auth) -> dict[str, int]:
     reference_metrics = _home_reference_metrics()
     snapshot = auth.database_snapshot() if hasattr(auth, "database_snapshot") else {}
+    snapshot = snapshot or {}
     return {
         "diseases": int(reference_metrics.get("diseases", 0)),
         "provinces": int(reference_metrics.get("provinces", 0)),
         "zones": int(reference_metrics.get("zones", 0)),
+        "observations": int(reference_metrics.get("observations", 0)),
         "users_total": int(snapshot.get("users_total", 0)),
         "alerts_total": int(snapshot.get("alerts_total", 0)),
         "entries_total": int(snapshot.get("entries_total", 0)),
@@ -862,15 +886,110 @@ SHIELD_SIDEBAR = """
     <polyline points="56,50 65,50 68,40 72,62 76,50 84,50" fill="none" stroke="#CE1126" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
       <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin=".6s" repeatCount="indefinite"/>
     </polyline>
-    <g transform="translate(15 102)">
+    <g transform="translate(15 104)">
       <rect x="0" y="0" width="94" height="22" rx="11" fill="rgba(255,255,255,.06)" stroke="rgba(126,198,241,.18)"/>
-      <text x="47" y="14.5" text-anchor="middle" fill="rgba(200,230,255,.92)" style="font-family:'Sora',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.55px">SAFE CONGO</text>
+      <text x="47" y="15.8" text-anchor="middle" fill="rgba(200,230,255,.92)" style="font-family:'Sora',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.55px">SAFE CONGO</text>
     </g>
   </svg>
   <div class="sidebar-brand">SAFE CONGO</div>
   <div class="sidebar-tagline">Veille sanitaire nationale</div>
 </div>
 """
+
+
+def _svg_data_uri(svg: str) -> str:
+    return f"data:image/svg+xml;utf8,{quote(svg)}"
+
+
+RDC_FLAG_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <defs>
+    <linearGradient id="flagBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1697F6"/>
+      <stop offset="100%" stop-color="#0055B8"/>
+    </linearGradient>
+    <linearGradient id="flagShine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="900" height="600" rx="26" fill="url(#flagBlue)"/>
+  <polygon points="-120,600 40,600 1020,0 860,0" fill="#FCD116"/>
+  <polygon points="-60,600 100,600 960,0 800,0" fill="#CE1126"/>
+  <polygon points="126,72 140,114 184,114 148,140 162,184 126,158 90,184 104,140 68,114 112,114" fill="#FCD116" transform="translate(126 128) scale(1.34) translate(-126 -128)"/>
+  <rect x="0" y="0" width="900" height="600" fill="url(#flagShine)"/>
+</svg>
+"""
+
+SIDEBAR_LOGO_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 124 140">
+  <defs>
+    <linearGradient id="sigimg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.92"/>
+      <stop offset="58%" stop-color="#b4e6ff" stop-opacity="0.74"/>
+      <stop offset="100%" stop-color="#64b4f0" stop-opacity="0.52"/>
+    </linearGradient>
+    <filter id="sigimgf" x="-28%" y="-28%" width="156%" height="156%">
+      <feGaussianBlur stdDeviation="2.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="55" cy="64" r="50" fill="none" stroke="#0a55b8" stroke-opacity="0.14" stroke-width="1" stroke-dasharray="6 5"/>
+  <circle cx="55" cy="64" r="40" fill="none" stroke="#0a55b8" stroke-opacity="0.24" stroke-width="1"/>
+  <path d="M55 8 L92 24 L92 58 Q92 92 55 116 Q18 92 18 58 L18 24 Z" fill="url(#sigimg1)" filter="url(#sigimgf)"/>
+  <path d="M55 20 L80 32 L80 56 Q80 80 55 98 Q30 80 30 56 L30 32 Z" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1.6"/>
+  <rect x="46" y="64" width="18" height="5" rx="2.2" fill="#ffffff"/>
+  <rect x="52" y="57" width="6" height="19" rx="2.2" fill="#ffffff"/>
+  <polyline points="16,50 24,50 27,40 31,62 35,50 44,50" fill="none" stroke="#FCD116" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+    <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" repeatCount="indefinite"/>
+  </polyline>
+  <polyline points="26,50 34,50 37,40 41,62 45,50 54,50" fill="none" stroke="#0055B8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+    <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin="0.3s" repeatCount="indefinite"/>
+  </polyline>
+  <polyline points="56,50 65,50 68,40 72,62 76,50 84,50" fill="none" stroke="#CE1126" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+    <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin="0.6s" repeatCount="indefinite"/>
+  </polyline>
+  <g transform="translate(15 104)">
+    <rect x="0" y="0" width="94" height="22" rx="11" fill="#ffffff" fill-opacity="0.06" stroke="#7ec6f1" stroke-opacity="0.18"/>
+    <text x="47" y="15.8" text-anchor="middle" fill="#c8e6ff" font-family="Sora, sans-serif" font-size="11" font-weight="700" letter-spacing="1.55">SAFE CONGO</text>
+  </g>
+</svg>
+"""
+
+HERO_LOGO_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 124 140">
+  <defs>
+    <linearGradient id="heroimg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98"/>
+      <stop offset="58%" stop-color="#c2ecff" stop-opacity="0.82"/>
+      <stop offset="100%" stop-color="#69bdf3" stop-opacity="0.62"/>
+    </linearGradient>
+    <filter id="heroimgf" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3.1" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="55" cy="64" r="50" fill="none" stroke="#d9f1ff" stroke-opacity="0.32" stroke-width="1.1" stroke-dasharray="6 5"/>
+  <circle cx="55" cy="64" r="40" fill="none" stroke="#d9f1ff" stroke-opacity="0.42" stroke-width="1.1"/>
+  <path d="M55 8 L92 24 L92 58 Q92 92 55 116 Q18 92 18 58 L18 24 Z" fill="url(#heroimg1)" filter="url(#heroimgf)"/>
+  <path d="M55 20 L80 32 L80 56 Q80 80 55 98 Q30 80 30 56 L30 32 Z" fill="none" stroke="#ffffff" stroke-opacity="0.58" stroke-width="1.7"/>
+  <rect x="46" y="64" width="18" height="5" rx="2.2" fill="#ffffff"/>
+  <rect x="52" y="57" width="6" height="19" rx="2.2" fill="#ffffff"/>
+  <polyline points="16,50 24,50 27,40 31,62 35,50 44,50" fill="none" stroke="#FCD116" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+    <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" repeatCount="indefinite"/>
+  </polyline>
+  <polyline points="26,50 34,50 37,40 41,62 45,50 54,50" fill="none" stroke="#0055B8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+    <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin="0.3s" repeatCount="indefinite"/>
+  </polyline>
+  <polyline points="56,50 65,50 68,40 72,62 76,50 84,50" fill="none" stroke="#CE1126" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
+    <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin="0.6s" repeatCount="indefinite"/>
+  </polyline>
+</svg>
+"""
+
+RDC_FLAG_DATA_URI = _svg_data_uri(RDC_FLAG_SVG)
+SIDEBAR_LOGO_DATA_URI = _svg_data_uri(SIDEBAR_LOGO_SVG)
+HERO_LOGO_DATA_URI = _svg_data_uri(HERO_LOGO_SVG)
 
 # ── Hero logo (large, for login page) ─────────────────────────────────────
 SHIELD_HERO = """
@@ -1052,6 +1171,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 
 /* ── HERO ───────────────────────────────────────── */
 .hero{position:relative;overflow:hidden;border-radius:26px;background:linear-gradient(135deg,#0a5fab 0%,#0d80d8 52%,#1aa2e2 100%);padding:48px 46px 42px;margin-bottom:16px;box-shadow:0 22px 58px rgba(10,95,171,.24),0 2px 0 rgba(255,255,255,.14) inset;animation:fadeUp .55s ease-out .06s both}
+.hero,.hero *{color:#ffffff}
 .hero-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.11) 1px,transparent 1px);background-size:26px 26px;pointer-events:none}
 .hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 78% 18%,rgba(255,255,255,.16),transparent 34%),radial-gradient(ellipse at 12% 82%,rgba(0,40,100,.22),transparent 30%);pointer-events:none}
 .hero-inner{position:relative;z-index:2;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
@@ -1098,12 +1218,80 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .step-t{font-size:.9rem;font-weight:800;color:#0a2040;margin-bottom:5px}
 .step-c{font-size:.78rem;color:#7a9ab8;line-height:1.56;max-width:150px}
 
+.home-top-inner{padding:55px 40px;max-width:1200px;margin:0 auto}
+.home-top-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:60px;align-items:center}
+.home-top-identity{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.home-flag-img{width:94px;height:auto;flex:0 0 auto;border-radius:14px;box-shadow:0 10px 22px rgba(10,85,184,.14),0 0 0 1px rgba(255,255,255,.82) inset;filter:drop-shadow(0 4px 10px rgba(10,85,184,.12));animation:float 6.4s ease-in-out infinite}
+.home-top-copy{display:flex;flex-direction:column;gap:20px;justify-content:center}
+.home-top-copy-inner{padding-top:12px}
+.home-top-title{font-size:32px;font-weight:800;color:#0a5fab;font-family:'Sora',sans-serif;margin-bottom:12px;line-height:1.2}
+.home-top-desc{font-size:14px;color:#666;font-family:'Manrope',sans-serif;line-height:1.7;max-width:450px;margin-bottom:16px}
+.home-top-badges{display:flex;gap:30px;flex-wrap:wrap}
+.home-logo-wrap{position:relative;width:286px;height:322px;display:flex;align-items:center;justify-content:center;animation:float 5.5s ease-in-out infinite;filter:drop-shadow(0 22px 48px rgba(0,0,0,.26))}
+.home-logo-glow{width:244px;height:244px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.26) 0%,transparent 70%)}
+.home-logo-img{position:relative;z-index:1;width:238px;height:270px;display:block}
+.home-steps-row{gap:32px}
+.home-impact-shell{padding:82px 40px;background:linear-gradient(180deg,#eef6ff 0%,#f6fbff 46%,#edf6ff 100%);position:relative;overflow:hidden;border-top:1px solid rgba(26,162,226,.18);border-bottom:1px solid rgba(26,162,226,.14);animation:fadeUp .9s cubic-bezier(.22,1,.36,1) both}
+.home-impact-inner{max-width:1200px;margin:0 auto;position:relative;z-index:1}
+.home-impact-head{display:grid;grid-template-columns:1.1fr .9fr;gap:22px;align-items:end;margin-bottom:30px}
+.home-impact-desc{font-size:16px;color:#587691;font-family:'Manrope',sans-serif;line-height:1.8;max-width:650px}
+.home-impact-aside{justify-self:end;width:100%;max-width:360px;padding:22px 24px;border-radius:24px;background:linear-gradient(145deg,#0c4e91,#1176c0);box-shadow:0 20px 48px rgba(10,95,171,.22);border:1px solid rgba(255,255,255,.10);animation:fadeUp .95s .12s cubic-bezier(.22,1,.36,1) both, float 5.5s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease}
+.home-impact-aside,.home-impact-aside *{color:#ffffff!important}
+.home-blue-card,.home-blue-card *{color:#ffffff!important}
+.home-impact-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-bottom:20px}
+.home-impact-bottom{display:grid;grid-template-columns:1.08fr .92fr;gap:22px;align-items:stretch}
+
 @media(max-width:860px){
   .hero{padding:34px 26px 30px}
   .hero-inner{grid-template-columns:1fr;gap:24px}
   .hero-title{font-size:2.35rem}
   .hero-title em{font-size:1.95rem}
   .hero-proof{grid-template-columns:1fr}
+}
+
+@media (max-width: 1100px){
+  .home-top-inner{padding:42px 24px}
+  .home-top-grid,.home-impact-head,.home-impact-bottom{grid-template-columns:1fr!important;gap:24px!important}
+  .home-top-copy-inner{padding-top:0}
+  .home-top-badges{gap:14px}
+  .home-impact-shell{padding:58px 24px}
+  .home-impact-aside{justify-self:stretch;max-width:none}
+  .home-impact-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .home-steps-row{flex-direction:column;gap:14px!important;align-items:stretch}
+  .steps-wrap{padding:28px 22px 24px}
+  .step{width:100%}
+  .step-line{width:2px;height:26px;flex:none;margin:0 auto;background:linear-gradient(180deg,#b8d8f0,#8ebfde)}
+}
+
+@media (max-width: 700px){
+  .hero{padding:28px 18px 24px}
+  .hero-kicker{font-size:.62rem;letter-spacing:1.3px;padding:6px 11px}
+  .hero-title{font-size:1.95rem;letter-spacing:-.8px}
+  .hero-title em{font-size:1.55rem}
+  .hero-sub{font-size:.9rem;max-width:none;margin-bottom:18px}
+  .hero-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .hstat{min-width:0;padding:10px 12px}
+  .home-top-inner{padding:34px 16px}
+  .home-top-identity{gap:14px;align-items:flex-start}
+  .home-flag-img{width:76px}
+  .home-top-title{font-size:26px;margin-bottom:10px}
+  .home-top-desc{font-size:13px;max-width:none;margin-bottom:12px}
+  .home-top-badges{gap:10px;flex-direction:column;align-items:flex-start}
+  .hero-visual{padding:8px 0 0 0!important}
+  .home-logo-wrap{width:100%;height:auto;min-height:232px}
+  .home-logo-glow{width:190px;height:190px}
+  .home-logo-img{width:184px;height:208px}
+  .cards-grid{margin-top:18px!important}
+  .steps-title{font-size:1.2rem}
+  .steps-sub{font-size:.92rem;margin-bottom:20px}
+  .home-impact-shell{padding:42px 16px}
+  .home-impact-desc{font-size:14px;max-width:none}
+  .home-impact-stats{grid-template-columns:1fr}
+}
+
+@media (max-width: 900px){
+  div[data-testid="stHorizontalBlock"]{gap:.8rem!important}
+  div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{width:100%!important;flex:1 1 100%!important}
 }
 
 /* ── FOOTER ─────────────────────────────────────── */
@@ -1118,24 +1306,12 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
     <div style="height:6px;background:linear-gradient(90deg,#0055B8 0%,#FCD116 50%,#CE1126 100%)"></div>
     
     <!-- Contenu principal -->
-    <div style="padding:55px 40px;max-width:1200px;margin:0 auto">
-      <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:60px;align-items:center">
+    <div class="home-top-inner">
+      <div class="home-top-grid">
         <!-- Colonne gauche: Drapeau + Info RDC -->
-        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:24px">
+        <div class="home-top-identity">
           <!-- Drapeau compact -->
-          <svg viewBox="0 0 900 600" style="width:75px;height:auto;margin-top:-10px;filter:drop-shadow(0 3px 10px rgba(10,85,184,.12))">
-            <defs>
-              <linearGradient id="flagShine" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="rgba(255,255,255,.3)"/>
-                <stop offset="100%" stop-color="rgba(255,255,255,.05)"/>
-              </linearGradient>
-            </defs>
-            <rect x="0" y="0" width="900" height="600" fill="#0055B8"/>
-            <polygon points="0,180 900,350 900,450 0,280" fill="#CE1126"/>
-            <polygon points="0,280 900,450 900,500 0,330" fill="#FCD116"/>
-            <polygon points="150,120 165,170 220,170 180,210 200,260 150,220 100,260 120,210 80,170 135,170" fill="#FCD116" opacity=".95"/>
-            <rect x="0" y="0" width="900" height="600" fill="url(#flagShine)"/>
-          </svg>
+          <img class="home-flag-img" src="__RDC_FLAG_SRC__" alt="Drapeau de la Republique Democratique du Congo" />
           
           <!-- Infos RDC -->
           <div style="border-left:3px solid #0055B8;padding-left:20px">
@@ -1146,17 +1322,17 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
         </div>
         
         <!-- Colonne droite: Header + Logo -->
-        <div style="display:flex;flex-direction:column;gap:20px;justify-content:center">
+        <div class="home-top-copy">
           
           <!-- Titre et description -->
-          <div>
-            <div style="font-size:32px;font-weight:800;color:#0a5fab;font-family:'Sora',sans-serif;margin-bottom:12px;line-height:1.2">
+          <div class="home-top-copy-inner">
+            <div class="home-top-title">
               <span style="background:linear-gradient(135deg,#0a5fab 0%,#1aa2e2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">SAFE CONGO</span>
             </div>
-            <div style="font-size:14px;color:#666;font-family:'Manrope',sans-serif;line-height:1.7;max-width:450px;margin-bottom:16px">
+            <div class="home-top-desc">
               Plateforme de surveillance épidémiologique pour la protection collective. Détection, analyse et réponse coordonnée aux menaces sanitaires en temps réel.
             </div>
-            <div style="display:flex;gap:30px;flex-wrap:wrap">
+            <div class="home-top-badges">
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:4px;height:20px;background:#0055B8;border-radius:2px"></div>
                 <div style="font-size:12px;color:#0a5fab;font-family:'Sora',sans-serif;font-weight:700">Surveillance structuree</div>
@@ -1197,30 +1373,13 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
           <div class="hero-proof-card"><div class="hero-proof-k">__PROOF_THREE_LABEL__</div><div class="hero-proof-v">__PROOF_THREE_VALUE__</div></div>
         </div>
       </div>
-      <!-- Logo SAFE CONGO CSS avec sinusoïdes (hero-visual) -->
-      <div class="hero-visual" style="display:flex;align-items:center;justify-content:center;padding:8px 0 8px 20px">
-        <div style="position:relative;width:148px;height:172px;animation:float 5.5s ease-in-out infinite;filter:drop-shadow(0 16px 34px rgba(0,0,0,.2))">
-          <!-- Halo de fond -->
-          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:148px;height:148px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22) 0%,transparent 70%)"></div>
-          <!-- Anneau tournant CSS -->
-          <div style="position:absolute;top:50%;left:50%;width:160px;height:160px;margin-top:-80px;margin-left:-80px;border:1px dashed rgba(255,255,255,.25);border-radius:50%;animation:spin 22s linear infinite"></div>
-          <!-- Bouclier principal -->
-          <div style="position:absolute;top:6px;left:50%;transform:translateX(-50%);width:110px;height:130px;clip-path:polygon(50% 0%,100% 14%,100% 56%,50% 100%,0% 56%,0% 14%);background:linear-gradient(145deg,rgba(255,255,255,.88) 0%,rgba(175,225,255,.78) 46%,rgba(95,175,238,.58) 100%)"></div>
-          <!-- Bord intérieur du bouclier -->
-          <div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);width:92px;height:110px;clip-path:polygon(50% 0%,100% 14%,100% 56%,50% 100%,0% 56%,0% 14%);background:transparent;outline:1.5px solid rgba(255,255,255,.45);outline-offset:-1px"></div>
-          <!-- Croix médicale -->
-          <div style="position:absolute;top:42px;left:50%;transform:translateX(-50%);width:28px;height:28px">
-            <div style="position:absolute;top:50%;left:0;right:0;height:7px;background:rgba(255,255,255,.95);border-radius:3px;transform:translateY(-50%)"></div>
-            <div style="position:absolute;left:50%;top:0;bottom:0;width:7px;background:rgba(255,255,255,.95);border-radius:3px;transform:translateX(-50%)"></div>
+      <!-- Logo SAFE CONGO identique a la sidebar -->
+      <div class="hero-visual" style="display:flex;align-items:center;justify-content:center;padding:18px 0 8px 20px">
+        <div class="home-logo-wrap">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+            <div class="home-logo-glow"></div>
           </div>
-          <!-- Sinusoïdes couleurs RDC -->
-          <div style="position:absolute;bottom:46px;left:30px;right:30px">
-            <div style="height:3px;background:#FCD116;border-radius:99px;margin-bottom:5px;box-shadow:0 0 6px rgba(252,209,22,.6)"></div>
-            <div style="height:3px;background:rgba(0,85,184,.9);border-radius:99px;margin-bottom:5px;box-shadow:0 0 6px rgba(0,85,184,.4)"></div>
-            <div style="height:3px;background:#CE1126;border-radius:99px;box-shadow:0 0 6px rgba(206,17,38,.5)"></div>
-          </div>
-          <!-- Label SAFE CONGO -->
-          <div style="position:absolute;bottom:20px;left:0;right:0;text-align:center;font-size:8.5px;font-weight:900;letter-spacing:1.5px;color:rgba(10,44,90,.82);font-family:'Sora',sans-serif">SAFE CONGO</div>
+          <img class="home-logo-img" src="__HERO_LOGO_SRC__" alt="Logo SAFE CONGO" />
         </div>
       </div>
     </div>
@@ -1340,7 +1499,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
   <div class="steps-wrap" style="margin-top:42px;">
     <div class="steps-title" style="font-size:1.5rem;letter-spacing:1.2px;">Du signal à la réponse</div>
     <div class="steps-sub" style="font-size:1.08rem;margin-bottom:30px;">Un processus structuré pour agir efficacement sur le terrain</div>
-    <div class="steps-row" style="gap:32px;">
+    <div class="steps-row home-steps-row" style="gap:32px;">
       <div class="step" style="animation:fadeUp .7s .1s cubic-bezier(.22,1,.36,1);">
         <div class="step-num" style="background:linear-gradient(135deg,#0a5fab,#1aa2e2);box-shadow:0 6px 18px rgba(10,95,171,.26);font-size:1.2rem;">1</div>
         <div class="step-t">Signalement</div>
@@ -1369,10 +1528,10 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 
   <!-- DRAPEAU RDC -->
   <!-- IMPACT SECTION -->
-  <div style="padding:82px 40px;background:linear-gradient(180deg,#eef6ff 0%,#f6fbff 46%,#edf6ff 100%);position:relative;overflow:hidden;border-top:1px solid rgba(26,162,226,.18);border-bottom:1px solid rgba(26,162,226,.14);animation:fadeUp .9s cubic-bezier(.22,1,.36,1) both">
+  <div class="home-impact-shell">
     <div style="position:absolute;inset:0;background:radial-gradient(circle at 10% 18%,rgba(0,85,184,.09),transparent 20%),radial-gradient(circle at 88% 24%,rgba(252,209,22,.12),transparent 18%),radial-gradient(circle at 50% 100%,rgba(26,162,226,.08),transparent 28%);pointer-events:none"></div>
-    <div style="max-width:1200px;margin:0 auto;position:relative;z-index:1">
-      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:22px;align-items:end;margin-bottom:30px">
+    <div class="home-impact-inner">
+      <div class="home-impact-head">
         <div>
           <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:999px;background:rgba(255,255,255,.8);border:1px solid rgba(10,95,171,.10);box-shadow:0 6px 18px rgba(10,60,120,.05);font-size:.72rem;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:#0a5fab;font-family:'Sora',sans-serif;margin-bottom:18px">
             <span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#0055B8,#1aa2e2)"></span>
@@ -1381,16 +1540,16 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
           <div style="font-size:38px;font-weight:800;color:#0a2040;margin-bottom:14px;font-family:'Sora',sans-serif;letter-spacing:-1px;line-height:1.08">
             Notre Impact pour la <span style="background:linear-gradient(135deg,#0a5fab,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Sante Publique</span>
           </div>
-          <div style="font-size:16px;color:#587691;font-family:'Manrope',sans-serif;line-height:1.8;max-width:650px">Engagement continu vers une couverture sanitaire universelle en RDC, avec des donnees fiables, des signaux precoces et une coordination rapide entre les acteurs sanitaires.</div>
+          <div class="home-impact-desc">Engagement continu vers une couverture sanitaire universelle en RDC, avec des donnees fiables, des signaux precoces et une coordination rapide entre les acteurs sanitaires.</div>
         </div>
-        <div style="justify-self:end;width:100%;max-width:360px;padding:22px 24px;border-radius:24px;background:linear-gradient(145deg,#0c4e91,#1176c0);box-shadow:0 20px 48px rgba(10,95,171,.22);border:1px solid rgba(255,255,255,.10);animation:fadeUp .95s .12s cubic-bezier(.22,1,.36,1) both, float 5.5s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
+        <div class="home-impact-aside">
           <div style="font-size:.72rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.7);font-family:'Sora',sans-serif;margin-bottom:10px">Vision terrain</div>
           <div style="font-size:1rem;font-weight:700;color:#ffffff;font-family:'Sora',sans-serif;line-height:1.5;margin-bottom:10px">Une veille epidemiologique utile, lisible et actionnable au niveau national.</div>
           <div style="font-size:.82rem;color:rgba(255,255,255,.76);line-height:1.65;font-family:'Manrope',sans-serif">Le systeme transforme les signaux sanitaires en decisions plus rapides pour les zones de sante, les provinces et la coordination centrale.</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-bottom:20px">
+      <div class="home-impact-stats">
         <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#f6fbff 100%);border:1px solid rgba(10,95,171,.10);box-shadow:0 18px 40px rgba(10,60,120,.08);animation:fadeUp .9s .16s cubic-bezier(.22,1,.36,1) both, blockGlow 5.8s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
           <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#0055B8,#1aa2e2)"></div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
@@ -1399,9 +1558,9 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
             </div>
             <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#84a7c5;font-family:'Sora',sans-serif">Couverture</div>
           </div>
-          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#0055B8,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 2.8s ease-in-out infinite">2,400+</div>
-          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Structures de sante</div>
-          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">Un reseau de structures suivies pour alimenter une surveillance nationale plus precise et continue.</div>
+          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#0055B8,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 2.8s ease-in-out infinite">__IMPACT_ONE_VALUE__</div>
+          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">__IMPACT_ONE_LABEL__</div>
+          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">__IMPACT_ONE_COPY__</div>
         </div>
 
         <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#fff7ef 100%);border:1px solid rgba(232,136,43,.18);box-shadow:0 18px 40px rgba(10,60,120,.08);animation:fadeUp .9s .28s cubic-bezier(.22,1,.36,1) both, blockGlow 6.2s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
@@ -1412,9 +1571,9 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
             </div>
             <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#c77a2d;font-family:'Sora',sans-serif">Population</div>
           </div>
-          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#de7f1f,#f2ad43);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 3.1s ease-in-out infinite">85M+</div>
-          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Personnes surveillees</div>
-          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">Une capacite de suivi a grande echelle pour mieux anticiper les foyers et proteger les populations.</div>
+          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#de7f1f,#f2ad43);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 3.1s ease-in-out infinite">__IMPACT_TWO_VALUE__</div>
+          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">__IMPACT_TWO_LABEL__</div>
+          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">__IMPACT_TWO_COPY__</div>
         </div>
 
         <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#f3fbf4 100%);border:1px solid rgba(54,153,88,.18);box-shadow:0 18px 40px rgba(10,60,120,.08);animation:fadeUp .9s .4s cubic-bezier(.22,1,.36,1) both, blockGlow 6.6s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
@@ -1425,19 +1584,19 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
             </div>
             <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#4d9b62;font-family:'Sora',sans-serif">Qualite</div>
           </div>
-          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#2d8a4a,#74bf6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 3.4s ease-in-out infinite">98%</div>
-          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Donnees tracees</div>
-          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">Une circulation fiable de l'information sanitaire pour soutenir des analyses solides et des actions rapides.</div>
+          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#2d8a4a,#74bf6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 3.4s ease-in-out infinite">__IMPACT_THREE_VALUE__</div>
+          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">__IMPACT_THREE_LABEL__</div>
+          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">__IMPACT_THREE_COPY__</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1.08fr .92fr;gap:22px;align-items:stretch">
+      <div class="home-impact-bottom">
         <div style="padding:30px 30px 28px;border-radius:26px;background:linear-gradient(135deg,#ffffff 0%,#f7fbff 100%);border:1px solid rgba(10,95,171,.10);box-shadow:0 16px 36px rgba(10,60,120,.07);animation:fadeUp .95s .52s cubic-bezier(.22,1,.36,1) both">
           <div style="font-size:.74rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#0a84d0;font-family:'Sora',sans-serif;margin-bottom:12px">Mission Sanitaire</div>
           <div style="font-size:24px;font-weight:800;color:#0a2040;font-family:'Sora',sans-serif;line-height:1.25;margin-bottom:12px">Transformer les donnees sanitaires en action concrete sur le terrain.</div>
           <div style="font-size:14px;color:#65839c;font-family:'Manrope',sans-serif;line-height:1.8;max-width:700px">Assurer une surveillance epidemiologique en temps reel, detecter rapidement les foyers de maladie et coordonner les interventions pour proteger la sante de tous les Congolais.</div>
         </div>
-        <div style="padding:26px 26px 24px;border-radius:26px;background:linear-gradient(160deg,#0c4e91,#1581cb);border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 42px rgba(10,95,171,.22);animation:fadeUp .95s .66s cubic-bezier(.22,1,.36,1) both, float 6s ease-in-out infinite">
+        <div class="home-blue-card" style="padding:26px 26px 24px;border-radius:26px;background:linear-gradient(160deg,#0c4e91,#1581cb);border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 42px rgba(10,95,171,.22);animation:fadeUp .95s .66s cubic-bezier(.22,1,.36,1) both, float 6s ease-in-out infinite">
           <div style="font-size:.72rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.68);font-family:'Sora',sans-serif;margin-bottom:10px">Lecture rapide</div>
           <div style="font-size:1.35rem;font-weight:800;color:#ffffff;font-family:'Sora',sans-serif;line-height:1.35;margin-bottom:16px">Une plateforme qui renforce la reactivite nationale face aux menaces sanitaires.</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1455,70 +1614,107 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 
 
 def build_home_hero_html(auth) -> str:
-  _ = auth
-  html = HERO_HTML
-  html = html.replace("__HERO_KICKER__", "Dispositif national de veille sanitaire")
-  html = html.replace("__HERO_TITLE_MAIN__", "Veiller avec clarte")
-  html = html.replace("__HERO_TITLE_EMPHASIS__", "agir avec coordination.")
-  html = html.replace(
-    "__HERO_SUBTEXT__",
-    "SAFE CONGO facilite la lecture sanitaire nationale, l'orientation des autorites et la coordination des actions dans une interface claire, fiable et orientee decision.",
-  )
-  html = html.replace("__STAT_ONE_VALUE__", "National")
-  html = html.replace("__STAT_ONE_LABEL__", "Portee")
-  html = html.replace("__STAT_TWO_VALUE__", "Securise")
-  html = html.replace("__STAT_TWO_LABEL__", "Acces")
-  html = html.replace("__STAT_THREE_VALUE__", "Coordonne")
-  html = html.replace("__STAT_THREE_LABEL__", "Reponse")
-  html = html.replace("__STAT_FOUR_VALUE__", "Continu")
-  html = html.replace("__STAT_FOUR_LABEL__", "Suivi")
-  html = html.replace("__PROOF_ONE_LABEL__", "Orientation")
-  html = html.replace(
-    "__PROOF_ONE_VALUE__",
-    "Un parcours lisible pour comprendre rapidement les priorites sanitaires.",
-  )
-  html = html.replace("__PROOF_TWO_LABEL__", "Coordination")
-  html = html.replace(
-    "__PROOF_TWO_VALUE__",
-    "Une interface unifiee pour relier lecture terrain et action institutionnelle.",
-  )
-  html = html.replace("__PROOF_THREE_LABEL__", "Confiance")
-  html = html.replace(
-    "__PROOF_THREE_VALUE__",
-    "Des reperes consolides pour soutenir des decisions rapides et responsables.",
-  )
-  return html
+    context = _home_surface_context(auth)
+    html = HERO_HTML
+    html = html.replace("__RDC_FLAG_SRC__", RDC_FLAG_DATA_URI)
+    html = html.replace("__HERO_LOGO_SRC__", HERO_LOGO_DATA_URI)
+    html = html.replace("__HERO_KICKER__", "Dispositif national de veille sanitaire")
+    html = html.replace("__HERO_TITLE_MAIN__", "Veiller avec clarte")
+    html = html.replace("__HERO_TITLE_EMPHASIS__", "agir avec coordination.")
+    html = html.replace(
+        "__HERO_SUBTEXT__",
+        "SAFE CONGO facilite la lecture sanitaire nationale, l'orientation des autorites et la coordination des actions dans une interface claire, fiable et orientee decision.",
+    )
+    html = html.replace("__STAT_ONE_VALUE__", str(context.get("provinces", 0)))
+    html = html.replace("__STAT_ONE_LABEL__", "Provinces")
+    html = html.replace("__STAT_TWO_VALUE__", str(context.get("zones", 0)))
+    html = html.replace("__STAT_TWO_LABEL__", "Zones")
+    html = html.replace("__STAT_THREE_VALUE__", str(context.get("diseases", 0)))
+    html = html.replace("__STAT_THREE_LABEL__", "Maladies retenues")
+    html = html.replace("__STAT_FOUR_VALUE__", f"{context.get('observations', 0):,}".replace(",", " "))
+    html = html.replace("__STAT_FOUR_LABEL__", "Observations")
+    html = html.replace("__PROOF_ONE_LABEL__", "Orientation")
+    html = html.replace(
+        "__PROOF_ONE_VALUE__",
+        "Un parcours lisible pour comprendre rapidement les priorites sanitaires.",
+    )
+    html = html.replace("__PROOF_TWO_LABEL__", "Coordination")
+    html = html.replace(
+        "__PROOF_TWO_VALUE__",
+        "Une interface unifiee pour relier lecture terrain et action institutionnelle.",
+    )
+    html = html.replace("__PROOF_THREE_LABEL__", "Confiance")
+    html = html.replace(
+        "__PROOF_THREE_VALUE__",
+        "Des reperes consolides pour soutenir des decisions rapides et responsables.",
+    )
+    html = html.replace("__IMPACT_ONE_VALUE__", str(context.get("provinces", 0)))
+    html = html.replace("__IMPACT_ONE_LABEL__", "Provinces suivies")
+    html = html.replace(
+        "__IMPACT_ONE_COPY__",
+        "Une couverture provinciale complete pour structurer la lecture nationale du risque sanitaire.",
+    )
+    html = html.replace("__IMPACT_TWO_VALUE__", str(context.get("zones", 0)))
+    html = html.replace("__IMPACT_TWO_LABEL__", "Zones observees")
+    html = html.replace(
+        "__IMPACT_TWO_COPY__",
+        "Une profondeur territoriale utile pour lire les tensions au plus pres des zones de sante.",
+    )
+    html = html.replace("__IMPACT_THREE_VALUE__", str(context.get("diseases", 0)))
+    html = html.replace("__IMPACT_THREE_LABEL__", "Maladies retenues")
+    html = html.replace(
+        "__IMPACT_THREE_COPY__",
+        "Les modeles retenus en production soutiennent une veille plus fiable et une priorisation plus responsable.",
+    )
+    return html
 
 def sidebar_info():
-    with st.sidebar:
-        st.markdown(SHIELD_SIDEBAR, unsafe_allow_html=True)
-        st.markdown("---")
+  with st.sidebar:
+    st.markdown(SHIELD_SIDEBAR, unsafe_allow_html=True)
+    st.markdown("---")
 
-        st.markdown('<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Parcours editorial</p>', unsafe_allow_html=True)
+    st.markdown(
+      '<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Parcours editorial</p>',
+      unsafe_allow_html=True,
+    )
+    st.markdown(
+      """
+      <style>
+      [data-testid="stSidebar"] .stButton:nth-of-type(1) > button{
+        text-align:center!important;
+        justify-content:center!important;
+        padding:0 12px!important;
+      }
+      </style>
+      """,
+      unsafe_allow_html=True,
+    )
 
-        if st.button("Perspective strategique", use_container_width=True, key="nav_mission"):
-            st.switch_page("pages/notre_mission.py")
-        if st.button("Impact national mesurable", use_container_width=True, key="nav_impact"):
-            st.switch_page("pages/impact.py")
-        if st.button("Mecanique intelligente", use_container_width=True, key="nav_fonc"):
-            st.switch_page("pages/fonctionnement.py")
-        if st.button("Alliance & coordination", use_container_width=True, key="nav_contact"):
-            st.switch_page("pages/contact.py")
+    if st.button("A propos de SAFE CONGO", use_container_width=True, key="nav_apropos"):
+      st.switch_page("pages/apropos.py")
+    if st.button("Perspective strategique", use_container_width=True, key="nav_mission"):
+      st.switch_page("pages/notre_mission.py")
+    if st.button("Impact national mesurable", use_container_width=True, key="nav_impact"):
+      st.switch_page("pages/impact.py")
+    if st.button("Mecanique intelligente", use_container_width=True, key="nav_fonc"):
+      st.switch_page("pages/fonctionnement.py")
+    if st.button("Alliance & coordination", use_container_width=True, key="nav_contact"):
+      st.switch_page("pages/contact.py")
 
-        st.markdown("---")
-        st.markdown(
-            '<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Liens officiels</p>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            '<p class="expander-info">'
-            '<a class="info-link" href="https://www.minisanterdc.cd" target="_blank">Minist&egrave;re de la Sant&eacute;</a>'
-            '<a class="info-link" href="https://www.who.int/fr" target="_blank">OMS</a>'
-            '<a class="info-link" href="https://www.unicef.org/drcongo" target="_blank">UNICEF RDC</a>'
-            '<a class="info-link" href="https://africacdc.org" target="_blank">Africa CDC</a>'
-            '</p>',
-            unsafe_allow_html=True,
-        )
+    st.markdown("---")
+    st.markdown(
+      '<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Liens officiels</p>',
+      unsafe_allow_html=True,
+    )
+    st.markdown(
+      '<p class="expander-info">'
+      '<a class="info-link" href="https://www.minisanterdc.cd" target="_blank">Minist&egrave;re de la Sant&eacute;</a>'
+      '<a class="info-link" href="https://www.who.int/fr" target="_blank">OMS</a>'
+      '<a class="info-link" href="https://www.unicef.org/drcongo" target="_blank">UNICEF RDC</a>'
+      '<a class="info-link" href="https://africacdc.org" target="_blank">Africa CDC</a>'
+      '</p>',
+      unsafe_allow_html=True,
+    )
 
 
 def show_login(auth):
@@ -1874,6 +2070,7 @@ def run_hidden_navigation() -> None:
     nav_pages = {
       "home": st.Page("pages/home.py", title="Accueil", url_path="", default=True),
         "auth": st.Page("pages/auth.py", title="Authentification", url_path="auth"),
+        "apropos": st.Page("pages/apropos.py", title="A propos", url_path="a-propos"),
         "mission": st.Page("pages/notre_mission.py", title="Notre mission", url_path="notre-mission"),
         "impact": st.Page("pages/impact.py", title="Impact", url_path="impact"),
         "fonctionnement": st.Page("pages/fonctionnement.py", title="Fonctionnement", url_path="fonctionnement"),

@@ -181,7 +181,10 @@ CSS = """
 .reg-s-t{font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:800;color:#065f46;margin-bottom:6px}
 .reg-s-c{font-size:.86rem;color:#047857;line-height:1.58}
 
-@media(max-width:860px){.auth-page{grid-template-columns:1fr;margin:8px}.auth-left{padding:32px 24px}.auth-right{padding:32px 24px}.al-headline{font-size:2rem}.al-headline em{font-size:1.7rem}}
+@media(max-width:980px){.auth-page{grid-template-columns:1fr;margin:10px;min-height:auto}.auth-left{padding:34px 28px}.auth-right{padding:34px 28px}.auth-right>*{width:min(100%,620px)}.al-headline{font-size:2.15rem}.al-headline em{font-size:1.8rem}}
+@media(max-width:860px){.auth-page{grid-template-columns:1fr;margin:8px}.auth-left{padding:32px 24px}.auth-right{padding:32px 24px}.al-headline{font-size:2rem}.al-headline em{font-size:1.7rem}.auth-form-shell,[data-testid="stForm"],.stFormSubmitButton,.auth-form-helper,.auth-section-note,.auth-register-note,.register-success,.no-account{max-width:none}}
+@media(max-width:900px){div[data-testid="stHorizontalBlock"]{gap:.8rem!important}div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{width:100%!important;flex:1 1 100%!important}}
+@media(max-width:640px){.auth-page{width:min(100vw - 12px,100%);margin:6px;border-radius:20px;min-height:auto}.auth-left{padding:24px 16px}.auth-right{padding:24px 14px}.al-logo{margin-bottom:24px}.al-headline{font-size:1.72rem;line-height:1.14}.al-headline em{font-size:1.42rem}.al-sub{font-size:.88rem;max-width:none;margin-bottom:22px}.al-features{margin-bottom:22px}.al-feat{padding:12px}.al-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ar-title{font-size:1.45rem}.ar-sub{font-size:.84rem;margin-bottom:20px}.auth-form-shell{padding:16px 12px 14px}.auth-form-topline{gap:8px}.no-account{padding:16px 14px}.nac-perks{gap:6px}}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)

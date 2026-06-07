@@ -3,6 +3,16 @@ from typing import Iterable, Optional
 import pandas as pd
 
 
+def _terrain_signal_mask(messages: pd.Series) -> pd.Series:
+    return (
+        messages.fillna("")
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .str.startswith("nouveau signal terrain safe congo")
+    )
+
+
 def prepare_periodic_entries(
     entries_df: pd.DataFrame,
     required_columns: Optional[Iterable[str]] = None,
@@ -47,4 +57,17 @@ def prepare_periodic_alerts(
     prepared["predicted_cases"] = pd.to_numeric(prepared["predicted_cases"], errors="coerce").fillna(0)
     prepared["growth_rate"] = pd.to_numeric(prepared["growth_rate"], errors="coerce").fillna(0)
     prepared["alert_level"] = prepared["alert_level"].astype(str).str.upper().str.strip()
+
+    if "message" in prepared.columns:
+        prepared["is_terrain_signal"] = _terrain_signal_mask(prepared["message"])
+    else:
+        prepared["is_terrain_signal"] = False
+
+    prepared["prediction_available"] = ~prepared["is_terrain_signal"]
+    prepared["has_comparable_growth"] = ~(
+        prepared["is_terrain_signal"]
+        & prepared["current_cases"].eq(prepared["predicted_cases"])
+        & prepared["growth_rate"].ge(100)
+    )
+    prepared.loc[~prepared["has_comparable_growth"], "growth_rate"] = 0.0
     return prepared

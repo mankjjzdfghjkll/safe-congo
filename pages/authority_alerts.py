@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import re
 import unicodedata
 
 import pandas as pd
@@ -98,9 +99,55 @@ def _is_fallback_prediction(row: pd.Series) -> bool:
     return current_cases == predicted_cases and abs(growth) < 1e-9
 
 
+def _should_hide_terrain_growth(row: pd.Series) -> bool:
+    if not _is_terrain_signal(row.get("message", "")):
+        return False
+    try:
+        growth_value = float(row.get("growth_rate", 0.0) or 0.0)
+        current_cases = int(row.get("current_cases", 0) or 0)
+        predicted_cases = int(row.get("predicted_cases", 0) or 0)
+    except Exception:
+        return False
+    return current_cases == predicted_cases and growth_value >= 100.0
+
+
+def _display_alert_message(row: pd.Series, hide_growth: bool) -> str:
+    message = str(row.get("message", "") or "").strip()
+    if not hide_growth:
+        return message
+    cleaned = re.sub(
+        r",\s*croissance estimee\s*:\s*[+-]?\d+(?:\.\d+)?%\.?",
+        "",
+        message,
+        flags=re.IGNORECASE,
+    ).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    if cleaned.endswith(","):
+        cleaned = cleaned[:-1].rstrip()
+    if not cleaned.endswith("."):
+        cleaned += "."
+    return f"{cleaned} Croissance non comparee faute de base historique locale."
+
+
 def main() -> None:
     st.set_page_config(page_title="Alertes autorite | SAFE CONGO", layout="wide")
     apply_authority_theme()
+    st.markdown(
+        """
+<style>
+    @media (max-width: 1180px) {
+        div[data-testid="stHorizontalBlock"] { gap: .85rem !important; }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+        [data-testid="stExpander"] div[data-testid="stHorizontalBlock"] { gap: .65rem !important; }
+    }
+    @media (max-width: 760px) {
+        .authority-support-copy { font-size: .84rem !important; line-height: 1.6 !important; }
+        .authority-highlight, .authority-mini-card { padding: .95rem !important; }
+    }
+</style>
+""",
+        unsafe_allow_html=True,
+    )
 
     auth = AuthSystem()
     user = require_auth(auth)
@@ -247,6 +294,9 @@ def main() -> None:
             growth_label = f"+{growth_label}"
 
         terrain_signal = _is_terrain_signal(row.get("message", ""))
+        hide_growth = _should_hide_terrain_growth(row)
+        if hide_growth:
+            growth_label = "Non comparee"
         fallback_prediction = _is_fallback_prediction(row)
         if terrain_signal:
             projection_value_label = "Non disponible"
@@ -261,7 +311,7 @@ def main() -> None:
         summary_label = f"{level} • {row['disease']} • {row['province']} • {int(row['current_cases']):,} cas"
         with st.expander(summary_label):
             st.markdown(
-                f'<div class="authority-alert-card {css_level}"><div class="authority-alert-top"><div><div class="authority-alert-badge {css_level}">{level}</div><div class="authority-alert-title">{row["disease"]}</div><div class="authority-alert-meta">Observation source: {row["province"]} • {row["zone_sante"]} • Semaine {int(row["week"])}' + f'/{int(row["year"])}' + f'</div></div><div class="authority-alert-meta">Emission: {row["created_at"]}</div></div><div class="authority-alert-stats"><div class="authority-alert-stat"><strong>{int(row["current_cases"]):,}</strong><span>Cas actuels</span></div><div class="authority-alert-stat"><strong>{projection_value_label}</strong><span>{projection_caption}</span></div><div class="authority-alert-stat"><strong>{growth_label}</strong><span>Croissance</span></div></div><div class="authority-alert-meta" style="font-size:.86rem;color:#566f88">{row["message"]}</div></div>',
+                f'<div class="authority-alert-card {css_level}"><div class="authority-alert-top"><div><div class="authority-alert-badge {css_level}">{level}</div><div class="authority-alert-title">{row["disease"]}</div><div class="authority-alert-meta">Observation source: {row["province"]} • {row["zone_sante"]} • Semaine {int(row["week"])}' + f'/{int(row["year"])}' + f'</div></div><div class="authority-alert-meta">Emission: {row["created_at"]}</div></div><div class="authority-alert-stats"><div class="authority-alert-stat"><strong>{int(row["current_cases"]):,}</strong><span>Cas actuels</span></div><div class="authority-alert-stat"><strong>{projection_value_label}</strong><span>{projection_caption}</span></div><div class="authority-alert-stat"><strong>{growth_label}</strong><span>Croissance</span></div></div><div class="authority-alert-meta" style="font-size:.86rem;color:#566f88">{_display_alert_message(row, hide_growth)}</div></div>',
                 unsafe_allow_html=True,
             )
 
@@ -272,7 +322,7 @@ def main() -> None:
                     zone_sante=row["zone_sante"],
                     current_cases=int(row["current_cases"]),
                     predicted_cases=int(row["predicted_cases"]),
-                    growth_rate=float(row["growth_rate"]),
+                    growth_rate=0.0 if hide_growth else float(row["growth_rate"]),
                     alert_level=level,
                     r2_score=(float(row["r2_score"]) if row.get("r2_score") not in (None, "") else None),
                     week=int(row["week"]),

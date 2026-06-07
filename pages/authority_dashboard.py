@@ -22,6 +22,7 @@ from utils.authority_ui import (
     render_authority_sidebar,
 )
 from utils.chart_helpers import empty_state_figure
+from utils.data_prep import prepare_periodic_alerts
 from utils.navigation import switch_to_home_page
 
 
@@ -42,12 +43,9 @@ def _prepare_history(history_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _prepare_alerts(alerts_df: pd.DataFrame) -> pd.DataFrame:
-    if alerts_df.empty:
-        return pd.DataFrame()
-    prepared = alerts_df.copy()
-    for column in ["current_cases", "predicted_cases", "growth_rate", "week", "year", "is_read"]:
-        if column in prepared.columns:
-            prepared[column] = pd.to_numeric(prepared[column], errors="coerce").fillna(0)
+    prepared = prepare_periodic_alerts(alerts_df, require_period=False)
+    if prepared.empty:
+        return prepared
     if "created_at" in prepared.columns:
         prepared["created_at"] = pd.to_datetime(prepared["created_at"], errors="coerce")
     prepared["alert_level"] = prepared["alert_level"].astype(str).str.upper().str.strip().replace({"NOUVELLE_DONNEE": "FAIBLE", "INFO": "FAIBLE"})
@@ -167,6 +165,17 @@ def _province_summary(auth: AuthSystem, province: str) -> tuple[int, int, int]:
 def main() -> None:
     st.set_page_config(page_title="Tableau de bord autorite | SAFE CONGO", layout="wide")
     apply_authority_theme()
+    st.markdown(
+        """
+<style>
+    @media (max-width: 1180px) {
+        div[data-testid="stHorizontalBlock"] { gap: .85rem !important; }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+    }
+</style>
+""",
+        unsafe_allow_html=True,
+    )
 
     auth = AuthSystem()
     user = require_auth(auth)

@@ -590,16 +590,41 @@ class BarrierMeasuresPDF:
             "band": colors.HexColor("#0b4d95"),
         }
 
+    def _lookup_disease_r2(self, disease: str):
+        """Renvoie le R2 reel du modele entraine pour cette maladie depuis le CSV."""
+        try:
+            import unicodedata, re, csv, os
+            csv_path = os.path.join(os.path.dirname(__file__), "..", "models", "evaluation", "model_performance_summary.csv")
+            csv_path = os.path.normpath(csv_path)
+            if not os.path.exists(csv_path):
+                return None
+            def _norm(t):
+                t = unicodedata.normalize("NFKD", str(t or "")).encode("ascii", "ignore").decode("ascii")
+                return re.sub(r"[^a-z0-9]", "", t.lower())
+            target = _norm(disease)
+            with open(csv_path, newline="", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    col = row.get("R\u00b2 (Best)") or row.get("R2 (Best)") or ""
+                    mal = _norm(row.get("Maladie", ""))
+                    if mal == target and col.strip():
+                        return float(col)
+        except Exception:
+            pass
+        return None
+
     def _confidence_label(self, r2_score):
         if r2_score is None:
-            return "Indisponible"
+            return "Non evaluee"
+        if r2_score >= 0.90:
+            return "Excellente"
         if r2_score >= 0.80:
             return "Tres bonne"
         if r2_score >= 0.65:
             return "Bonne"
         if r2_score >= 0.50:
             return "Acceptable"
-        return "Faible"
+        return "Limitee"
 
     def _recommended_measures(self, disease, alert_level):
         profile = self._disease_profile(disease)
@@ -751,9 +776,18 @@ class BarrierMeasuresPDF:
             growth_display = f"<font color='#15803d'>{growth_display_raw}</font>"
         else:
             growth_display = growth_display_raw
-        confidence = self._confidence_label(r2_score)
+        is_terrain = (predicted_cases is not None and current_cases is not None and int(predicted_cases) == int(current_cases))
+        if is_terrain:
+            confidence = "Observation terrain"
+            fiabilite_label = "SOURCE"
+        else:
+            effective_r2 = r2_score
+            if effective_r2 is None or float(effective_r2 or 0.0) == 0.0:
+                effective_r2 = self._lookup_disease_r2(disease)
+            confidence = self._confidence_label(effective_r2)
+            fiabilite_label = "FIABILITE IA"
         period_display = f"Sem. {int(week)}/{int(year)}" if week is not None and year is not None else "—"
-        pred_display = f"{predicted_cases:,}" if predicted_cases and predicted_cases > 0 else "—"
+        pred_display = f"{predicted_cases:,}" if predicted_cases and predicted_cases > 0 and not is_terrain else "—"
         severity_banner = Table(
             [[Paragraph(f"ALERTE {display_level}", badge_style)]],
             colWidths=[16.8 * cm],
@@ -794,13 +828,12 @@ class BarrierMeasuresPDF:
         story.append(top_strip)
         story.append(Spacer(1, 8))
 
-        epi_col_w = 4.2 * cm
         epi_items = [
             ("<b>PROJECTION IA</b>", pred_display),
             ("<b>EVOLUTION</b>", growth_display),
-            ("<b>FIABILITE IA</b>", confidence),
             ("<b>PERIODE</b>", period_display),
         ]
+        epi_col_w = 5.6 * cm
         epi_cells = []
         for epi_kicker, epi_value in epi_items:
             epi_cell = Table(
@@ -816,7 +849,7 @@ class BarrierMeasuresPDF:
                 ("RIGHTPADDING", (0, 0), (-1, -1), 10),
             ]))
             epi_cells.append(epi_cell)
-        epi_strip = Table([epi_cells], colWidths=[epi_col_w] * 4)
+        epi_strip = Table([epi_cells], colWidths=[epi_col_w] * len(epi_cells))
         epi_strip.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -832,8 +865,9 @@ class BarrierMeasuresPDF:
             f"SAFE CONGO signale une situation de niveau <b>{display_level}</b> pour <b>{disease}</b> dans la zone de sante de <b>{zone_sante}</b>, province de <b>{province}</b>. "
             f"Cette fiche fournit des mesures barrieres specifiees pour cette maladie, des priorites de coordination et une checklist terrain pour soutenir la riposte locale. "
             f"<br/><br/><b>Focus sanitaire :</b> {profile['focus']}"
-            f"<br/><br/>Volume observe : <b>{current_cases:,}</b> cas | Projection IA : <b>{pred_display}</b> cas | Evolution : <b>{growth_display_raw}</b> | Fiabilite modele : <b>{confidence}</b>. "
-            f"Ces donnees doivent etre confirmees par la surveillance sanitaire officielle."
+            f"<br/><br/>Volume observe : <b>{current_cases:,}</b> cas"
+            + (f" | Projection IA : <b>{pred_display}</b> cas | Evolution : <b>{growth_display_raw}</b>" if not is_terrain else "")
+            + ". Ces donnees doivent etre confirmees par la surveillance sanitaire officielle."
         )
         story.append(Paragraph(executive_copy, body_style))
         story.append(Spacer(1, 12))

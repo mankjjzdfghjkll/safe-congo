@@ -22,8 +22,8 @@ reference_metrics = get_public_reference_metrics()
 
 render_public_hero(
     "Alliance & coordination",
-    "Un point de contact plus clair pour une plateforme qui travaille en coalition.",
-    "SAFE CONGO s'inscrit dans une logique d'ecosysteme. La valeur de la plateforme grandit lorsqu'elle relie institutions, partenaires et equipes techniques autour d'un meme langage de vigilance et d'action.",
+  "Une coordination claire pour les demandes, les partenariats et l'acces.",
+  "SAFE CONGO s'inscrit dans une logique d'ecosysteme. La valeur de la plateforme grandit lorsqu'elle relie institutions, partenaires et equipes techniques autour d'un meme langage de vigilance, de priorisation et d'action.",
     [
         ("4", "partenaires de reference"),
     (str(reference_metrics.get("provinces", 0)), "provinces suivies"),
@@ -35,16 +35,36 @@ render_public_hero(
 st.markdown(
     """
 <div class="public-page">
-  <div class="public-auto-grid">
-    <div class="public-card"><div class="public-card-kicker">Coordination</div><div class="public-card-title">Canal institutionnel central</div><p class="public-card-copy">Les demandes relatives a la plateforme passent par la coordination et les circuits administratifs du dispositif de deploiement.</p></div>
-    <div class="public-card"><div class="public-card-kicker">Acces</div><div class="public-card-title">Activation des profils</div><p class="public-card-copy">Les comptes d'autorites sanitaires sont ouverts, verifies puis actives selon le territoire et le niveau de responsabilite.</p></div>
-    <div class="public-card"><div class="public-card-kicker">Partenariats</div><div class="public-card-title">Dialogue d'ecosysteme</div><p class="public-card-copy">La plateforme est pensee pour travailler avec les institutions publiques, les partenaires multilateraux et les equipes de terrain.</p></div>
-    <div class="public-card"><div class="public-card-kicker">Support</div><div class="public-card-title">Accompagnement d'exploitation</div><p class="public-card-copy">Les usages critiques, les parcours d'acces et la prise en main peuvent etre encadres par l'administration du systeme.</p></div>
+  <div class="public-grid-2">
+    <div class="public-panel">
+      <div class="public-section-head">
+        <div>
+          <div class="public-section-kicker">Coordination</div>
+          <div class="public-section-title">Quand mobiliser SAFE CONGO</div>
+        </div>
+        <p class="public-section-copy">L'espace public oriente les demandes sans publier de contacts fictifs ni d'informations sensibles.</p>
+      </div>
+      <p class="public-copy">Les demandes relatives au deploiement, a l'acces, a la gouvernance ou a l'usage de la plateforme passent par les circuits institutionnels et administratifs prevus par le dispositif SAFE CONGO.</p>
+      <div class="public-pill-row">
+        <span class="public-pill">Acces plateforme</span>
+        <span class="public-pill">Coordination partenaire</span>
+        <span class="public-pill">Support d'exploitation</span>
+      </div>
+    </div>
+    <div class="public-accent-card">
+      <h3>Principe de gouvernance</h3>
+      <p>Les comptes des autorites sanitaires sont verifies, rattaches a un territoire et actives selon le niveau de responsabilite. SAFE CONGO privilegie la discipline d'acces et la clarte institutionnelle.</p>
+    </div>
   </div>
 
   <div class="public-panel">
-    <h3>Partenaires d'ancrage</h3>
-    <p class="public-copy">La credibilite de SAFE CONGO repose aussi sur la qualite de ses alliances. La plateforme est pensee pour dialoguer avec les institutions de sante publique, les partenaires multilateraux et les acteurs de terrain qui renforcent l'execution.</p>
+    <div class="public-section-head">
+      <div>
+        <div class="public-section-kicker">Alliances</div>
+        <div class="public-section-title">Partenaires d'ancrage</div>
+      </div>
+      <p class="public-section-copy">La credibilite d'un systeme de veille depend aussi de la qualite de ses alliances institutionnelles et techniques.</p>
+    </div>
     <div class="public-auto-grid">
       <div class="public-card"><div class="public-card-title">Ministere de la Sante</div><p class="public-card-copy">Ancrage institutionnel et priorisation nationale.</p><a class="public-partner-link" href="https://www.minisanterdc.cd" target="_blank">Visiter le site</a></div>
       <div class="public-card"><div class="public-card-title">OMS RDC</div><p class="public-card-copy">Cadre de reference international et expertise de sante publique.</p><a class="public-partner-link" href="https://www.who.int/fr" target="_blank">Visiter le site</a></div>
@@ -54,11 +74,17 @@ st.markdown(
   </div>
 
   <div class="public-panel">
-    <h3>Demande d'acces</h3>
+    <div class="public-section-head">
+      <div>
+        <div class="public-section-kicker">Parcours d'acces</div>
+        <div class="public-section-title">Demande d'acces</div>
+      </div>
+      <p class="public-section-copy">Le processus d'ouverture privilegie la verification, le rattachement territorial et un demarrage accompagne.</p>
+    </div>
     <div class="public-auto-grid">
-      <div class="public-card"><div class="public-card-kicker">Etape 1</div><div class="public-card-title">Formuler la demande</div><p class="public-card-copy">Lancez la pre-inscription ou signalez le besoin d'acces avec votre fonction, votre territoire et votre usage attendu.</p></div>
-      <div class="public-card"><div class="public-card-kicker">Etape 2</div><div class="public-card-title">Verifier le profil</div><p class="public-card-copy">Les informations sont rapprochees du bon niveau de responsabilite, de la province et de la zone de sante concernes.</p></div>
-      <div class="public-card"><div class="public-card-kicker">Etape 3</div><div class="public-card-title">Activer et accompagner</div><p class="public-card-copy">Apres validation, l'equipe admin ouvre l'acces et accompagne la prise en main initiale du compte.</p></div>
+      <div class="public-card"><div class="public-card-kicker">Etape 1</div><div class="public-card-title">Formuler la demande</div><p class="public-card-copy">Lancer la pre-inscription ou signaler le besoin d'acces avec la fonction, le territoire et l'usage attendu.</p></div>
+      <div class="public-card"><div class="public-card-kicker">Etape 2</div><div class="public-card-title">Verifier le profil</div><p class="public-card-copy">Rapprocher les informations du bon niveau de responsabilite, de la province et de la zone de sante concernees.</p></div>
+      <div class="public-card"><div class="public-card-kicker">Etape 3</div><div class="public-card-title">Activer et accompagner</div><p class="public-card-copy">Apres validation, l'equipe d'administration ouvre l'acces et encadre la prise en main initiale.</p></div>
     </div>
     <div class="public-note" style="margin-top:18px">Les utilisateurs peuvent egalement lancer une pre-inscription depuis la page d'accueil, en attendant validation administrative. Cette page reste volontairement institutionnelle et ne publie pas de contacts fictifs.</div>
   </div>

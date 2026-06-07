@@ -124,6 +124,8 @@ PUBLIC_SIDEBAR_THEME = """
   border:1px solid rgba(12,86,149,.45);
   box-shadow:0 16px 36px rgba(10,95,171,.24);
 }
+[data-testid="stSidebar"] .public-sidebar-active-card,
+[data-testid="stSidebar"] .public-sidebar-active-card *{color:#ffffff!important}
 [data-testid="stSidebar"] .public-sidebar-active-kicker{
   display:inline-flex;
   align-items:center;
@@ -197,6 +199,7 @@ new MutationObserver(hideNativeSidebarNav).observe(window.parent?.document?.body
 
 
 PUBLIC_NAV_ITEMS = [
+  ("apropos", "pages/apropos.py", "A Propos", "Objectif, role et vision de SAFE CONGO"),
     ("notre_mission", "pages/notre_mission.py", "Perspective Strategique", "Notre mission souveraine"),
     ("impact", "pages/impact.py", "Preuves & Resultats", "Impact national mesurable"),
     ("fonctionnement", "pages/fonctionnement.py", "Mecanique Intelligente", "Comment SAFE CONGO orchestre l'alerte"),
@@ -222,10 +225,22 @@ def render_sidebar_active_button(button_index: int) -> None:
 
 def render_public_sidebar(active_page: Optional[str] = None, show_home_button: bool = True) -> None:
     with st.sidebar:
+        apropos_button_index = 2 if show_home_button else 1
         st.markdown(PUBLIC_SIDEBAR_THEME, unsafe_allow_html=True)
-        st.html(PUBLIC_SIDEBAR_NAV_CLEANUP, unsafe_allow_javascript=True)
+        st.html(PUBLIC_SIDEBAR_NAV_CLEANUP)
         st.markdown(PUBLIC_SIDEBAR_BRAND, unsafe_allow_html=True)
-        st.markdown("---")
+        st.markdown(
+            f"""
+            <style>
+            [data-testid="stSidebar"] .stButton:nth-of-type({apropos_button_index}) > button{{
+              text-align:center!important;
+              justify-content:center!important;
+              padding:0 12px!important;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
 
         if show_home_button and st.button(
             "Retour vers l'accueil central",
@@ -233,25 +248,13 @@ def render_public_sidebar(active_page: Optional[str] = None, show_home_button: b
             key="sidebar_back_home",
         ):
             switch_to_home_page()
-    active_entry = next((item for item in PUBLIC_NAV_ITEMS if item[0] == active_page), None)
-    if active_entry is None:
-      active_entry = (None, None, "Espace public SAFE CONGO", "Un parcours editorial simplifie, sans suggestions encombrantes dans la sidebar.")
 
-    _, _, active_title, active_description = active_entry
-    st.markdown('<div class="public-sidebar-label">Page ouverte</div>', unsafe_allow_html=True)
-    st.markdown(
-      f'''
-<div class="public-sidebar-active-card">
-  <div class="public-sidebar-active-kicker">Navigation concentree</div>
-  <div class="public-sidebar-active-title">{active_title}</div>
-  <div class="public-sidebar-active-copy">{active_description}</div>
-</div>
-''',
-      unsafe_allow_html=True,
-    )
-
-    st.markdown('<div class="public-sidebar-label" style="margin-top:16px">Parcours</div>', unsafe_allow_html=True)
-    st.markdown(
-      '<div style="margin:0 2px 0 2px;font-size:.78rem;line-height:1.55;color:#6e8baa">La page reste seule a l\'ecran. Revenez a l\'accueil pour changer de section.</div>',
-      unsafe_allow_html=True,
-    )
+        st.markdown("---")
+        st.markdown('<div class="public-sidebar-label">Parcours public</div>', unsafe_allow_html=True)
+        button_index = 1 if show_home_button else 0
+        for item_key, page_path, title, _description in PUBLIC_NAV_ITEMS:
+            button_index += 1
+            if st.button(title, use_container_width=True, key=f"public_nav_{item_key}"):
+                st.switch_page(page_path)
+            if active_page == item_key:
+                render_sidebar_active_button(button_index)

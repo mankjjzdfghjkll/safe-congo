@@ -71,6 +71,8 @@ def _build_weekly_trend(entries_df: pd.DataFrame) -> go.Figure:
 
 def _build_prediction_gap(alerts_df: pd.DataFrame) -> go.Figure:
     prepared = prepare_periodic_alerts(alerts_df)
+    if not prepared.empty and "prediction_available" in prepared.columns:
+        prepared = prepared.loc[prepared["prediction_available"]]
     if prepared.empty:
         return empty_state_figure("Prediction IA vs terrain", "Aucune alerte recente exploitable.", make_plotly_layout)
 
@@ -174,6 +176,17 @@ def _build_top_diseases(entries_df: pd.DataFrame) -> go.Figure:
 def main() -> None:
     st.set_page_config(page_title="Dashboard National | SAFE CONGO", layout="wide")
     apply_admin_theme()
+    st.markdown(
+        """
+<style>
+    @media (max-width: 1180px) {
+        div[data-testid="stHorizontalBlock"] { gap: .85rem !important; }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+    }
+</style>
+""",
+        unsafe_allow_html=True,
+    )
 
     auth = AuthSystem()
     user = require_auth(auth)

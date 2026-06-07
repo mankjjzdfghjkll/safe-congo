@@ -159,6 +159,21 @@ def _registry_table(users_df: pd.DataFrame) -> pd.DataFrame:
 def main() -> None:
     st.set_page_config(page_title="Utilisateurs | SAFE CONGO", layout="wide")
     apply_admin_theme()
+    st.markdown(
+        """
+<style>
+    @media (max-width: 1180px) {
+        div[data-testid="stHorizontalBlock"] { gap: .85rem !important; }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+        [data-testid="stTabs"] [role="tablist"] { flex-wrap: wrap; gap: .45rem; }
+    }
+    @media (max-width: 760px) {
+        .admin-form-banner, .admin-highlight, .admin-mini-card { padding: .95rem !important; }
+    }
+</style>
+""",
+        unsafe_allow_html=True,
+    )
 
     auth = AuthSystem()
     user = require_auth(auth)
