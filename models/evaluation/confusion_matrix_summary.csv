@@ -1,0 +1,9 @@
+﻿Maladie,Modele,Seuils,Fichier
+Diarrhée aqueuse,Linear Regression,37.00 | 491.00,C:\Users\PC\Desktop\SAFE CONGO\models\confusion_matrices\diarrhee_aqueuse_confusion_matrix.csv
+Fièvre typhoïde,Linear Regression,797.00 | 814.00,C:\Users\PC\Desktop\SAFE CONGO\models\confusion_matrices\fievre_typhoide_confusion_matrix.csv
+Grippe,Linear Regression,967.00 | 1317.00,C:\Users\PC\Desktop\SAFE CONGO\models\confusion_matrices\grippe_confusion_matrix.csv
+Infection respiratoire aiguë,Linear Regression,3267.00 | 5529.00,C:\Users\PC\Desktop\SAFE CONGO\models\confusion_matrices\infection_respiratoire_aigue_confusion_matrix.csv
+PNEUMONIE,Linear Regression,95.00 | 1328.00,C:\Users\PC\Desktop\SAFE CONGO\models\confusion_matrices\pneumonie_confusion_matrix.csv
+Paludisme (confirmé),Linear Regression,6530.00 | 8141.00,C:\Users\PC\Desktop\SAFE CONGO\models\confusion_matrices\paludisme_confirme_confusion_matrix.csv
+Paludisme (suspect),Linear Regression,15454.00 | 16052.00,C:\Users\PC\Desktop\SAFE CONGO\models\confusion_matrices\paludisme_suspect_confusion_matrix.csv
+Rougeole,Linear Regression,7.00 | 1157.00,C:\Users\PC\Desktop\SAFE CONGO\models\confusion_matrices\rougeole_confusion_matrix.csv

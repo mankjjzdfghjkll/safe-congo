@@ -1,100 +1,17 @@
-# Python
+# Python et environnement
 __pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.so
-*.egg
-*.egg-info/
-dist/
-build/
-.eggs/
-
-# Virtual environments
+*.pyc
 .venv/
-venv/
 env/
-.env/
+.DS_Store
 
-# IDE / OS
-.vscode/
-.idea/
-*.DS_Store
-Thumbs.db
-desktop.ini
-
-# Logs & crash dumps
-hs_err_pid*.log
-
-# Streamlit
-.streamlit/secrets.toml
-
-# Database (runtime data — keep local only)
-database/users.db
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Distribution
-*.tar.gz
-*.zip
-
-# Local VS Code / PyDev artifacts
-*.pydevinfo
-*.v1_projectinfodelta
-0.3
-120
-str
-
-# Generated reports and runtime outputs
-rapport_pipeline_ML_SAFE_CONGO.pdf
-logs/eda/
-logs/*.csv
-logs/*.log
-data/processed/dataset_propre.csv
-data/raw/drc-2022_sem40.xlsx
-models/best_model.pkl
-models/evaluation/*.csv
-models/evaluation/*.png
-
-# Runtime databases
-database/*.db
-
-# Local analytics / exploratory files
-eda_check.py
-inspect_*.py
-inspect_data.py
-_check*.py
-
-# Temporary or academic working folders
+# Fichiers de TP et documents personnels
 TP machine learning/
-'
+*.docx
+*.pdf
+_test_pdf_out.txt
+~$*
 
-# Raw and processed local data
-data/raw/
-data/processed/*.csv
-
-# Runtime logs and exported analysis
-logs/
-
-# Local trained models and evaluation artifacts
-models/trained/*.pkl
-models/evaluation/
-
-# Non-core scripts for exploration or presentation
-scripts/check_province_zones.py
-scripts/create_director_presentation.py
-scripts/gen_director_ppt_clean.py
-scripts/gen_director_ppt_min.py
-scripts/run_director_ppt.cmd
-scripts/run_eda.py
-scripts/run_eda_clean.py
-_test_pdf_out.txt  
-*.txt  
-*.pdf 
-=  
-conn.cursor\(\)  
-_test_pdf_out.txt  
-*.txt  
-*.pdf  
-rapport/ 
+# Données locales temporaires et Modèles
+database/*.db
+models/*.pkl

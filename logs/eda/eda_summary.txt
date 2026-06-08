@@ -1,0 +1,19 @@
+SAFE CONGO - RAPPORT EDA (DATASET_PROPRE)
+=======================================================
+Lignes: 2,655 | Colonnes: 8
+Maladies: 25
+Periode: 2021-01-14 00:00:00 -> 2023-12-02 00:00:00
+Dates invalides: 0
+Lignes annees anormales (<2020 ou >2026): 0
+Quantiles Total_cas: q90=24919.20, q95=73731.10, q99=292226.40
+Top 10 maladies (nb lignes):
+- Infection respiratoire aiguë: 171
+- Paludisme (confirmé): 169
+- Grippe: 168
+- Fièvre typhoïde: 166
+- Rougeole: 164
+- Paludisme (suspect): 163
+- Diarrhée aqueuse: 157
+- Méningite: 156
+- PNEUMONIE: 148
+- Diarrhée sanglante: 145

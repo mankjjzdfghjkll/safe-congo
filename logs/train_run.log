@@ -1,0 +1,65 @@
+
+======================================================================
+RESULTATS CLES
+======================================================================
+24 maladies ont ete modelisees dans model_performance_summary.csv.
+20 maladies passent le seuil de production avec R² >= 0.5.
+Les meilleures performances visibles sont :
+- Infection respiratoire aiguë : R² = 0.986
+- Diarrhée sanglante : R² = 0.980
+- Paludisme (confirmé) : R² = 0.975
+- Paludisme (suspect) : R² = 0.967
+- PFA : R² = 0.957
+- Fièvre typhoïde : R² = 0.953
+- Grippe : R² = 0.953
+- PNEUMONIE : R² = 0.943
+Maladies non retenues pour la mise en production (scores sous le seuil) : DECES MATERNELS, MAPI GRAVES, PESTE, RAGE.
+Visuels :
+- Resume chiffre : C:\Users\PC\Desktop\SAFE CONGO\models\evaluation\model_performance_summary.csv
+- Seuils et matrices : C:\Users\PC\Desktop\SAFE CONGO\models\evaluation\confusion_matrix_summary.csv
+- Image consolidee : C:\Users\PC\Desktop\SAFE CONGO\models\evaluation\confusion_matrices_combined.png
+======================================================================
+
+Source du resume: artefacts valides deja presents sur disque (le run courant n'a pas atteint le seuil de production).
+
+
+====================================================================================================
+METRIQUES DE REGRESSION PAR MALADIE RETENUES EN PRODUCTION
+====================================================================================================
+                     Maladie   Meilleur Modèle  R² (Best)  MAE (Best)  RMSE (Best)  MAPE (Best)  CV R²  CV MAE (log)  Total cas  Semaines
+Infection respiratoire aiguë Gradient Boosting      0.986     2587.47      4488.38         17.5  0.909        0.2875  4629085.0       167
+          Diarrhée sanglante Gradient Boosting      0.980       29.62        42.93         19.1  0.900        0.4016    34181.0       141
+        Paludisme (confirmé) Gradient Boosting      0.975     9038.05     16831.38         32.0  0.708        0.5689 11489930.0       165
+         Paludisme (suspect) Gradient Boosting      0.967    15896.08     27730.50         13.1  0.876        0.3368 16518147.0       159
+                         PFA Gradient Boosting      0.957        2.66         3.94         13.0  0.893        0.2699     2852.5       124
+             Fièvre typhoïde Gradient Boosting      0.953     2005.33      3621.55         48.2  0.884        0.4082  1686560.0       162
+                      Grippe Gradient Boosting      0.953     2556.73      4148.60         29.9  0.905        0.3537  1890454.0       164
+                   PNEUMONIE     Random Forest      0.943      889.75      1398.86         36.2  0.814        0.4382   658724.0       144
+            Diarrhée aqueuse Gradient Boosting      0.939      577.12      1115.01         48.7  0.873        0.3984   470188.0       153
+                    Rougeole Gradient Boosting      0.934      239.95       359.35         30.4  0.895        0.4595   137961.0       160
+                    COVID-19 Gradient Boosting      0.906       57.59        83.01         21.3  0.765        0.6459    32547.0        72
+                FIEVRE JAUNE               SVR      0.882        1.38         2.32         13.9  0.900        0.2022      794.0        96
+             TETANOS MATERNE Linear Regression      0.865        0.24         0.32         21.2  0.656        0.0908       56.0        37
+                MAPI LEGERES     Random Forest      0.823       21.60        31.10         38.6  0.659        0.5242     4995.0        69
+                   Monkeypox               SVR      0.808       16.18        25.32         30.0  0.732        0.5705     4718.0        87
+                   Méningite Gradient Boosting      0.800       14.19        29.14         26.0  0.908        0.3101     6264.0       152
+                     Choléra Gradient Boosting      0.736       96.74       151.24         28.6  0.813        0.5146    16310.0        91
+                         TNN Gradient Boosting      0.720        2.62         4.42         23.9  0.744        0.2328      484.5        81
+                         FHA  Ridge Regression      0.720        0.14         0.20          9.0  0.570        0.0901       40.0        27
+                  COQUELUCHE               SVR      0.672        4.42         5.11         40.6  0.562        0.5005     1984.5        72
+
+
+======================================================================
+PERFORMANCE GLOBALE — TOUTES MALADIES CONFONDUES
+======================================================================
+  Maladies modelisees        : 20
+  Total cas couverts         : 37,586,275
+  R² moyen simple            : 0.876
+  R² moyen pondéré (cas)     : 0.969
+  MAPE moyen global          : 27.1%
+
+  F1-Score global (niveaux d'alerte ← classe positive = 'Élevé')
+    F1 Macro (moy. par maladie) : 0.818
+    F1 Micro (agrégé global)    : 0.849
+
+======================================================================
