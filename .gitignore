@@ -1,17 +1,3 @@
-# Python et environnement
-__pycache__/
-*.pyc
-.venv/
-env/
-.DS_Store
-
-# Fichiers de configuration utilisateur et logs de run
-logs/*.log
-logs/eda/
-
-# Fichiers parasites à bannir
-conn.cursor()
-=
-
-# Base de données (générée dynamiquement en production)
-database/*.db
+TP machine learning/
+_test_pdf_out.txt
+rapport_pipeline_ML_SAFE_CONGO.pdf

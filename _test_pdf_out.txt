@@ -1,1 +1,0 @@
-La syntaxe du nom de fichier, de répertoire ou de volume est incorrecte.
