@@ -1,3 +1,3 @@
-TP machine learning/
-_test_pdf_out.txt
-rapport_pipeline_ML_SAFE_CONGO.pdf
+.vscode/
+models/evaluation/
+scripts/_check*.py
