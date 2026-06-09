@@ -1,9 +1,15 @@
+# --- Core Framework & UI ---
 streamlit==1.56.0
+
+# --- Data Science & Machine Learning ---
 pandas==2.2.2
 numpy==1.26.4
 scikit-learn==1.5.0
 xgboost==2.0.3
+
+# --- Data Visualization ---
 plotly==6.7.0
+
+# --- File Management & PDF Reporting ---
 openpyxl==3.1.5
 reportlab==4.4.10
-altair==6.0.0
