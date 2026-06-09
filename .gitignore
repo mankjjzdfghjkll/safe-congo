@@ -1,3 +1,17 @@
-.vscode/
-models/evaluation/
-scripts/_check*.py
+# Caches Python
+__pycache__/
+src/__pycache__/
+utils/__pycache__/
+
+# Environnement virtuel
+.venv/
+
+# Bases de données locales et fichiers temporaires
+database/*.db
+*.cursor()
+=
+_test_pdf_out.txt
+
+# Dossiers de logs et rapports volumineux
+logs/
+rapport_pipeline_ML_SAFE_CONGO.pdf
