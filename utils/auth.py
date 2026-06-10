@@ -152,7 +152,7 @@ class AuthSystem:
         if not cursor.fetchone():
             cursor.execute(
                 '''
-                INSERT INTO users (username, password, role, nom, prenom, email, telephone)
+                INSERT OR IGNORE INTO users (username, password, role, nom, prenom, email, telephone)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''',
                 (
