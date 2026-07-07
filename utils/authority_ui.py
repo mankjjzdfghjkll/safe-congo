@@ -460,11 +460,14 @@ def alerts_for_user(db_path: Path, user_id: int) -> pd.DataFrame:
         FROM notifications n
         JOIN alerts a ON a.id = n.alert_id
         LEFT JOIN (
-            SELECT alert_id, model_r2
-            FROM prediction_runs
-            WHERE alert_id IS NOT NULL
-            GROUP BY alert_id
-            HAVING created_at = MAX(created_at)
+            SELECT pr1.alert_id, pr1.model_r2
+            FROM prediction_runs pr1
+            WHERE pr1.alert_id IS NOT NULL
+              AND pr1.created_at = (
+                  SELECT MAX(pr2.created_at)
+                  FROM prediction_runs pr2
+                  WHERE pr2.alert_id = pr1.alert_id
+              )
         ) pr ON pr.alert_id = a.id
         WHERE n.user_id = ?
         ORDER BY n.created_at DESC

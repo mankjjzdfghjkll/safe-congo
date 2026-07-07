@@ -1,0 +1,462 @@
+\chapter{Modélisation}
+
+Dans ce chapitre, nous présentons la démarche de modélisation retenue pour la conception et la mise en \oe{}uvre de la plateforme SAFE CONGO. Il ne s'agit pas seulement d'exposer une architecture théorique, mais de décrire de manière fidèle la logique effectivement implémentée dans le projet. L'objectif est de montrer comment les données épidémiologiques sont préparées, transformées, exploitées par les modèles prédictifs, puis intégrées dans l'application afin de produire des projections et des alertes utiles à la surveillance sanitaire.
+
+Dans un projet appliqué comme SAFE CONGO, la valeur scientifique et opérationnelle ne repose pas uniquement sur la présence d'algorithmes d'apprentissage automatique. Elle dépend de l'ensemble de la chaîne qui relie les données brutes, la préparation des séries, la sélection des modèles, les règles de fiabilité, la génération des alertes et l'usage concret par les acteurs de terrain. Le présent chapitre expose donc la méthode générale adoptée, l'organisation fonctionnelle de la plateforme, la place de la modélisation UML, la logique du système d'alertes ainsi que les principales hypothèses qui encadrent l'interprétation des résultats.
+
+\section{Approche méthodologique générale}
+
+\subsection{Logique générale du projet}
+
+La conception de SAFE CONGO s'inscrit dans une démarche de recherche appliquée mobilisant à la fois le développement logiciel, l'analyse de données et l'apprentissage automatique. Le projet a été construit comme une chaîne de traitement complète allant du chargement des données épidémiologiques jusqu'à l'exploitation des projections et des alertes dans l'application.
+
+La logique générale du projet peut être résumée par le tableau~\ref{tab:demarche_generale}.
+
+\begin{table}[H]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{|c|p{4.5cm}|p{8cm}|}
+    \hline
+    \textbf{Étape} & \textbf{Intitulé} & \textbf{Description} \\
+    \hline
+    1 & Chargement des données & Importation des fichiers épidémiologiques disponibles, avec prise en compte de 2023 comme base minimale et ajout de 2022 lorsque le fichier est présent. \\
+    \hline
+    2 & Nettoyage et normalisation & Suppression des doublons, conversion des colonnes utiles, contrôle des dates, harmonisation des noms de maladies et élimination des incohérences majeures. \\
+    \hline
+    3 & Agrégation et préparation & Agrégation hebdomadaire par maladie, traitement des séries creuses, réduction de l'effet des valeurs aberrantes et construction des variables prédictives. \\
+    \hline
+    4 & Modélisation et entraînement & Comparaison de six algorithmes de régression, validation temporelle, sélection du meilleur modèle par maladie et réentraînement final sur l'ensemble des données disponibles. \\
+    \hline
+    5 & Filtrage et intégration & Conservation des modèles jugés suffisamment fiables, sauvegarde des artefacts et chargement dans l'application Streamlit. \\
+    \hline
+    6 & Exploitation métier & Production de projections, bascule éventuelle vers un mécanisme de secours, classification des alertes et diffusion des notifications aux acteurs concernés. \\
+    \hline
+  \end{tabular}%
+  }
+  \caption{Démarche générale de modélisation dans SAFE CONGO}
+  \label{tab:demarche_generale}
+\end{table}
+
+Cette organisation présente un double intérêt. D'une part, elle distingue clairement les phases de préparation, d'apprentissage et d'exploitation métier. D'autre part, elle offre une structure méthodologique lisible et cohérente avec les exigences d'un travail scientifique appliqué.
+
+\subsection{Données utilisées et cadre d'apprentissage}
+
+Le projet utilise comme base principale le fichier épidémiologique de 2023. Lorsque le fichier de 2022 est disponible dans l'environnement de travail, il est automatiquement ajouté afin d'étendre la profondeur historique de l'apprentissage. En pratique, l'entraînement peut donc être effectué soit sur les données de 2023 uniquement, soit sur l'ensemble 2022--2023.
+
+Après chargement, les données sont nettoyées puis agrégées par semaine et par maladie. Ainsi, l'apprentissage des modèles ne s'effectue pas province par province ni zone par zone, mais sur des séries hebdomadaires agrégées par maladie. Ce point doit être clairement souligné, car il correspond au fonctionnement réel du pipeline. En revanche, au moment de l'utilisation dans l'application, les projections sont produites à partir de l'historique local lié à la province et à la zone de santé sélectionnées par l'utilisateur.
+
+Ce choix méthodologique répond à une contrainte pratique importante. Un apprentissage strictement local aurait souvent souffert d'un historique trop court ou trop instable, alors qu'une agrégation par maladie permet d'obtenir des séries plus robustes pour l'entraînement tout en conservant, dans l'interface, une exploitation locale des projections.
+
+\subsection{Approche centrée utilisateur}
+
+La plateforme a été pensée autour de deux profils d'utilisateurs principaux :
+
+\begin{itemize}
+  \item l'administrateur, chargé de la saisie des données épidémiologiques, de la supervision de la plateforme et de la diffusion des alertes ;
+  \item l'autorité sanitaire, chargée de consulter les notifications, les alertes et les informations utiles à la prise de décision.
+\end{itemize}
+
+Cette distinction a guidé l'organisation de l'application. Les pages d'administration sont orientées vers la collecte, la vérification et l'émission des informations, tandis que les pages destinées aux autorités sanitaires sont davantage centrées sur la consultation des alertes et des indicateurs de surveillance. En ce sens, la plateforme a été conçue pour rester proche des besoins réels des acteurs du système sanitaire.
+
+\subsection{Démarche scientifique adoptée}
+
+La démarche scientifique suivie dans SAFE CONGO repose sur une articulation rigoureuse entre préparation des données, modélisation prédictive, validation temporelle et intégration applicative. L'objectif n'était pas seulement d'obtenir un modèle performant sur le plan statistique, mais de mettre en place une chaîne de décision exploitable dans un contexte réel de surveillance épidémiologique.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.90\textwidth]{FSI_template_Memoire_final/Images/demarche s.congo.PNG}
+  \caption{Démarche scientifique adoptée pour SAFE CONGO}
+  \label{fig:demarche}
+\end{figure}
+
+\section{Pipeline de préparation et de modélisation}
+
+\subsection{Nettoyage et préparation des données}
+
+La première phase technique du pipeline consiste à fiabiliser les données brutes avant tout apprentissage. Plusieurs traitements sont appliqués. Les colonnes purement techniques ou sans valeur prédictive directe sont supprimées. Les champs quantitatifs sont convertis en format numérique. Les dates sont vérifiées afin d'éliminer les valeurs invalides ou hors plage temporelle. Les noms de maladies sont harmonisés afin de garantir une cohérence de libellé dans l'ensemble du pipeline.
+
+Les lignes incomplètes sur les champs critiques sont retirées lorsqu'elles ne permettent pas une exploitation fiable. Les doublons exacts sont également supprimés. Enfin, les valeurs négatives résiduelles sont exclues afin de ne conserver que des observations compatibles avec une lecture épidémiologique cohérente.
+
+Cette étape est fondamentale, car la qualité des projections dépend directement de la qualité des données d'entrée. Dans un système d'aide à la décision, des données mal structurées peuvent dégrader fortement la pertinence des résultats, même lorsque les algorithmes utilisés sont performants.
+
+\subsection{Traitement des valeurs aberrantes et des séries creuses}
+
+Le pipeline prend aussi en charge deux difficultés fréquentes dans les données épidémiologiques : les valeurs aberrantes et les séries très creuses.
+
+Les valeurs aberrantes sont traitées par un plafonnement fondé sur l'intervalle interquartile. Cette méthode utilise un facteur de 3,0 pour limiter le poids des observations manifestement aberrantes sans supprimer les véritables pics épidémiques. Dans le pipeline du projet, ce traitement a conduit à plafonner 5 valeurs de \texttt{TOTALCAS} sur l'agrégation hebdomadaire nationale, ce qui est cohérent avec une correction conservatrice des erreurs de saisie.
+
+Les séries trop creuses sont également filtrées. Pour chaque maladie, le pipeline calcule la proportion de semaines avec zéro cas. Si cette proportion dépasse 70\%, la maladie est retirée du processus d'apprentissage, car ce profil traduit souvent une absence de signalement fiable plutôt qu'une dynamique épidémique exploitable. Dans le dataset 2023, cette règle a entraîné la suppression de 4 maladies : CHIKUNGUNYA, DIPHTERIE, DRACUNCULOSE et FHA, soit un passage de 27 à 23 maladies conservées.
+
+Pour les maladies conservées, les petites interruptions de reporting sont comblées par interpolation linéaire sur les séquences de zéros isolées d'au plus deux semaines. Les zéros en début ou fin de série ne sont pas interpolés afin de ne pas inventer des observations en dehors de l'horizon disponible.
+
+D'autres solutions auraient également été possibles : l'exclusion directe des observations aberrantes, le remplacement par des médianes ou des moyennes glissantes, ou le maintien de toutes les valeurs non filtrées. Le compromis retenu ici reste conservateur, car il préserve les tendances épidémiques tout en limitant l'impact des anomalies et des signaux de reporting erratiques.
+
+\subsection{Construction des variables prédictives}
+
+Une fois les données nettoyées et agrégées, le pipeline construit des variables temporelles permettant de décrire la dynamique récente de chaque maladie. L'idée sous-jacente est que le niveau de cas observé à une semaine donnée dépend largement des niveaux constatés au cours des semaines précédentes.
+
+Les principales variables construites dans le projet sont résumées dans le tableau~\ref{tab:variables_predictives}.
+
+\begin{table}[H]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{|p{4.5cm}|p{8.5cm}|}
+    \hline
+    \textbf{Type de variable} & \textbf{Rôle dans la modélisation} \\
+    \hline
+    Retards temporels & Capturent les niveaux observés au cours des semaines précédentes afin de représenter la mémoire récente de la série. \\
+    \hline
+    Moyennes mobiles & Résument le comportement récent sur des fenêtres courtes et réduisent l'effet des fluctuations isolées. \\
+    \hline
+    Taux de croissance & Mesure l'évolution récente entre deux périodes successives afin d'indiquer une accélération ou un ralentissement. \\
+    \hline
+    Indicateurs calendaires et rang temporel & Introduisent des repères temporels simples comme le mois, le trimestre et le rang de la semaine dans la série. \\
+    \hline
+    Volatilité & Reflète l'irrégularité récente de la série et sa stabilité relative. \\
+    \hline
+    Tendance & Fournit une indication synthétique sur l'orientation immédiate de la série. \\
+    \hline
+    Code maladie & Permet de représenter numériquement l'identité de la maladie dans le pipeline de traitement. \\
+    \hline
+  \end{tabular}%
+  }
+  \caption{Principales variables prédictives construites dans SAFE CONGO}
+  \label{tab:variables_predictives}
+\end{table}
+
+Ces variables offrent une représentation plus riche que la seule valeur brute du nombre de cas. Elles permettent aux algorithmes de tenir compte à la fois de la mémoire récente de la série, de son rythme d'évolution et de certains effets temporels simples.
+
+\subsection{Sélection des variables et transformation de la cible}
+
+Après la création des variables, une sélection automatique est réalisée sur les données d'entraînement afin de conserver les variables les plus informatives. Cette sélection s'appuie sur l'importance estimée par un modèle de type Random Forest, avec une contrainte minimale destinée à éviter une réduction excessive de l'information disponible.
+
+En parallèle, la variable cible, c'est-à-dire le nombre total de cas, est transformée par la fonction \textit{log1p} avant l'apprentissage. Ce choix se justifie par l'asymétrie marquée des données épidémiologiques, caractérisées par de nombreuses semaines de niveau modéré et quelques pics de forte intensité. Après prédiction, les résultats sont reconvertis sur l'échelle réelle.
+
+Cette combinaison entre sélection des variables et transformation de la cible contribue à stabiliser l'apprentissage et à réduire l'effet disproportionné des semaines exceptionnellement élevées.
+
+\subsection{Stratégie de validation}
+
+La validation retenue respecte strictement la chronologie des données. Dans un problème de prédiction épidémiologique, il serait méthodologiquement incorrect de mélanger aléatoirement les semaines, car cela introduirait une fuite d'information entre le passé et le futur.
+
+Le premier niveau d'évaluation repose donc sur un découpage chronologique : une partie ancienne de la série est utilisée pour l'entraînement initial, tandis que la partie la plus récente est réservée au test local. En complément, une validation temporelle de type \textit{walk-forward} est appliquée au moyen de \textit{TimeSeriesSplit} avec cinq plis.
+
+Cette stratégie permet d'évaluer les modèles dans un cadre proche de leur usage réel, où les prévisions doivent être produites à partir d'informations strictement antérieures à la semaine cible.
+
+\subsection{Algorithmes comparés}
+
+Pour chaque maladie, six algorithmes de régression sont comparés :
+
+\begin{itemize}
+  \item Linear Regression ;
+  \item Ridge Regression ;
+  \item Random Forest ;
+  \item Gradient Boosting ;
+  \item KNN ;
+  \item SVR.
+\end{itemize}
+
+Le choix du meilleur modèle n'est pas fixé à l'avance. Il est réalisé maladie par maladie à partir des performances observées sur les données de test. Cette démarche permet d'adapter la modélisation à la structure propre de chaque série épidémiologique plutôt que d'imposer un algorithme unique à l'ensemble des maladies surveillées.
+
+\subsection{Évaluation, sélection et réentraînement final}
+
+Les modèles sont comparés à l'aide de plusieurs métriques, notamment la MAE, la RMSE, le MAPE et le coefficient de détermination $R^{2}$. Dans l'implémentation retenue, la sélection du meilleur modèle local s'appuie en priorité sur le $R^{2}$ obtenu sur la partie test chronologique.
+
+Une fois le meilleur algorithme identifié pour une maladie, une validation temporelle complémentaire est calculée afin de vérifier que son comportement reste acceptable sur plusieurs découpages successifs. Ensuite, le modèle retenu est réentraîné sur l'ensemble des données disponibles pour cette maladie.
+
+Il convient toutefois de distinguer deux niveaux d'évaluation. Le premier est un niveau local, utilisé pour choisir le meilleur modèle pour chaque maladie. Le second est un niveau global, utilisé dans l'application pour apprécier la fiabilité d'ensemble du portefeuille de modèles. Ce second niveau repose sur un $R^{2}$ global pondéré calculé à partir du résumé des performances des modèles retenus. Dans l'implémentation, ce score est obtenu comme une moyenne pondérée des valeurs de $R^{2}$, les pondérations étant fondées sur le volume total de cas associé à chaque maladie :
+
+\[
+R^{2}_{\text{global}} = \frac{\displaystyle\sum_{i=1}^{n} w_i \, R^{2}_i}{\displaystyle\sum_{i=1}^{n} w_i}
+\qquad \text{avec} \qquad w_i = \text{total des cas de la maladie } i
+\]
+
+Ce $R^{2}$ global pondéré ne sert pas à sélectionner le meilleur algorithme par maladie. Il joue plutôt le rôle d'un indicateur synthétique de fiabilité globale avant l'activation des projections dans l'interface. Tous les modèles entraînés ne sont cependant pas retenus pour la production. Un filtrage supplémentaire est appliqué à partir d'un seuil minimal de performance. Les modèles jugés insuffisamment fiables ne sont pas exposés dans l'application.
+
+\section{Architecture fonctionnelle de la plateforme}
+
+\subsection{Organisation générale}
+
+SAFE CONGO repose sur une organisation fonctionnelle claire séparant l'interface utilisateur, la logique métier et la gestion des données. Le projet distingue de manière nette trois niveaux complémentaires :
+
+\begin{itemize}
+  \item la couche de présentation, constituée principalement des pages Streamlit ;
+  \item la couche métier, qui regroupe la préparation des données, la prédiction, les alertes et la génération de documents ;
+  \item la couche de données, qui comprend les fichiers sources, les jeux de données nettoyés, les modèles sauvegardés et la base SQLite.
+\end{itemize}
+
+Cette structuration facilite la maintenance du projet et permet de mieux isoler les responsabilités de chaque partie du système.
+
+\subsection{Architecture cible}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{FSI_template_Memoire_final/Images/Architecture s.congo.png}
+  \caption{Architecture fonctionnelle de la plateforme SAFE CONGO}
+  \label{fig:architecture}
+\end{figure}
+
+\subsection{Composants principaux}
+
+Les principaux composants fonctionnels effectivement mobilisés dans le projet sont présentés dans le tableau~\ref{tab:composants_principaux}.
+
+\begin{table}[H]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{|p{4.5cm}|p{2.8cm}|p{6.8cm}|}
+    \hline
+    \textbf{Composant} & \textbf{Niveau} & \textbf{Rôle principal} \\
+    \hline
+    Module de préparation des données & Métier & Nettoyage, normalisation, agrégation et préparation des séries utilisées pour l'apprentissage. \\
+    \hline
+    Module d'entraînement & Métier & Comparaison des algorithmes, sélection du meilleur modèle par maladie, validation et sauvegarde des résultats. \\
+    \hline
+    Mécanisme de projection & Métier & Utilisation des modèles entraînés pour produire des projections à partir de l'historique local. \\
+    \hline
+    Système d'alertes & Métier & Classification du niveau d'alerte selon les cas et la croissance, puis préparation des messages de notification. \\
+    \hline
+    Pages Streamlit d'administration & Présentation & Saisie des données, déclenchement des projections, supervision et diffusion des alertes. \\
+    \hline
+    Pages autorités sanitaires & Présentation & Consultation des alertes, notifications et informations utiles à la prise de décision. \\
+    \hline
+    Générateur de rapports PDF & Présentation / Métier & Production des rapports et documents exploitables à partir des résultats du système. \\
+    \hline
+    Base SQLite & Données & Persistance des utilisateurs, alertes, notifications et saisies épidémiologiques. \\
+    \hline
+    Fichiers de données et modèles & Données & Stockage des jeux de données traités, des rapports d'évaluation et des modèles sérialisés. \\
+    \hline
+  \end{tabular}%
+  }
+  \caption{Composants principaux de la plateforme SAFE CONGO}
+  \label{tab:composants_principaux}
+\end{table}
+
+\subsection{Flux général de traitement}
+
+Le flux de traitement suivi dans SAFE CONGO peut être résumé de la manière suivante :
+
+\begin{enumerate}
+  \item importation des données brutes ;
+  \item nettoyage, normalisation et agrégation ;
+  \item construction des variables explicatives ;
+  \item entraînement et comparaison des modèles ;
+  \item sauvegarde des modèles retenus et export des rapports de performance ;
+  \item chargement des modèles dans l'application ;
+  \item reconstitution de l'historique local au moment de la prédiction ;
+  \item production d'une projection ou bascule vers un mécanisme de secours ;
+  \item classification du niveau d'alerte et diffusion des notifications.
+\end{enumerate}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth, height=0.92\textheight, keepaspectratio]{FSI_template_Memoire_final/Images/flux de donnees.PNG}
+  \caption{Flux global de traitement des données dans SAFE CONGO}
+  \label{fig:flux_donnees}
+\end{figure}
+
+\subsection{Classification du niveau d'alerte}
+
+Au‑delà de la précision numérique des prévisions, la finalité opérationnelle de SAFE CONGO est de produire des classifications de sévérité exploitables par les autorités sanitaires. Pour chaque projection hebdomadaire, la valeur prédite (nombre de cas) est traduite en un niveau de sévérité \textit{Faible}, \textit{Modéré} ou \textit{Élevé} à l'aide de seuils établis de manière spécifique à chaque maladie.
+
+Principe général de définition des seuils
+\begin{itemize}
+  \item Les seuils sont calculés par maladie à partir de l'historique hebdomadaire disponible (jeu 2022--2023 lorsque présent). Cette approche permet d'adapter les niveaux d'alerte à l'ordre de grandeur propre à chaque pathologie.
+  \item On retient des repères robustes aux valeurs extrêmes : la médiane $Q_2$ (50\textsuperscript{e} percentile) et un quantile élevé (p.ex. $Q_{90}$ ou $Q_{95}$) servant de barrière vers le niveau \textit{Élevé}.
+  \item Une règle d'accélération complète la logique seuil : une hausse relative importante (taux de croissance inter‑hebdomadaire supérieur à un seuil $g$) peut élever le niveau d'alerte même si la valeur absolue reste modérée.
+\end{itemize}
+
+Formulation mathématique (par maladie)
+\[
+\text{IQR} = Q_{3} - Q_{1},\qquad Q_{2} = \text{médiane},\qquad Q_{p} = \text{p\'ercentile } p.
+\]
+On définit typiquement :
+\begin{align*}
+\text{Faible} &:\quad x \le Q_{2},\\
+\text{Mod\'er\'e} &:\quad Q_{2} < x \le Q_{p},\\
+\text{\'Elev\'e} &:\quad x > Q_{p} \quad\text{ ou }\quad \frac{x - x_{-1}}{\max(1,x_{-1})} > g,
+\end{align*}
+où $x$ est la valeur pr\'edite pour la semaine cible, $x_{-1}$ la valeur de la semaine pr\'ec\'edente (ou une moyenne r\'ecente), $p$ un quantile choisi (souvent $90$ ou $95$) et $g$ un seuil de croissance relatif (p.ex. $g=0{,}5$ pour +50\%).
+
+Tableau des règles synthétiques
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|p{3.6cm}|p{7.6cm}|p{4cm}|}
+    \hline
+    \textbf{Niveau} & \textbf{Condition (par maladie)} & \textbf{Action opérationnelle} \\
+    \hline
+    Faible & $x \le Q_{2}$ (médiane historique) & Surveillance standard ; pas d'alerte automatique \\
+    \hline
+    Modéré & $Q_{2} < x \le Q_{p}$ (p=90 ou 95) & Surveillance renforcée ; prévoir revue locale et vigilance accrue \\
+    \hline
+    Élevé & $x > Q_{p}$ \textit{ou} croissance hebdomadaire $> g$ (ex. 50\%) & Alerte : notification prioritaire, déclenchement procédure d'investigation \\
+    \hline
+  \end{tabular}
+  \caption{Règles synthétiques de classification du niveau d'alerte}
+  \label{tab:alerte_regles}
+\end{table}
+
+Exemples illustratifs (valeurs fictives montrant la mise en oeuvre)
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|l|c|c|c|p{4.5cm}|}
+    \hline
+    \textbf{Maladie} & $Q_{2}$ & $Q_{90}$ & $g$ & \textbf{Interpr\'etation} \\
+    \hline
+    Choléra & 8 cas & 35 cas & 0{,}5 & Faible $\le 8$, Mod\'er\'e 9--35, Élev\'e $>35$ ou +50\%/sem \\
+    \hline
+    Paludisme (confirmé) & 120 cas & 950 cas & 0{,}5 & Seuils supérieurs refl\'etent la forte incidence de fond \\
+    \hline
+    COVID‑19 & 15 cas & 120 cas & 0{,}7 & Croissance tr\`es importante (\'e.g. $g=70\%$) peut d\'eclencher une alerte \\
+    \hline
+  \end{tabular}
+  \caption{Exemples de seuils par maladie (illustratif)}
+  \label{tab:alerte_exemples}
+\end{table}
+
+Remarques pratiques
+\begin{itemize}
+  \item Les valeurs $Q_{2}$ et $Q_{p}$ sont recalculées périodiquement (p.ex. lors de chaque cycle d'entraînement) afin d'intégrer l'historique le plus récent.
+  \item Un minimum absolu peut être imposé (p.ex. 1 cas) pour éviter des variations relatives extrêmes lorsque les séries ont beaucoup de zéros.
+  \item Les seuils peuvent être affinés par maladie en concertation avec les experts métiers et en tenant compte de la gravité clinique et des capacités locales de réponse.
+  \item La politique de seuils doit toujours être accompagnée d'un rapport indiquant le nombre d'alertes générées et les faux positifs/negatifs observés lors d'une période pilote.
+\end{itemize}
+
+\section{Modélisation UML de la plateforme}
+
+\subsection{Diagramme de cas d'utilisation}
+
+Le diagramme de cas d'utilisation met en évidence les interactions entre les deux acteurs principaux du projet et les services offerts par le système. L'administrateur intervient dans la saisie des données, la consultation de l'espace de supervision, la génération de projections et la diffusion des alertes. L'autorité sanitaire intervient principalement dans la consultation des notifications, des alertes et des informations utiles à la prise de décision.
+
+Ce diagramme montre également que certaines opérations sont déclenchées automatiquement par le système, notamment la classification des alertes et la génération des notifications associées. Il traduit ainsi le rôle central de la plateforme comme intermédiaire entre la collecte, le traitement analytique et l'action sanitaire.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth, height=0.92\textheight, keepaspectratio]{FSI_template_Memoire_final/Images/use case 3.PNG}
+  \caption{Diagramme de cas d'utilisation de SAFE CONGO}
+  \label{fig:use_case}
+\end{figure}
+
+\subsection{Diagramme de classes}
+
+Le diagramme de classes représente les principales entités manipulées dans SAFE CONGO et leurs relations fonctionnelles. On y retrouve notamment les utilisateurs, les données épidémiologiques, les modèles prédictifs, les alertes, les notifications et les rapports PDF, ainsi que les composants de traitement qui orchestrent leur interaction.
+
+Cette représentation permet de montrer comment la gestion des utilisateurs, la persistance des données, la production des projections et la diffusion des alertes s'articulent dans une même plateforme. Elle fournit une vision structurée du système sans s'écarter de la logique réellement implémentée.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth, height=0.92\textheight, keepaspectratio]{FSI_template_Memoire_final/Images/diagramme de classes safe congo.PNG}
+  \caption{Diagramme de classes de la plateforme SAFE CONGO}
+  \label{fig:class_diagram}
+\end{figure}
+
+\subsection{Diagramme de séquence}
+
+Le diagramme de séquence le plus représentatif du projet est celui de la génération d'une projection suivie d'une alerte. Le scénario peut être résumé ainsi : l'administrateur renseigne une maladie, une province, une zone de santé et une date cible ; l'application reconstitue l'historique local ; elle tente ensuite d'utiliser le modèle entraîné ; si les conditions minimales ne sont pas réunies, elle bascule vers une estimation de secours ; enfin, le système classe le niveau d'alerte puis diffuse la notification aux autorités sanitaires concernées.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth, height=0.92\textheight, keepaspectratio]{FSI_template_Memoire_final/Images/diagramme_de_sequence.png}
+  \caption{Diagramme de séquence de SAFE CONGO}
+  \label{fig:sequence}
+\end{figure}
+
+\section{Modélisation du système d'alertes}
+
+Le système d'alertes constitue le c\oe{}ur décisionnel de SAFE CONGO. Son rôle n'est pas seulement d'afficher une projection, mais surtout d'interpréter cette information dans une logique de surveillance épidémiologique utile à la décision.
+
+Dans l'implémentation, le niveau d'alerte est déterminé à partir de deux dimensions évaluées conjointement :
+
+\begin{itemize}
+  \item le volume de cas observé ou projeté ;
+  \item le taux de croissance hebdomadaire.
+\end{itemize}
+
+Le niveau finalement retenu correspond au niveau le plus sévère entre ces deux dimensions. Cette approche permet d'éviter qu'une forte augmentation relative passe inaperçue lorsque le volume absolu reste encore modéré, ou inversement.
+
+\subsection{Seuils utilisés}
+
+Le système n'applique pas un seuil unique à l'ensemble des maladies. Les seuils sont différenciés selon les pathologies. Certaines maladies disposent de seuils absolus plus élevés, tandis que d'autres sont traitées selon une logique beaucoup plus stricte. Pour quelques maladies particulièrement sensibles, une logique de tolérance zéro est même appliquée.
+
+Cette organisation est plus conforme aux réalités épidémiologiques qu'un schéma uniforme. Elle permet d'adapter la réponse sanitaire à la fréquence, à la gravité et au potentiel épidémique propres à chaque maladie surveillée.
+
+\subsection{Niveaux d'alerte visibles dans l'application}
+
+Dans la version de l'application effectivement exploitée, les niveaux d'alerte visibles et utilisés pour l'action sont résumés dans le tableau~\ref{tab:niveaux_alerte}.
+
+\begin{table}[H]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{|p{3cm}|p{5cm}|p{6cm}|}
+    \hline
+    \textbf{Niveau} & \textbf{Signification générale} & \textbf{Lecture opérationnelle} \\
+    \hline
+    FAIBLE    & Signal faible mais utile pour la surveillance & Situation à suivre avec vigilance renforcée. \\
+    \hline
+    MODÉRÉE   & Dépassement notable justifiant une attention accrue & Surveillance renforcée et lecture prioritaire par les acteurs concernés. \\
+    \hline
+    HAUTE     & Niveau important indiquant une dégradation marquée & Situation nécessitant une réaction plus rapide et une diffusion prioritaire de l'information. \\
+    \hline
+    CRITIQUE  & Niveau maximal de gravité utilisé dans l'application & Situation nécessitant une attention immédiate et une mobilisation forte des autorités concernées. \\
+    \hline
+  \end{tabular}%
+  }
+  \caption{Niveaux d'alerte visibles dans SAFE CONGO}
+  \label{tab:niveaux_alerte}
+\end{table}
+
+\subsection{Intégration des alertes dans l'application}
+
+Les alertes peuvent être produites à partir d'une projection ou à partir d'une observation saisie dans le système. Une fois le niveau calculé, l'application prépare un message, enregistre l'alerte et diffuse les notifications vers les autorités sanitaires ciblées. Le système conserve également la trace de la source de la projection, ce qui permet de distinguer une projection issue d'un modèle entraîné d'une estimation de secours.
+
+Cette traçabilité renforce la transparence du système et limite les risques de confusion entre une projection réellement fondée sur un modèle et une estimation de repli utilisée lorsque les conditions minimales ne sont pas réunies.
+
+\section{Disponibilité de la projection IA dans l'application}
+
+L'un des points essentiels de SAFE CONGO est que la projection IA n'est pas systématiquement disponible. Sa mise à disposition dépend de plusieurs conditions, résumées dans le tableau~\ref{tab:conditions_projection}.
+
+\begin{table}[H]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{|p{5cm}|p{8cm}|}
+    \hline
+    \textbf{Condition} & \textbf{Rôle dans l'application} \\
+    \hline
+    Existence d'un modèle retenu & La maladie doit disposer d'un modèle conservé après filtrage des performances locales. \\
+    \hline
+    Fiabilité globale suffisante & L'application calcule un $R^{2}$ global pondéré à partir du résumé des performances afin de juger la qualité générale du portefeuille de modèles. \\
+    \hline
+    Historique local disponible & La province et la zone de santé sélectionnées doivent disposer d'un historique récent suffisant pour alimenter la projection. \\
+    \hline
+    Cohérence de la requête & Les informations nécessaires à la prédiction doivent être correctement renseignées dans l'interface. \\
+    \hline
+  \end{tabular}%
+  }
+  \caption{Conditions de disponibilité d'une projection IA dans SAFE CONGO}
+  \label{tab:conditions_projection}
+\end{table}
+
+La logique retenue dans l'application est prudente. La maladie doit d'abord disposer d'un modèle retenu après filtrage. L'application calcule ensuite un $R^{2}$ global pondéré à partir du résumé des performances des modèles. Ce score sert à évaluer la fiabilité globale du portefeuille. Si ce niveau global est jugé insuffisant, la projection IA n'est pas proposée. Enfin, un historique local minimal de quatre semaines récentes est requis pour la maladie, la province et la zone de santé sélectionnées.
+
+Si l'une de ces conditions n'est pas satisfaite, l'application bascule vers un mécanisme de secours fondé sur la moyenne récente. Cette logique de prudence permet d'éviter de présenter comme prédiction intelligente un résultat qui ne remplirait pas les conditions minimales de fiabilité.
+
+\section{Contraintes et hypothèses de modélisation}
+
+La mise en \oe{}uvre du projet repose sur plusieurs hypothèses qui délimitent le périmètre d'interprétation des résultats :
+
+\begin{itemize}
+  \item un modèle distinct est entraîné pour chaque maladie, sans modélisation explicite des interactions entre maladies ;
+  \item les projections sont orientées vers un horizon de court terme fondé sur la dynamique hebdomadaire récente ;
+  \item la qualité des résultats dépend directement de la disponibilité et de la cohérence des données historiques chargées ;
+  \item les modèles sont appris sur des séries agrégées par maladie, puis exploités à partir d'un historique local au moment de la prédiction ;
+  \item la pertinence des alertes dépend de la qualité des seuils épidémiologiques définis dans le système ;
+  \item les modèles nécessitent un réentraînement périodique si les conditions épidémiologiques évoluent fortement dans le temps.
+\end{itemize}
+
+Ces hypothèses ne remettent pas en cause l'utilité du système, mais rappellent que les projections doivent être interprétées comme un appui à la décision et non comme une certitude absolue.
+
+\bigskip
+
+Ce chapitre a présenté la modélisation de SAFE CONGO en restant strictement aligné avec l'implémentation effective du projet. La plateforme repose sur une chaîne cohérente de traitement allant du nettoyage des données à la prédiction, puis de la prédiction à l'alerte. Les données sont préparées, enrichies par des variables temporelles, puis exploitées pour comparer six algorithmes de régression. Le meilleur modèle est sélectionné pour chaque maladie, validé, filtré puis réentraîné avant son intégration dans l'application.
+
+L'application n'active la projection IA que lorsque les conditions minimales de fiabilité sont réunies. Cette fiabilité repose à la fois sur les performances locales d'un modèle et sur l'appréciation globale du portefeuille à travers le $R^{2}$ global pondéré. En cas d'insuffisance, un mécanisme de secours prend le relais. Les alertes s'appuient sur des seuils différenciés selon les maladies et sur quatre niveaux visibles dans l'interface : FAIBLE, MODÉRÉE, HAUTE et CRITIQUE.
+
+Ainsi, SAFE CONGO ne se limite pas à juxtaposer une interface et des modèles prédictifs. Le projet met en place une logique complète, prudente et exploitable, orientée vers la surveillance épidémiologique et l'aide à la décision dans le contexte sanitaire congolais.

@@ -234,6 +234,7 @@ def main() -> None:
                 default="Toutes",
                 selection_mode="single",
                 label_visibility="collapsed",
+                key="authority_alert_filter",
             )
         else:
             filter_level = st.radio(
@@ -241,10 +242,15 @@ def main() -> None:
                 ["Toutes", "CRITIQUE", "HAUTE", "MODEREE", "FAIBLE"],
                 horizontal=True,
                 label_visibility="collapsed",
+                key="authority_alert_filter",
             )
     with controls_right:
         st.markdown('<div style="height:2.2rem"></div>', unsafe_allow_html=True)
         if st.button("Rafraichir mes alertes", use_container_width=True, key="authority_refresh_alerts"):
+            st.rerun()
+        if st.button("Réinitialiser le filtre", use_container_width=True, key="authority_reset_filter"):
+            if hasattr(st.session_state, 'authority_alert_filter'):
+                st.session_state.authority_alert_filter = "Toutes"
             st.rerun()
     with st.expander("📋 Voir le referentiel OMS/IDSR des niveaux d'alerte", expanded=False):
         st.markdown(

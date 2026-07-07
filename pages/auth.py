@@ -5,7 +5,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.auth import AuthSystem
-from utils.navigation import switch_to_home_page
 
 st.set_page_config(
     page_title="Accès - SAFE CONGO",
@@ -30,20 +29,32 @@ CSS = """
   opacity:1!important;
   color:#0b4d95!important;
   background:rgba(255,255,255,.96)!important;
-  border:1px solid rgba(11,77,149,.16)!important;
-  border-radius:14px!important;
-  box-shadow:0 10px 28px rgba(15,23,42,.12)!important;
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  min-height:38px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0!important;
+  border:2px solid rgba(10,95,171,.32)!important;
+  border-radius:12px!important;
+  box-shadow:0 10px 24px rgba(10,60,120,.16)!important;
 }
-[data-testid="collapsedControl"] svg{fill:#0b4d95!important}
-.stApp{background:linear-gradient(135deg,#eef6ff 0%,#e2f0fb 50%,#eef8ff 100%)!important}
+[data-testid="collapsedControl"] svg{fill:#0b4d95!important;stroke:#0b4d95!important;width:21px!important;height:21px!important}
+.stApp{background:
+  linear-gradient(135deg,rgba(255,255,255,.54) 0%,rgba(255,255,255,0) 30%),
+  radial-gradient(circle at 8% 12%,rgba(26,162,226,.16),transparent 30%),
+  radial-gradient(circle at 96% 8%,rgba(10,95,171,.14),transparent 26%),
+  linear-gradient(135deg,#eef6ff 0%,#e6f2fd 48%,#f0f8ff 100%)!important}
+.block-container{padding-top:18px!important;padding-bottom:18px!important;max-width:1380px!important}
 
 /* --- OPTIMISATION DU FORMULAIRE ET CENTRAGE --- */
 [data-testid="stForm"] {
-  background: #ffffff !important;
-  border: 1px solid #d8e9f6 !important;
-  border-radius: 24px !important;
-  padding: 30px 28px 24px 28px !important;
-  box-shadow: 0 16px 40px rgba(10,60,120,.06) !important;
+  background: linear-gradient(180deg,#ffffff 0%,#f8fbfd 100%) !important;
+  border: 1px solid #d7e6ed !important;
+  border-radius: 20px !important;
+  padding: 26px 26px 22px 26px !important;
+  box-shadow: 0 18px 45px rgba(10,60,120,.08) !important;
   margin: 0 auto !important;
   max-width: 480px !important;
 }
@@ -54,49 +65,79 @@ CSS = """
 }
 
 .stTextInput>div>div>input{
-  border-radius:10px!important;
-  border:1.5px solid #c8dff0!important;
-  padding:12px 14px!important;
+  border-radius:12px!important;
+  border:1.5px solid #c8dce6!important;
+  padding:13px 14px!important;
   background:#ffffff!important;
   color:#0a2040!important;
   font-size:.92rem!important;
   transition:border-color .2s,box-shadow .2s!important;
+}
+.stTextInput input[type="password"]{
+  -webkit-text-security:disc!important;
+  text-security:disc!important;
+}
+.stTextInput input[type="text"][aria-label*="Mot de passe"],
+.stTextInput input[type="text"][aria-label*="Confirmer"]{
+  -webkit-text-security:none!important;
+  text-security:none!important;
+}
+.stTextInput button[aria-label*="password"],
+.stTextInput button[aria-label*="Password"],
+.stTextInput button[aria-label*="mot de passe"]{
+  color:#0a5fab!important;
+  background:#eef7ff!important;
+  border:1px solid #c8dce6!important;
+  border-radius:10px!important;
 }
 .stTextInput>div>div>input:focus{
   border-color:#0a84d0!important;
   box-shadow:0 0 0 3px rgba(10,132,208,.12)!important;
 }
 .stTextInput label,.stSelectbox label{
-  color:#3a6080!important;font-weight:700!important;font-size:.84rem!important;
+  color:#26465b!important;font-weight:800!important;font-size:.82rem!important;
   margin-bottom: 2px !important;
 }
 .stSelectbox>div>div{
-  border-radius:10px!important;
-  border:1.5px solid #c8dff0!important;
+  border-radius:12px!important;
+  border:1.5px solid #c8dce6!important;
   background:#ffffff!important;
 }
 
 /* Boutons */
 .stButton>button, .stFormSubmitButton>button{
-  background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;
-  color:#fff!important;border:none!important;
-  border-radius:12px!important;padding:14px 24px!important;
-  font-weight:800!important;font-size:.92rem!important;
-  letter-spacing:.4px!important;width:100%!important;
-  box-shadow:0 6px 20px rgba(10,95,171,.24)!important;
-  transition:all .25s!important;
-  margin-top: 10px !important;
+  background:linear-gradient(135deg,#083f73 0%,#0a5fab 50%,#1aa2e2 100%)!important;
+  color:#fff!important;border:1px solid rgba(255,255,255,.16)!important;
+  border-radius:14px!important;padding:12px 24px!important;
+  font-weight:800!important;font-size:.94rem!important;
+  letter-spacing:.3px!important;width:auto!important;
+  min-width:240px!important;
+  max-width:320px!important;
+  box-shadow:0 14px 34px rgba(10,95,171,.24)!important;
+  transition:all .25s ease!important;
+  margin-top: 14px !important;
+}
+.stFormSubmitButton>button {
+  margin-top: 8px !important;
+  min-width: 240px !important;
+  width: 240px !important;
+  max-width: 240px !important;
+  padding: 13px 20px !important;
+  border-radius: 14px !important;
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 .stButton>button:hover, .stFormSubmitButton>button:hover{
   transform:translateY(-2px)!important;
-  box-shadow:0 10px 28px rgba(10,95,171,.32)!important;
+  box-shadow:0 16px 38px rgba(10,95,171,.30)!important;
+  filter:saturate(1.06)!important;
 }
-
 /* Structure globale */
-.auth-page{display:grid;grid-template-columns:1.05fr .95fr;min-height:calc(100vh - 34px);gap:0;border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(10,60,120,.14);width:min(96vw,1320px);margin:16px auto;animation:fadeUp .5s ease-out}
-.auth-left{background:linear-gradient(160deg,#0a5fab 0%,#0d80d8 55%,#1aa2e2 100%);padding:52px 44px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;border-radius:26px 0 0 26px}
+.auth-page{display:grid;grid-template-columns:1.05fr .95fr;min-height:calc(100vh - 34px);gap:0;border-radius:26px;overflow:hidden;box-shadow:0 32px 90px rgba(10,60,120,.16);width:min(96vw,1320px);margin:16px auto;animation:fadeUp .5s ease-out;background:rgba(255,255,255,.84);backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.6)}
+.auth-left{background:linear-gradient(145deg,#083f73 0%,#0a5fab 52%,#1aa2e2 100%);padding:52px 44px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;border-radius:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 24px 60px rgba(10,60,120,.20)}
 .auth-left-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.1) 1px,transparent 1px);background-size:24px 24px;pointer-events:none}
-.auth-left-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 80% 10%,rgba(255,255,255,.14),transparent 36%),radial-gradient(ellipse at 10% 90%,rgba(0,30,80,.18),transparent 28%);pointer-events:none}
+.auth-left-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 80% 10%,rgba(255,255,255,.16),transparent 36%),radial-gradient(ellipse at 10% 90%,rgba(7,52,95,.30),transparent 30%);pointer-events:none}
 .auth-left-inner{position:relative;z-index:2}
 .al-logo{display:flex;align-items:center;gap:14px;margin-bottom:42px}
 .al-shield{width:44px;height:52px;animation:float 5s ease-in-out infinite;filter:drop-shadow(0 4px 12px rgba(0,0,0,.22))}
@@ -118,30 +159,51 @@ CSS = """
 .al-visual{display:flex;justify-content:center;margin:18px 0}
 
 /* Colonne Droite Contenu */
-.auth-right{background:#ffffff;padding:52px 48px;display:flex;flex-direction:column;justify-content:center;align-items:center}
-.auth-right > *{width:min(100%,480px)} /* Aligné sur la taille idéale du formulaire */
-.ar-kicker{display:inline-block;padding:6px 12px;border-radius:999px;background:#eef7ff;border:1px solid #c8dff0;font-size:.68rem;font-weight:800;letter-spacing:1.7px;text-transform:uppercase;color:#1a6db5;margin-bottom:12px}
+.auth-right{background:linear-gradient(180deg,#ffffff 0%,#f7fbff 100%);padding:52px 48px;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;overflow:hidden;border-radius:24px;border:1px solid rgba(200,226,245,.82);box-shadow:0 24px 60px rgba(10,60,120,.08)}
+.auth-right::before{content:"";position:absolute;inset:-30% 12% auto auto;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(10,95,171,.08),rgba(10,95,171,0) 70%);pointer-events:none}
+.auth-right::after{content:"";position:absolute;inset:auto auto -20% -12%;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(26,162,226,.08),rgba(26,162,226,0) 72%);pointer-events:none}
+.auth-right > *{width:min(100%,480px);position:relative;z-index:1} /* Aligné sur la taille idéale du formulaire */
 .ar-title{font-family:'Sora',sans-serif;font-size:1.85rem;font-weight:800;color:#0a2040;letter-spacing:-.5px;margin-bottom:8px;text-align:center}
 .ar-sub{font-size:.9rem;color:#6a8da8;line-height:1.64;margin-bottom:28px;text-align:center}
 
-.auth-form-shell{background:linear-gradient(180deg,#fbfdff 0%,#f4faff 100%);border:1px solid #d8e9f6;border-radius:22px;padding:22px 20px 18px;box-shadow:0 10px 28px rgba(10,60,120,.05);margin:0 auto 14px auto;max-width:480px}
+.auth-form-shell{background:linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(247,251,252,.98) 100%);border:1px solid #d7e6ed;border-radius:20px;padding:24px 22px 20px;box-shadow:0 18px 42px rgba(15,74,99,.08);margin:0 auto 14px auto;max-width:480px}
 .auth-form-topline{display:flex;justify-content:between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .auth-form-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:#ffffff;border:1px solid #d7e8f5;font-size:.68rem;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:#0a5fab}
 .auth-form-chip-dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#0a5fab,#1aa2e2)}
 .auth-form-mini{font-size:.74rem;font-weight:700;color:#7a98b2}
 .auth-form-note{margin:-2px 0 18px;font-size:.82rem;line-height:1.65;color:#6f8ca6}
-.auth-form-helper{margin:12px auto 0 auto;padding:12px 14px;border-radius:14px;background:linear-gradient(180deg,#ffffff 0%,#f8fcff 100%);border:1px dashed #c8dff0;font-size:.77rem;line-height:1.6;color:#67839c;max-width:480px}
-.auth-section-note{margin-top:16px;padding:12px 14px;border-radius:14px;background:#f0f8ff;border:1px solid #c8dff0;font-size:.78rem;line-height:1.6;color:#5a8aaa;max-width:480px}
-.auth-register-note{margin-bottom:16px;padding:13px 14px;border-radius:14px;background:linear-gradient(135deg,#eef7ff,#f7fbff);border:1px solid #d3e6f4;font-size:.8rem;line-height:1.65;color:#62819c;max-width:480px}
-.no-account{background:linear-gradient(135deg,#f0f9ff 0%,#e8f4fd 100%);border:1px solid #c8dff0;border-radius:18px;padding:20px 22px;margin:22px auto 0 auto;max-width:480px}
-.nac-label{font-size:.7rem;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#5a9ac0;margin-bottom:8px}
-.nac-title{font-size:1rem;font-weight:800;color:#0a2040;margin-bottom:6px}
-.nac-copy{font-size:.84rem;color:#6a8da8;line-height:1.58;margin-bottom:12px}
-.nac-perks{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
-.nac-perk{padding:5px 10px;border-radius:999px;background:#fff;border:1px solid #c8e4f5;font-size:.72rem;font-weight:700;color:#1a6db5}
+.auth-register-note{margin-bottom:16px;padding:13px 14px;border-radius:14px;background:linear-gradient(135deg,#eef7ff,#f7fbff);border:1px solid #d3e6f4;font-size:.8rem;line-height:1.65;color:#517386;max-width:480px}
+.auth-register-hero{margin:0 auto 16px auto;max-width:480px;padding:20px 22px;border-radius:20px;background:linear-gradient(135deg,#083f73 0%,#0a5fab 52%,#1aa2e2 100%);box-shadow:0 20px 50px rgba(10,95,171,.20);color:#fff}
+.auth-register-hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);font-size:.68rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
+.auth-register-hero .ar-title{color:#fff!important;text-align:left!important;margin-bottom:8px!important}
+.auth-register-hero .ar-sub{color:rgba(255,255,255,.9)!important;text-align:left!important;margin-bottom:0!important}
+.auth-register-section{margin:0 auto 16px auto;max-width:480px;padding:18px 20px;border-radius:18px;background:#ffffff;border:1px solid #d7e6ed;box-shadow:0 12px 32px rgba(15,74,99,.06)}
+.auth-register-section-title{font-size:.95rem;font-weight:800;color:#0a2040;margin-bottom:6px}
+.auth-register-section-sub{font-size:.8rem;line-height:1.6;color:#6f8ca6}
 .register-success{background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%);border:1px solid #6ee7b7;border-radius:16px;padding:18px 20px;text-align:center;max-width:480px}
 
 @media(max-width:980px){.auth-page{grid-template-columns:1fr;margin:10px;min-height:auto}.auth-left{padding:34px 28px;border-radius:26px 26px 0 0}.auth-right{padding:34px 28px}.auth-right>*{width:100%}.al-headline{font-size:2.15rem}.al-headline em{font-size:1.8rem}}
+
+/* Polish final */
+.auth-register-hero{position:relative;overflow:hidden}
+.auth-register-hero::before{content:"";position:absolute;inset:auto -20% -40% auto;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.2),rgba(255,255,255,0) 72%);pointer-events:none}
+.auth-register-section{position:relative;overflow:hidden}
+.auth-register-section::after{content:"";position:absolute;right:-18px;top:-18px;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle,rgba(10,95,171,.08),rgba(10,95,171,0) 70%);pointer-events:none}
+.stTextInput>div>div>input:hover{border-color:#0a84d0!important}
+.stSelectbox>div>div:hover{border-color:#0a84d0!important}
+.auth-register-section{backdrop-filter:blur(6px)}
+.auth-switch-text{margin:16px auto 0;text-align:center;color:#607d8f;font-size:.86rem;font-weight:700}
+.auth-switch-text a{color:#0a5fab!important;text-decoration:none!important;font-weight:900;border-bottom:1px solid rgba(10,95,171,.28)}
+.auth-switch-text a:hover{color:#083f73!important;border-bottom-color:#083f73}
+.auth-home-row{display:flex;justify-content:center;margin:14px auto 0}
+.auth-home-button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 18px;border-radius:999px;background:#eef7ff;border:1px solid #c9e2f3;color:#0a5fab!important;text-decoration:none!important;font-size:.84rem;font-weight:900;box-shadow:0 10px 24px rgba(10,95,171,.09)}
+.auth-home-button:hover{background:#ffffff;border-color:#0a84d0;color:#083f73!important;box-shadow:0 14px 30px rgba(10,95,171,.14)}
+.auth-trust-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.auth-trust-item{padding:10px;border-radius:14px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);color:#fff}
+.auth-trust-item strong{display:block;font:800 .86rem 'Sora',sans-serif;color:#fff}
+.auth-trust-item span{display:block;margin-top:3px;font-size:.66rem;font-weight:700;color:rgba(255,255,255,.72);text-transform:uppercase;letter-spacing:.8px}
+.field-section-label{max-width:480px;margin:4px auto 10px;padding:0 2px;color:#26465b;font-size:.76rem;font-weight:900;letter-spacing:1.2px;text-transform:uppercase}
+@media(max-width:720px){.auth-trust-grid{grid-template-columns:1fr}}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -234,16 +296,25 @@ VISUAL_SVG = """<svg width="130" height="150" viewBox="0 0 110 128" xmlns="http:
 
 def on_province_change():
     st.session_state.province_selection = st.session_state.register_province_unique
+    st.session_state.register_zone_unique = ""
+    st.session_state.zone_manual = ""
+
 
 def main():
     if "user" not in st.session_state:
         st.session_state.user = None
     if "auth_view" not in st.session_state:
         st.session_state.auth_view = "login"
+    auth_action = st.query_params.get("auth_action")
+    if auth_action in {"login", "register"}:
+        st.session_state.auth_view = auth_action
+        st.query_params.clear()
     if "register_success" not in st.session_state:
         st.session_state.register_success = False
 
     auth = AuthSystem()
+
+    # --- Aucune gestion de paramètre view ---
 
     if st.session_state.user is not None:
         u = st.session_state.user
@@ -262,17 +333,17 @@ def main():
             f'<div class="auth-left-glow"></div>'
             f'<div class="auth-left-inner">'
             f'<div class="al-logo">{SHIELD_SVG}<div><div class="al-name">SAFE CONGO</div><div class="al-tag">Veille sanitaire nationale</div></div></div>'
-            f'<div class="al-headline">Votre espace <em>de veille.</em></div>'
-            f'<div class="al-sub">Accédez en toute sécurité à votre tableau de bord de surveillance épidémiologique.</div>'
+            f'<div class="al-headline">Espace sécurisé <em>de veille.</em></div>'
+            f'<div class="al-sub">Connectez-vous ou demandez un accès pour suivre les alertes, les données et les décisions sanitaires depuis une interface contrôlée.</div>'
             f'<div class="al-features">'
-            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Détection précoce</div><div class="al-feat-c">Signaux consolidés pour une lecture rapide et utile.</div></div></div>'
-            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Analyse intelligente</div><div class="al-feat-c">Tendances, visualisations et prévisions fiables.</div></div></div>'
-            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.7-7 10-4-2.3-7-5.5-7-10V6l7-3Z"/><path d="m9.5 12 1.8 1.8 3.2-3.6"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Accès sécurisé</div><div class="al-feat-c">Espace personnel protégé, rôle adapté.</div></div></div>'
+            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Lecture rapide</div><div class="al-feat-c">Un accès direct aux signaux utiles, sans parcours inutile.</div></div></div>'
+            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Pilotage sanitaire</div><div class="al-feat-c">Tableaux de bord, alertes et suivi territorial regroupés.</div></div></div>'
+            f'<div class="al-feat"><div class="al-feat-ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.7-7 10-4-2.3-7-5.5-7-10V6l7-3Z"/><path d="m9.5 12 1.8 1.8 3.2-3.6"/></svg></div><div class="al-feat-text"><div class="al-feat-t">Accès maîtrisé</div><div class="al-feat-c">Chaque compte est associé à un rôle et à une zone de responsabilité.</div></div></div>'
             f'</div>'
-            f'<div class="al-stats">'
-            f'<div class="al-stat"><div class="al-stat-v">Privé</div><div class="al-stat-k">Accès</div></div>'
-            f'<div class="al-stat"><div class="al-stat-v">Guidée</div><div class="al-stat-k">Lecture</div></div>'
-            f'<div class="al-stat"><div class="al-stat-v">Active</div><div class="al-stat-k">Veille</div></div>'
+            f'<div class="auth-trust-grid">'
+            f'<div class="auth-trust-item"><strong>Privé</strong><span>Session</span></div>'
+            f'<div class="auth-trust-item"><strong>Rôles</strong><span>Accès</span></div>'
+            f'<div class="auth-trust-item"><strong>RDC</strong><span>Veille</span></div>'
             f'</div>'
             f'</div>'
             f'<div class="al-visual" style="position:relative;z-index:2;margin-top:28px;opacity:.82">{VISUAL_SVG}</div>'
@@ -281,34 +352,46 @@ def main():
         )
 
     with col_right:
-        if st.button("← Retour à l'accueil", key="auth_back"):
-            st.session_state.auth_view = None
-            switch_to_home_page()
-
         mode = st.session_state.auth_view or "login"
-        kicker = "Connexion" if mode == "login" else "Créer un compte"
-        st.markdown(f'<div style="text-align: center;"><div class="ar-kicker">{kicker}</div></div>', unsafe_allow_html=True)
+
+        # Show success message coming from a recent registration, once
+        if "register_message" in st.session_state:
+            st.success(st.session_state.pop("register_message"))
 
         if mode == "login":
             st.markdown(
-                '<div class="ar-title">Bon retour parmi nous</div>'
-                '<div class="ar-sub">Connectez-vous pour accéder à votre espace de surveillance et de pilotage sanitaire.</div>',
+                '<div class="ar-title">Bon retour</div>'
+                '<div class="ar-sub">Renseignez vos identifiants pour ouvrir votre espace de surveillance et accéder aux outils autorisés.</div>',
                 unsafe_allow_html=True,
             )
-            
+
             # Formulaire unifié et centré
             with st.form("login_form_page"):
                 st.markdown(
-                    '<div class="auth-form-chip" style="margin-bottom:12px;"><span class="auth-form-chip-dot"></span>Connexion sécurisée</div>'
-                    '<div class="auth-form-note" style="font-size:0.85rem; margin-bottom:16px;">Renseignez vos identifiants pour ouvrir votre espace de suivi épidémiologique.</div>',
-                    unsafe_allow_html=True
+                    """<div class="auth-form-chip" style="margin-bottom:12px;"><span class="auth-form-chip-dot"></span>Session privée</div>
+<div class="auth-form-note" style="font-size:0.85rem; margin-bottom:16px;">Utilisez l'identifiant ou l'adresse email associée à votre compte SAFE CONGO.</div>""",
+                    unsafe_allow_html=True,
                 )
-                username = st.text_input("Nom d'utilisateur", placeholder="Votre identifiant", label_visibility="visible")
+                # Préremplissage si fourni après création de compte
+                username = st.text_input(
+                    "Identifiant ou email",
+                    value=st.session_state.get("prefill_username", ""),
+                    placeholder="ex: autorite_kinshasa",
+                    label_visibility="visible",
+                    key="login_username",
+                )
                 password = st.text_input("Mot de passe", type="password", placeholder="Votre mot de passe", label_visibility="visible")
-                submitted = st.form_submit_button("Accéder à mon espace", use_container_width=True)
+                # Bouton de connexion centré et plus léger visuellement
+                _, b2, _ = st.columns([1, 2, 1])
+                with b2:
+                    submitted = st.form_submit_button("Ouvrir mon espace", use_container_width=False)
 
             st.markdown(
-                '<div class="auth-form-helper">Utilisez l\'identifiant transmis lors de la création du compte. En cas de perte d\'accès, passez par votre coordination ou l\'administration de la plateforme.</div>',
+                '<div class="auth-switch-text">Pas de compte ? <a href="/auth?auth_action=register" target="_self">Créer mon accès</a></div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                '<div class="auth-home-row"><a class="auth-home-button" href="/" target="_self">Retour à l’accueil</a></div>',
                 unsafe_allow_html=True,
             )
             if submitted:
@@ -321,26 +404,8 @@ def main():
                         st.error("Identifiants incorrects ou compte désactivé.")
                 else:
                     st.warning("Veuillez remplir tous les champs.")
-
-            st.markdown(
-                '<div class="no-account">'
-                '<div class="nac-label">Pas encore de compte ?</div>'
-                '<div class="nac-title">Rejoignez la plateforme nationale</div>'
-                '<div class="nac-copy">En tant qu\'autorité sanitaire de votre province ou zone de santé, vous pouvez demander un accès pour suivre les alertes et contribuer à la surveillance.</div>'
-                '<div class="nac-perks">'
-                '<span class="nac-perk">Tableau de bord dédié</span>'
-                '<span class="nac-perk">Alertes en temps réel</span>'
-                '<span class="nac-perk">Suivi provincial</span>'
-                '<span class="nac-perk">Accès sécurisé</span>'
-                '</div>',
-                unsafe_allow_html=True,
-            )
-            if st.button("Créer mon accès maintenant", key="switch_to_register"):
-                st.session_state.auth_view = "register"
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
         else:
+            # --- AFFICHAGE DU FORMULAIRE D'INSCRIPTION ---
             if st.session_state.register_success:
                 st.markdown(
                     '<div class="register-success">'
@@ -356,22 +421,22 @@ def main():
                     st.rerun()
             else:
                 st.markdown(
-                    '<div class="ar-title">Créez votre accès</div>'
-                    '<div class="ar-sub">Renseignez vos informations pour rejoindre la plateforme de surveillance sanitaire nationale.</div>',
+                    '<div class="auth-register-hero">'
+                    '<div class="auth-register-hero-badge">Demande d\'accès</div>'
+                    '<div class="ar-title">Créer un accès autorité</div>'
+                    '<div class="ar-sub">Renseignez vos informations professionnelles pour rejoindre le dispositif de surveillance SAFE CONGO.</div>'
+                    '</div>',
                     unsafe_allow_html=True,
                 )
                 st.markdown(
-                    '<div class="auth-register-note">Chaque demande est rattachée à une province et à une zone de santé afin de garantir un accès adapté au bon niveau de responsabilité.</div>'
-                    '<div class="auth-form-shell">'
-                    '<div class="auth-form-topline">'
-                    '<div class="auth-form-chip"><span class="auth-form-chip-dot"></span>Nouvel accès</div>'
-                    '<div class="auth-form-mini">Informations vérifiées avant activation</div>'
-                    '</div>'
-                    '<div class="auth-form-note">Complétez ce formulaire avec vos informations professionnelles pour soumettre votre demande d\'accès.</div>'
+                    '<div class="auth-register-section">'
+                    '<div class="auth-register-section-title">Fiche de demande</div>'
+                    '<div class="auth-register-section-sub">Les champs marqués d\'un astérisque sont obligatoires. Choisissez un identifiant simple et un mot de passe d\'au moins 8 caractères.</div>'
                     '</div>',
                     unsafe_allow_html=True,
                 )
 
+                st.markdown('<div class="field-section-label">Identité et contact</div>', unsafe_allow_html=True)
                 c1, c2 = st.columns(2)
                 with c1:
                     r_username = st.text_input("Identifiant *", placeholder="ex: dr.kabongo")
@@ -382,6 +447,7 @@ def main():
                     r_password = st.text_input("Mot de passe *", type="password")
                     r_confirm = st.text_input("Confirmer *", type="password")
                     r_telephone = st.text_input("Téléphone *")
+                    st.markdown('<div class="field-section-label" style="margin-top:10px">Affectation sanitaire</div>', unsafe_allow_html=True)
                     
                     try:
                         idx = PROVINCES.index(st.session_state.province_selection) if st.session_state.province_selection in PROVINCES else None
@@ -413,11 +479,16 @@ def main():
                     else:
                         r_zone = st.text_input("Zone de santé *", disabled=True, placeholder="Sélectionnez d'abord une province")
 
-                with st.form("register_form_submit_part"):
-                    reg_submit = st.form_submit_button("Soumettre ma demande", use_container_width=True)
+                _, submit_col, _ = st.columns([1, 1.35, 1])
+                with submit_col:
+                    reg_submit = st.button(
+                        "Soumettre ma demande",
+                        key="register_submit_button",
+                        use_container_width=True,
+                    )
 
                 st.markdown(
-                    '<div class="auth-form-helper">Les champs marqués d\'un astérisque sont obligatoires. Votre demande pourra être activée après vérification des informations fournies.</div>',
+                    '<div class="auth-switch-text">Déjà inscrit ? <a href="/auth?auth_action=login" target="_self">Revenir à la connexion</a></div>',
                     unsafe_allow_html=True,
                 )
 
@@ -434,17 +505,19 @@ def main():
                                 r_email, r_telephone, r_province, r_zone,
                             )
                             if ok:
-                                st.session_state.register_success = True
-                                st.rerun()
+                              # Redirect to login and prefill username for convenience
+                              st.session_state.auth_view = "login"
+                              st.session_state.prefill_username = r_username
+                              st.session_state.register_message = "Compte créé avec succès. Connectez-vous avec vos identifiants."
+                              st.rerun()
                             else:
                                 st.error(msg)
                     else:
-                        st.warning("Veuillez remplir tous les champs obligatoires (*).")
+                        st.markdown(
+                            '<div style="padding:12px 14px; border-radius:12px; background:#fff7ed; border:1px solid #fdba74; color:#7c2d12; font-weight:700; font-size:0.95rem; text-align:center;">Veuillez remplir tous les champs obligatoires (*).</div>',
+                            unsafe_allow_html=True,
+                        )
 
-                st.markdown(
-                    '<div class="auth-section-note">Déjà inscrit ? Revenez simplement à la connexion pour accéder à votre espace dès que votre compte est actif.</div>',
-                    unsafe_allow_html=True,
-                )
 
 if __name__ == "__main__":
     main()

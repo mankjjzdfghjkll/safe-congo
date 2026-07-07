@@ -199,11 +199,11 @@ new MutationObserver(hideNativeSidebarNav).observe(window.parent?.document?.body
 
 
 PUBLIC_NAV_ITEMS = [
-  ("apropos", "pages/apropos.py", "A Propos", "Objectif, role et vision de SAFE CONGO"),
-    ("notre_mission", "pages/notre_mission.py", "Perspective Strategique", "Notre mission souveraine"),
-    ("impact", "pages/impact.py", "Preuves & Resultats", "Impact national mesurable"),
-    ("fonctionnement", "pages/fonctionnement.py", "Mecanique Intelligente", "Comment SAFE CONGO orchestre l'alerte"),
-    ("contact", "pages/contact.py", "Alliance & Coordination", "Contacts et partenaires de confiance"),
+    ("apropos", "pages/apropos.py", "À propos", "Comprendre le rôle de SAFE CONGO"),
+    ("notre_mission", "pages/notre_mission.py", "Notre mission", "Renforcer la veille sanitaire en RDC"),
+    ("impact", "pages/impact.py", "Impact", "Ce que la plateforme rend mesurable"),
+    ("fonctionnement", "pages/fonctionnement.py", "Fonctionnement", "Du signal terrain à l'alerte utile"),
+    ("contact", "pages/contact.py", "Contact", "Accès, coordination et partenariats"),
 ]
 
 
@@ -243,7 +243,7 @@ def render_public_sidebar(active_page: Optional[str] = None, show_home_button: b
         )
 
         if show_home_button and st.button(
-            "Retour vers l'accueil central",
+            "Accueil",
             use_container_width=True,
             key="sidebar_back_home",
         ):

@@ -36,8 +36,8 @@ PUBLIC_THEME = """
 *{font-family:'Manrope',sans-serif;box-sizing:border-box}
 #MainMenu,footer{visibility:hidden}
 [data-testid="stHeader"]{background:transparent!important}
-[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;opacity:1!important;color:#0b4d95!important;background:rgba(255,255,255,.96)!important;border:1px solid rgba(11,77,149,.16)!important;border-radius:14px!important;box-shadow:0 10px 28px rgba(15,23,42,.12)!important}
-[data-testid="collapsedControl"] svg{fill:#0b4d95!important}
+[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;opacity:1!important;color:#0b4d95!important;background:rgba(255,255,255,.98)!important;width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;align-items:center!important;justify-content:center!important;padding:0!important;border:2px solid rgba(10,95,171,.32)!important;border-radius:12px!important;box-shadow:0 10px 24px rgba(10,60,120,.16)!important}
+[data-testid="collapsedControl"] svg{fill:#0b4d95!important;stroke:#0b4d95!important;width:21px!important;height:21px!important}
 .stApp{background:
     radial-gradient(circle at top right,rgba(240,196,78,.16),transparent 24%),
     radial-gradient(circle at top left,rgba(20,131,214,.12),transparent 28%),

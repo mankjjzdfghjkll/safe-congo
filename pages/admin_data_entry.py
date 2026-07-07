@@ -718,7 +718,7 @@ def main() -> None:
                 c1, c2 = st.columns(2)
                 observed_date = c2.date_input("Date d'observation", value=datetime.now().date(), key="observed_date")
                 c3, c4 = st.columns(2)
-                observed_cases = c3.number_input("Cas observes", min_value=0, step=1, value=0, key="observed_cases")
+                observed_cases = c3.number_input("Cas observes", min_value=1, step=1, value=1, key="observed_cases")
                 observed_deaths = c4.number_input("Deces observes", min_value=0, step=1, value=0, key="observed_deaths")
                 observed_zone = st.selectbox("Zone de sante", [""] + observed_zone_options, key=f"observed_zone_{observed_province or 'none'}")
                 observed_disease_options = _disease_options_for_scope(
@@ -776,10 +776,17 @@ def main() -> None:
                 observed_submit = st.button("ENREGISTRER LA DONNEE TERRAIN", use_container_width=True, key="observed_entry_submit")
 
                 if observed_submit:
-                    if not all([observed_disease, selected_observed_province, observed_zone]):
-                        st.error("Champs obligatoires manquants pour la saisie terrain.")
+                    missing_fields = []
+                    if not selected_observed_province:
+                        missing_fields.append("province")
+                    if not observed_zone:
+                        missing_fields.append("zone de santé")
+                    if not observed_disease:
+                        missing_fields.append("maladie")
+                    if missing_fields:
+                        st.error("Champs obligatoires manquants pour la saisie terrain : " + ", ".join(missing_fields) + ".")
                     elif int(observed_cases) <= 0:
-                        st.error("Le nombre de cas observes doit etre superieur a zero.")
+                        st.error("Le nombre de cas observés doit être supérieur à zéro.")
                     else:
                         ok, result = auth.save_epidemiological_entry(
                             disease=observed_disease,
@@ -967,6 +974,8 @@ def main() -> None:
                             [""] + available_target_provinces,
                             key="prediction_target_province",
                         )
+                        if not target_p:
+                            st.warning("Veuillez choisir une province cible pour la diffusion spécifique.")
                     else:
                         target_p = ""
                         st.markdown(
@@ -976,8 +985,17 @@ def main() -> None:
                     predict_submit = st.form_submit_button("EXECUTER LA PREVISION", use_container_width=True)
 
                 if predict_submit:
-                    if not all([disease, province, prediction_zone]):
-                        st.error("Champs obligatoires manquants.")
+                    missing_fields = []
+                    if not province:
+                        missing_fields.append("province source")
+                    if not prediction_zone:
+                        missing_fields.append("zone de santé")
+                    if not disease:
+                        missing_fields.append("maladie")
+                    if mode == "Province spécifique" and not target_p:
+                        missing_fields.append("province cible")
+                    if missing_fields:
+                        st.error("Champs obligatoires manquants : " + ", ".join(missing_fields) + ".")
                     else:
                         with st.spinner("Analyse en cours..."):
                             prediction_issue = _prediction_blocker(auth, disease, province, prediction_zone, date_input)

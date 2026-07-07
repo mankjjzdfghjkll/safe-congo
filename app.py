@@ -21,11 +21,11 @@ logging.basicConfig(
 )
 
 PROCESSED_DATA_CANDIDATES = [
-  Path(__file__).parent / "data" / "processed" / "donnees_agregees_nettoyees.csv",
-  Path(__file__).parent / "data" / "processed" / "aggregated_data.csv",
+    Path(__file__).parent / "data" / "processed" / "donnees_agregees_nettoyees.csv",
+    Path(__file__).parent / "data" / "processed" / "aggregated_data.csv",
 ]
 MODEL_SUMMARY_CANDIDATES = [
-  Path(__file__).parent / "models" / "evaluation" / "model_performance_summary.csv",
+    Path(__file__).parent / "models" / "evaluation" / "model_performance_summary.csv",
 ]
 MIN_ACCEPTABLE_R2 = float(MODEL_RESULT_FILTERS.get("min_acceptable_r2", 0.5))
 
@@ -57,19 +57,6 @@ def _home_reference_metrics() -> dict[str, int]:
             metrics["zones"] = int(frame[zone_col].dropna().astype(str).str.strip().replace("", pd.NA).dropna().nunique())
         break
 
-    for candidate in MODEL_SUMMARY_CANDIDATES:
-        if not candidate.exists():
-            continue
-        try:
-            summary_df = pd.read_csv(candidate, encoding="utf-8-sig")
-        except Exception:
-            continue
-
-        if "R² (Best)" in summary_df.columns:
-            r2_values = pd.to_numeric(summary_df["R² (Best)"], errors="coerce")
-            metrics["diseases"] = int(r2_values.ge(MIN_ACCEPTABLE_R2).fillna(False).sum())
-            break
-
     return metrics
 
 
@@ -96,28 +83,34 @@ st.set_page_config(
 
 CSS = """
 <style>
-
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
 * { font-family: 'Manrope', sans-serif; box-sizing: border-box; }
-/* #MainMenu { visibility: hidden; } */
 [data-testid="stHeader"] { background: transparent !important; }
 [data-testid="collapsedControl"] {
   display: flex !important;
   visibility: visible !important;
   opacity: 1 !important;
   color: #0b4d95 !important;
-  background: rgba(255,255,255,.96) !important;
-  border: 1px solid rgba(11,77,149,.16) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 10px 28px rgba(15,23,42,.12) !important;
+  background: rgba(255,255,255,.98) !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 2px solid rgba(10,95,171,.32) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 24px rgba(10,60,120,.16) !important;
+  padding: 0 !important;
 }
 [data-testid="collapsedControl"] svg {
   fill: #0b4d95 !important;
+  stroke: #0b4d95 !important;
+  width: 21px !important;
+  height: 21px !important;
 }
 [data-testid="stSidebarNav"] { display: none; }
 
-
-/* ─── MAIN BG LIGHT BLUE ────────────────────────────────────────────── */
 html, body, .stApp, .main, .block-container {
   background: linear-gradient(180deg, #eef6ff 0%, #e6f2fd 52%, #f0f8ff 100%) !important;
   margin: 0 !important;
@@ -136,8 +129,6 @@ html, body, .stApp, .main, .block-container {
   margin: 0 !important;
   padding: 0 !important;
 }
-
-/* Supprime l’espace vide au-dessus et en dessous */
 .block-container, .main, .stApp > div:first-child, .stApp > div:last-child {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
@@ -145,7 +136,6 @@ html, body, .stApp, .main, .block-container {
   padding-bottom: 0 !important;
 }
 
-/* ─── GLOW BUTTON ANIMATION ─────────────────────────────────────────── */
 .stButton > button {
   position: relative;
   z-index: 1;
@@ -239,8 +229,6 @@ html, body, .stApp, .main, .block-container {
     to   { opacity:1; transform:translateY(0); }
 }
 
-/* stApp already set above */
-
 [data-testid="stSidebar"] {
   background: linear-gradient(180deg, #eef6ff 0%, #e6f2fd 52%, #f0f8ff 100%) !important;
   border-right: 1px solid rgba(117,171,215,.32);
@@ -278,7 +266,6 @@ html, body, .stApp, .main, .block-container {
   transform: translateX(2px) !important;
 }
 
-/* ─── SIDEBAR LOGO ─────────────────────────────────────────────────────── */
 .sidebar-logo-wrap {
     display: flex; flex-direction: column; align-items: center;
     padding: 16px 14px 8px; position: relative;
@@ -340,7 +327,6 @@ html, body, .stApp, .main, .block-container {
     color: rgba(255,255,255,.5); margin-top: 2px;
 }
 
-/* ─── FEATURE CARDS ─────────────────────────────────────────────────────── */
 .feat-card {
     background: rgba(255,255,255,.04); border-radius: 18px; padding: 24px 20px;
     text-align: center; transition: all .35s;
@@ -361,7 +347,6 @@ html, body, .stApp, .main, .block-container {
 .feat-label { font-weight: 700; color: #e0eaff; font-size: .95rem; }
 .feat-desc  { font-size: .78rem; color: rgba(160,180,220,.7); margin-top: 5px; }
 
-/* ─── FORM / CARD ───────────────────────────────────────────────────────── */
 .form-wrapper {
     background: rgba(255,255,255,.04);
     border: 1px solid rgba(0,212,255,.15);
@@ -410,7 +395,6 @@ html, body, .stApp, .main, .block-container {
 }
 .stMarkdown p, .stMarkdown label, .stMarkdown { color: #374151 !important; }
 
-/* ─── LOGIN FORM OVERRIDES (white bg) ──────────────────────────────── */
 .stTextInput > div > div > input {
     border-radius: 10px !important;
     border: 1.5px solid #d1d5db !important;
@@ -844,11 +828,517 @@ html, body, .stApp, .main, .block-container {
   text-transform: uppercase;
 }
 
+/* ---- FOOTER RESPONSIVE (amélioré) ---- */
+.home-footer-shell {
+  width: 100% !important;
+  max-width: 1200px;
+  margin: 40px auto 0 !important;
+  padding: 0 !important;
+  border-radius: 30px !important;
+  background: linear-gradient(145deg, #0a4d8a 0%, #0f6eb0 50%, #1a8acf 100%) !important;
+  border: 1px solid rgba(197,235,255,.4) !important;
+  box-shadow: 0 16px 48px rgba(6,41,77,.22) !important;
+  overflow: hidden !important;
+  position: relative;
+}
+.home-footer-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 30%, rgba(255,255,255,.10), transparent 70%);
+  pointer-events: none;
+}
+.home-footer-top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 32px 32px 16px;
+  background: radial-gradient(circle at top right, rgba(152,228,255,.20), transparent 50%);
+}
+.home-footer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(202,236,255,.45);
+  color: #d7f2ff;
+  font: 800 .7rem Sora, sans-serif;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+.home-footer-title {
+  margin-top: 6px;
+  font: 800 1.4rem/1.2 Sora, sans-serif;
+  color: #ffffff;
+}
+.home-footer-copy {
+  margin-top: 4px;
+  color: #d7ecf9;
+  font: 500 .85rem/1.6 Manrope, sans-serif;
+  max-width: 760px;
+}
+.home-footer-copy b { color: #ffffff; }
+.home-footer-social-label {
+  color: #d6efff;
+  font: 800 .75rem Sora, sans-serif;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.home-footer-socials {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.home-footer-social {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(208,237,255,.30);
+  color: #dff3ff;
+  font: 600 .75rem Manrope, sans-serif;
+}
+.home-footer-social svg {
+  width: 20px;
+  height: 20px;
+  fill: #ffffff;
+  flex: none;
+}
+.home-footer-social strong {
+  display: block;
+  color: #ffffff;
+  font: 800 .7rem Sora, sans-serif;
+}
+.home-footer-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.home-footer-links a {
+  color: #f2fbff;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(208,237,255,.30);
+  font: 800 .7rem Manrope, sans-serif;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+.home-footer-links a:hover { background: rgba(255,255,255,.22); border-color: rgba(224,244,255,.6); }
+.home-footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 14px 28px 16px;
+  border-top: 1px solid rgba(195,233,252,.34);
+  background: rgba(2,28,58,.20);
+}
+.home-footer-bottom strong {
+  color: #ffffff;
+  font: 800 .8rem Sora, sans-serif;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+.home-footer-bottom span {
+  color: #d8ecfb;
+  font: 600 .76rem/1.4 Manrope, sans-serif;
+}
+
+@media (max-width: 840px) {
+  .home-footer-socials { grid-template-columns: 1fr; }
+  .home-footer-shell { margin: 20px 12px 0 !important; border-radius: 20px !important; }
+  .home-footer-top { padding: 20px 16px 12px; }
+  .home-footer-bottom { padding: 10px 16px 12px; flex-direction: column; align-items: flex-start; }
+}
+
+/* ---- Section Impact améliorée (chiffres statiques) ---- */
+.impact-number {
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: #0a5fab;
+  font-family: 'Sora', sans-serif;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.impact-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a4f7a;
+  letter-spacing: 0.5px;
+}
+.impact-desc {
+  font-size: 0.85rem;
+  color: #4a6a8a;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.impact-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+  border: 1px solid rgba(10,95,171,.12);
+  border-radius: 24px;
+  padding: 24px 20px 20px;
+  box-shadow: 0 8px 28px rgba(10,60,120,.08);
+  transition: transform 0.2s;
+}
+.impact-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 36px rgba(10,60,120,.14);
+}
+.impact-card .icon-wrap {
+  display: inline-flex;
+  padding: 10px;
+  border-radius: 16px;
+  background: #eaf4ff;
+  margin-bottom: 12px;
+}
+.impact-card .icon-wrap svg {
+  width: 28px;
+  height: 28px;
+  stroke: #0a5fab;
+  stroke-width: 2;
+}
+
+/* ---- Espace d'authentification modernisé ---- */
+.auth-premium-shell {
+  max-width: 1160px;
+  margin: 20px auto 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcff 100%);
+  border-radius: 36px;
+  padding: 0;
+  box-shadow: 0 24px 64px rgba(10, 60, 140, 0.10), 0 0 0 1px rgba(255,255,255,0.8) inset;
+  border: 1px solid rgba(10,95,171,0.10);
+  overflow: hidden;
+  position: relative;
+}
+
+.auth-premium-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 10% 20%, rgba(0,212,255,0.06), transparent 50%),
+              radial-gradient(ellipse at 90% 80%, rgba(0,102,204,0.05), transparent 40%);
+  pointer-events: none;
+}
+
+.auth-premium-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 0;
+  align-items: stretch;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-premium-left {
+  padding: 44px 40px 40px;
+  background: linear-gradient(160deg, #f7fcff 0%, #eef6ff 100%);
+  border-right: 1px solid rgba(10,95,171,0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.auth-premium-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e6f2fd, #f0f8ff);
+  border: 1px solid #c8e2f5;
+  color: #0a5fab;
+  font: 700 0.7rem 'Sora', sans-serif;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  width: fit-content;
+  box-shadow: 0 2px 8px rgba(10,95,171,0.06);
+}
+
+.auth-premium-title {
+  font: 800 2rem/1.2 'Sora', sans-serif;
+  color: #0a2c5a;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.auth-premium-title span {
+  background: linear-gradient(135deg, #0a5fab, #1aa2e2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auth-premium-desc {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: #4a6a8a;
+  max-width: 480px;
+  margin-bottom: 24px;
+}
+
+.auth-premium-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.auth-premium-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(4px);
+  border-radius: 16px;
+  border: 1px solid rgba(10,95,171,0.06);
+  transition: all 0.2s;
+}
+
+.auth-premium-feature:hover {
+  background: rgba(255,255,255,0.9);
+  border-color: rgba(10,95,171,0.15);
+  box-shadow: 0 4px 16px rgba(10,95,171,0.06);
+  transform: translateX(4px);
+}
+
+.auth-premium-feature-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e6f2fd, #d4e8fa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0a5fab;
+  font-size: 18px;
+  margin-top: 2px;
+}
+
+.auth-premium-feature-text strong {
+  display: block;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #0a2c5a;
+  margin-bottom: 2px;
+}
+
+.auth-premium-feature-text span {
+  font-size: 0.8rem;
+  color: #5a7a99;
+  line-height: 1.4;
+}
+
+.auth-premium-right {
+  padding: 44px 36px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: linear-gradient(160deg, #ffffff, #fafdff);
+}
+
+.auth-premium-right .auth-premium-badge {
+  margin-bottom: 12px;
+}
+
+.auth-premium-right .auth-premium-title {
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+}
+
+.auth-premium-right .auth-premium-desc {
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.auth-premium-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.auth-premium-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  font: 800 0.95rem 'Sora', sans-serif;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+  text-align: center;
+  width: 100%;
+}
+
+.auth-premium-right .stButton > button {
+  width: 100% !important;
+  min-height: 58px !important;
+  border-radius: 18px !important;
+  font: 800 0.95rem 'Sora', sans-serif !important;
+  letter-spacing: 0.2px !important;
+  transition: all 0.25s ease !important;
+}
+
+.auth-premium-right .stButton > button:hover {
+  transform: translateY(-2px) !important;
+}
+
+.auth-route-button {
+  width: 100% !important;
+  min-height: 58px !important;
+  border-radius: 18px !important;
+  font: 800 0.95rem 'Sora', sans-serif !important;
+  letter-spacing: 0.2px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.25s ease !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
+}
+
+.auth-route-button.primary {
+  background: linear-gradient(135deg, #0a5fab 0%, #1a8acf 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(10,95,171,0.25) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+}
+
+.auth-route-button.secondary {
+  background: rgba(255,255,255,0.96) !important;
+  color: #0a5fab !important;
+  border: 2px solid rgba(10,95,171,0.20) !important;
+  box-shadow: 0 4px 12px rgba(10,95,171,0.04) !important;
+}
+
+.auth-route-button:hover {
+  transform: translateY(-2px) !important;
+  text-decoration: none !important;
+}
+
+.auth-premium-btn-primary {
+  background: linear-gradient(135deg, #0a5fab 0%, #1a8acf 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(10,95,171,0.25);
+}
+
+.auth-premium-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(10,95,171,0.35);
+  background: linear-gradient(135deg, #0a4e8a 0%, #1579b8 100%);
+}
+
+.auth-premium-btn-secondary {
+  background: rgba(255,255,255,0.9);
+  color: #0a5fab;
+  border: 2px solid rgba(10,95,171,0.20);
+  box-shadow: 0 4px 12px rgba(10,95,171,0.04);
+}
+
+.auth-premium-btn-secondary:hover {
+  transform: translateY(-2px);
+  background: #ffffff;
+  border-color: #0a5fab;
+  box-shadow: 0 8px 24px rgba(10,95,171,0.10);
+}
+
+.auth-premium-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.auth-premium-tag {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #f0f7ff;
+  border: 1px solid #dce8f5;
+  font: 600 0.65rem 'Manrope', sans-serif;
+  color: #3a6a8a;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.auth-premium-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 10px;
+}
+
+.auth-premium-divider::before,
+.auth-premium-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(10,95,171,0.10), transparent);
+}
+
+.auth-premium-divider span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #8aacc0;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .auth-premium-grid {
+    grid-template-columns: 1fr;
+  }
+  .auth-premium-left {
+    border-right: none;
+    border-bottom: 1px solid rgba(10,95,171,0.08);
+    padding: 32px 28px;
+  }
+  .auth-premium-right {
+    padding: 32px 28px;
+  }
+  .auth-premium-title {
+    font-size: 1.6rem;
+  }
+  .auth-premium-right .auth-premium-title {
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .auth-premium-left,
+  .auth-premium-right {
+    padding: 24px 18px;
+  }
+  .auth-premium-feature {
+    padding: 10px 12px;
+  }
+  .auth-premium-feature-text span {
+    font-size: 0.75rem;
+  }
+  .auth-premium-btn {
+    padding: 14px 16px;
+    font-size: 0.85rem;
+  }
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-# ── Sidebar compact logo SVG ───────────────────────────────────────────────
+# Sidebar compact logo SVG (amélioré : plus net et intense)
 SHIELD_SIDEBAR = """
 <div class="sidebar-logo-wrap">
   <div class="sidebar-logo-glow"></div>
@@ -856,27 +1346,27 @@ SHIELD_SIDEBAR = """
        xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="sig1" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="rgba(255,255,255,.92)"/>
-        <stop offset="58%" stop-color="rgba(180,230,255,.74)"/>
-        <stop offset="100%" stop-color="rgba(100,180,240,.52)"/>
+        <stop offset="0%" stop-color="rgba(255,255,255,0.96)"/>
+        <stop offset="48%" stop-color="rgba(190,235,255,0.85)"/>
+        <stop offset="100%" stop-color="rgba(70,170,240,0.65)"/>
       </linearGradient>
-      <filter id="sigf" x="-28%" y="-28%" width="156%" height="156%">
-        <feGaussianBlur stdDeviation="2.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      <filter id="sigf" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0a55b8" flood-opacity="0.25"/>
+        <feGaussianBlur stdDeviation="1.6" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
     </defs>
-    <!-- Rotating orbit rings -->
-    <circle cx="55" cy="64" r="50" fill="none" stroke="rgba(10,85,184,.14)" stroke-width="1" stroke-dasharray="6 5">
+    <circle cx="55" cy="64" r="50" fill="none" stroke="rgba(10,85,184,0.18)" stroke-width="1.2" stroke-dasharray="6 5">
       <animateTransform attributeName="transform" type="rotate" from="0 55 64" to="360 55 64" dur="22s" repeatCount="indefinite"/>
     </circle>
-    <circle cx="55" cy="64" r="40" fill="none" stroke="rgba(10,85,184,.24)" stroke-width="1">
+    <circle cx="55" cy="64" r="40" fill="none" stroke="rgba(10,85,184,0.30)" stroke-width="1.1">
       <animate attributeName="r" values="40;58" dur="2.6s" repeatCount="indefinite"/>
       <animate attributeName="opacity" values=".5;0" dur="2.6s" repeatCount="indefinite"/>
     </circle>
     <path d="M55 8 L92 24 L92 58 Q92 92 55 116 Q18 92 18 58 L18 24 Z" fill="url(#sig1)" filter="url(#sigf)"/>
-    <path d="M55 20 L80 32 L80 56 Q80 80 55 98 Q30 80 30 56 L30 32 Z" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.6"/>
+    <path d="M55 20 L80 32 L80 56 Q80 80 55 98 Q30 80 30 56 L30 32 Z" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.6"/>
     <rect x="46" y="64" width="18" height="5" rx="2.2" fill="white"/>
     <rect x="52" y="57" width="6" height="19" rx="2.2" fill="white"/>
-    <!-- Sinusoid waves - RDC colors -->
     <polyline points="16,50 24,50 27,40 31,62 35,50 44,50" fill="none" stroke="#FCD116" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
       <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" repeatCount="indefinite"/>
     </polyline>
@@ -887,8 +1377,8 @@ SHIELD_SIDEBAR = """
       <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin=".6s" repeatCount="indefinite"/>
     </polyline>
     <g transform="translate(15 104)">
-      <rect x="0" y="0" width="94" height="22" rx="11" fill="rgba(255,255,255,.06)" stroke="rgba(126,198,241,.18)"/>
-      <text x="47" y="15.8" text-anchor="middle" fill="rgba(200,230,255,.92)" style="font-family:'Sora',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.55px">SAFE CONGO</text>
+      <rect x="0" y="0" width="94" height="22" rx="11" fill="rgba(255,255,255,0.08)" stroke="rgba(126,198,241,0.25)"/>
+      <text x="47" y="15.8" text-anchor="middle" fill="rgba(200,230,255,0.95)" style="font-family:'Sora',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.55px">SAFE CONGO</text>
     </g>
   </svg>
   <div class="sidebar-brand">SAFE CONGO</div>
@@ -925,19 +1415,20 @@ SIDEBAR_LOGO_SVG = """
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 124 140">
   <defs>
     <linearGradient id="sigimg1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.92"/>
-      <stop offset="58%" stop-color="#b4e6ff" stop-opacity="0.74"/>
-      <stop offset="100%" stop-color="#64b4f0" stop-opacity="0.52"/>
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.96"/>
+      <stop offset="48%" stop-color="#beebff" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#46aaf0" stop-opacity="0.65"/>
     </linearGradient>
-    <filter id="sigimgf" x="-28%" y="-28%" width="156%" height="156%">
-      <feGaussianBlur stdDeviation="2.8" result="b"/>
+    <filter id="sigimgf" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0a55b8" flood-opacity="0.25"/>
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
-  <circle cx="55" cy="64" r="50" fill="none" stroke="#0a55b8" stroke-opacity="0.14" stroke-width="1" stroke-dasharray="6 5"/>
-  <circle cx="55" cy="64" r="40" fill="none" stroke="#0a55b8" stroke-opacity="0.24" stroke-width="1"/>
+  <circle cx="55" cy="64" r="50" fill="none" stroke="#0a55b8" stroke-opacity="0.18" stroke-width="1.2" stroke-dasharray="6 5"/>
+  <circle cx="55" cy="64" r="40" fill="none" stroke="#0a55b8" stroke-opacity="0.30" stroke-width="1.1"/>
   <path d="M55 8 L92 24 L92 58 Q92 92 55 116 Q18 92 18 58 L18 24 Z" fill="url(#sigimg1)" filter="url(#sigimgf)"/>
-  <path d="M55 20 L80 32 L80 56 Q80 80 55 98 Q30 80 30 56 L30 32 Z" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1.6"/>
+  <path d="M55 20 L80 32 L80 56 Q80 80 55 98 Q30 80 30 56 L30 32 Z" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="1.6"/>
   <rect x="46" y="64" width="18" height="5" rx="2.2" fill="#ffffff"/>
   <rect x="52" y="57" width="6" height="19" rx="2.2" fill="#ffffff"/>
   <polyline points="16,50 24,50 27,40 31,62 35,50 44,50" fill="none" stroke="#FCD116" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="80" stroke-dashoffset="80">
@@ -950,7 +1441,7 @@ SIDEBAR_LOGO_SVG = """
     <animate attributeName="stroke-dashoffset" values="80;0;0;80" dur="3s" begin="0.6s" repeatCount="indefinite"/>
   </polyline>
   <g transform="translate(15 104)">
-    <rect x="0" y="0" width="94" height="22" rx="11" fill="#ffffff" fill-opacity="0.06" stroke="#7ec6f1" stroke-opacity="0.18"/>
+    <rect x="0" y="0" width="94" height="22" rx="11" fill="#ffffff" fill-opacity="0.08" stroke="#7ec6f1" stroke-opacity="0.25"/>
     <text x="47" y="15.8" text-anchor="middle" fill="#c8e6ff" font-family="Sora, sans-serif" font-size="11" font-weight="700" letter-spacing="1.55">SAFE CONGO</text>
   </g>
 </svg>
@@ -991,7 +1482,7 @@ RDC_FLAG_DATA_URI = _svg_data_uri(RDC_FLAG_SVG)
 SIDEBAR_LOGO_DATA_URI = _svg_data_uri(SIDEBAR_LOGO_SVG)
 HERO_LOGO_DATA_URI = _svg_data_uri(HERO_LOGO_SVG)
 
-# ── Hero logo (large, for login page) ─────────────────────────────────────
+# Hero logo (large, for login page)
 SHIELD_HERO = """
 <div class="hero-logo-container">
   <svg width="160" height="190" viewBox="0 0 160 190"
@@ -1018,15 +1509,11 @@ SHIELD_HERO = """
         <feGaussianBlur stdDeviation="2"/>
       </filter>
     </defs>
-
-    <!-- Pulsing background glow -->
     <ellipse cx="80" cy="95" rx="70" ry="70" fill="url(#hglow)">
       <animate attributeName="rx" values="60;80;60" dur="3s" repeatCount="indefinite"/>
       <animate attributeName="ry" values="60;80;60" dur="3s" repeatCount="indefinite"/>
       <animate attributeName="opacity" values=".5;1;.5" dur="3s" repeatCount="indefinite"/>
     </ellipse>
-
-    <!-- Outer orbit ring 1 -->
     <g>
       <animateTransform attributeName="transform" type="rotate"
         from="0 80 95" to="360 80 95" dur="10s" repeatCount="indefinite"/>
@@ -1036,8 +1523,6 @@ SHIELD_HERO = """
       <circle cx="154" cy="95" r="4" fill="#00D4FF" opacity=".9"/>
       <circle cx="6"   cy="95" r="3" fill="#00D4FF" opacity=".6"/>
     </g>
-
-    <!-- Outer orbit ring 2 (reverse) -->
     <g>
       <animateTransform attributeName="transform" type="rotate"
         from="0 80 95" to="-360 80 95" dur="15s" repeatCount="indefinite"/>
@@ -1046,25 +1531,15 @@ SHIELD_HERO = """
                stroke-dasharray="3 9"/>
       <circle cx="80" cy="13" r="3" fill="#0088FF" opacity=".8"/>
     </g>
-
-    <!-- Shield drop shadow (blur layer) -->
     <path d="M80 12 L142 42 L142 98 Q142 148 80 178 Q18 148 18 98 L18 42 Z"
           fill="rgba(0,60,160,.5)" filter="url(#hf2)"
           transform="translate(4,8)"/>
-
-    <!-- Shield main body -->
     <path d="M80 12 L142 42 L142 98 Q142 148 80 178 Q18 148 18 98 L18 42 Z"
           fill="url(#hg1)"/>
-
-    <!-- 3D highlight overlay -->
     <path d="M80 12 L142 42 L142 98 Q142 148 80 178 Q18 148 18 98 L18 42 Z"
           fill="url(#hg2)" opacity=".5"/>
-
-    <!-- Inner shield bevel -->
     <path d="M80 24 L130 50 L130 96 Q130 138 80 164 Q30 138 30 96 L30 50 Z"
           fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2"/>
-
-    <!-- Animated scan line -->
     <clipPath id="shieldClip">
       <path d="M80 12 L142 42 L142 98 Q142 148 80 178 Q18 148 18 98 L18 42 Z"/>
     </clipPath>
@@ -1076,12 +1551,8 @@ SHIELD_HERO = """
         <animate attributeName="opacity" values="0;.9;.9;0" dur="2.8s" repeatCount="indefinite"/>
       </rect>
     </g>
-
-    <!-- Cross shape -->
     <rect x="65" y="76" width="30" height="10" rx="3" fill="white" opacity=".95"/>
     <rect x="73" y="68" width="14" height="26" rx="3" fill="white" opacity=".95"/>
-
-    <!-- ECG / heartbeat line -->
     <polyline
       points="32,81 42,81 47,62 53,100 58,81 65,81"
       fill="none" stroke="#00D4FF" stroke-width="2.2"
@@ -1098,8 +1569,6 @@ SHIELD_HERO = """
       <animate attributeName="stroke-dashoffset"
         values="90;0;0;90" dur="3.2s" begin="0.3s" repeatCount="indefinite"/>
     </polyline>
-
-    <!-- Ripple circles -->
     <circle cx="80" cy="95" r="55" fill="none"
             stroke="rgba(0,212,255,.5)" stroke-width="1.5">
       <animate attributeName="r"      values="55;90" dur="2.5s" repeatCount="indefinite"/>
@@ -1110,15 +1579,11 @@ SHIELD_HERO = """
       <animate attributeName="r"      values="55;90" dur="2.5s" begin="1.25s" repeatCount="indefinite"/>
       <animate attributeName="opacity" values=".5;0"  dur="2.5s" begin="1.25s" repeatCount="indefinite"/>
     </circle>
-
-    <!-- Corner accent dots -->
     <circle cx="80"  cy="12"  r="3.5" fill="#00D4FF"/>
     <circle cx="142" cy="42"  r="2.5" fill="#60CFFF" opacity=".8"/>
     <circle cx="18"  cy="42"  r="2.5" fill="#60CFFF" opacity=".8"/>
     <circle cx="18"  cy="98"  r="2"   fill="#0088FF" opacity=".6"/>
     <circle cx="142" cy="98"  r="2"   fill="#0088FF" opacity=".6"/>
-
-    <!-- Floating particles -->
     <g opacity=".8">
       <circle cx="20" cy="50" r="1.8" fill="#00D4FF">
         <animate attributeName="cy" values="50;20" dur="4s" repeatCount="indefinite"/>
@@ -1141,14 +1606,13 @@ SHIELD_HERO = """
 </div>
 """
 
-
-# ── Hero section – standalone HTML (bypasses Streamlit markdown sanitizer) ──
+# Hero section – standalone HTML
 HERO_HTML = """<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;overflow-x:hidden}
-/* ── ANIMATIONS ────────────────────────────────── */
+/* Animations */
 @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 @keyframes blockGlow{0%,100%{box-shadow:0 10px 38px rgba(26,162,226,.13);}50%{box-shadow:0 24px 64px rgba(26,162,226,.22);}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
@@ -1157,10 +1621,8 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 @keyframes ecgDraw{0%{stroke-dashoffset:90}60%{stroke-dashoffset:0}80%{stroke-dashoffset:0}100%{stroke-dashoffset:90}}
 @keyframes ripple{0%{r:40;opacity:.55}100%{r:64;opacity:0}}
 
-/* ── BASE ───────────────────────────────────────── */
 .shell{padding:10px 18px 0}
 
-/* ── NAVBAR ─────────────────────────────────────── */
 .navbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;border-radius:18px;background:#ffffff;border:1px solid #d0e8f8;box-shadow:0 4px 22px rgba(10,70,140,.08);margin-bottom:18px;animation:fadeUp .45s ease-out}
 .nav-brand{display:flex;align-items:center;gap:12px}
 .nav-shield{width:38px;height:44px;animation:float 4.5s ease-in-out infinite;flex-shrink:0}
@@ -1169,7 +1631,6 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .nav-pills{display:flex;gap:7px;flex-wrap:wrap}
 .nav-pill{padding:7px 14px;border-radius:999px;background:#eef7ff;border:1px solid #c8e2f5;font-size:.72rem;font-weight:700;color:#1a6db5;letter-spacing:.3px;white-space:nowrap}
 
-/* ── HERO ───────────────────────────────────────── */
 .hero{position:relative;overflow:hidden;border-radius:26px;background:linear-gradient(135deg,#0a5fab 0%,#0d80d8 52%,#1aa2e2 100%);padding:48px 46px 42px;margin-bottom:16px;box-shadow:0 22px 58px rgba(10,95,171,.24),0 2px 0 rgba(255,255,255,.14) inset;animation:fadeUp .55s ease-out .06s both}
 .hero,.hero *{color:#ffffff}
 .hero-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.11) 1px,transparent 1px);background-size:26px 26px;pointer-events:none}
@@ -1190,7 +1651,6 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .hero-proof-v{margin-top:6px;font-size:.88rem;line-height:1.45;color:#fff;font-weight:700}
 .hero-visual{animation:float 5.5s ease-in-out infinite;filter:drop-shadow(0 18px 36px rgba(0,0,0,.16))}
 
-/* ── CARDS ──────────────────────────────────────── */
 .section-head{margin:0 0 32px 0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);}
 .section-label{font-size:.7rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#3a7ebf;padding-left:2px}
 .cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin:44px 0 40px 0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);}
@@ -1206,7 +1666,6 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .c-tag{display:inline-block;margin-top:11px;padding:5px 10px;border-radius:999px;font-size:.67rem;font-weight:800;letter-spacing:.9px;text-transform:uppercase}
 .ct-b{background:#e6f4fd;color:#1268b0}.ct-g{background:#e6f8f0;color:#0b7a52}.ct-o{background:#fff3e0;color:#c05800}
 
-/* ── STEPS ──────────────────────────────────────── */
 .steps-wrap{background:#ffffff;border:1px solid #d0e8f8;border-radius:22px;padding:34px 34px 34px;margin:56px 0 0 0;box-shadow:0 8px 32px rgba(10,60,120,.09);animation:fadeUp 1.1s cubic-bezier(.22,1,.36,1);}
 .steps-title{font-family:'Sora',sans-serif;font-size:1.35rem;font-weight:800;color:#0a2c5a;text-align:center;margin-bottom:18px;}
 .steps-sub{font-size:.98rem;color:#7a9ab8;text-align:center;margin-bottom:44px;}
@@ -1294,37 +1753,23 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
   div[data-testid="stHorizontalBlock"] > div[data-testid="column"]{width:100%!important;flex:1 1 100%!important}
 }
 
-/* ── FOOTER ─────────────────────────────────────── */
-
 </style></head><body>
 <div class="shell">
 
   <!-- DRAPEAU RDC AVANT HEADER -->
-  <!-- DRAPEAU + HEADER HARMONISÉS -->
   <div style="background:linear-gradient(135deg,#eef6ff 0%,#f0f8ff 50%,rgba(245,251,255,.8) 100%);padding:0;position:relative;overflow:hidden">
-    <!-- Accent bar avec couleurs RDC -->
     <div style="height:6px;background:linear-gradient(90deg,#0055B8 0%,#FCD116 50%,#CE1126 100%)"></div>
-    
-    <!-- Contenu principal -->
     <div class="home-top-inner">
       <div class="home-top-grid">
-        <!-- Colonne gauche: Drapeau + Info RDC -->
         <div class="home-top-identity">
-          <!-- Drapeau compact -->
           <img class="home-flag-img" src="__RDC_FLAG_SRC__" alt="Drapeau de la Republique Democratique du Congo" />
-          
-          <!-- Infos RDC -->
           <div style="border-left:3px solid #0055B8;padding-left:20px">
             <div style="font-size:14px;font-weight:700;color:#0a5fab;font-family:'Sora',sans-serif;letter-spacing:1px;margin-bottom:4px">REPUBLIQUE DEMOCRATIQUE</div>
             <div style="font-size:14px;font-weight:700;color:#0a5fab;font-family:'Sora',sans-serif;letter-spacing:1px;margin-bottom:8px">DU CONGO</div>
             <div style="font-size:11px;color:#1aa2e2;font-family:'Manrope',sans-serif;font-weight:700;letter-spacing:1.5px">justice paix travail</div>
           </div>
         </div>
-        
-        <!-- Colonne droite: Header + Logo -->
         <div class="home-top-copy">
-          
-          <!-- Titre et description -->
           <div class="home-top-copy-inner">
             <div class="home-top-title">
               <span style="background:linear-gradient(135deg,#0a5fab 0%,#1aa2e2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">SAFE CONGO</span>
@@ -1339,11 +1784,11 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:4px;height:20px;background:#CE1126;border-radius:2px"></div>
-                <div style="font-size:12px;color:#0a5fab;font-family:'Sora',sans-serif;font-weight:700">Détection Rapide</div>
+                <div style="font-size:12px;color:#0a5fab;font-family:'Sora',sans-serif;font-weight:700">Detection Rapide</div>
               </div>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="width:4px;height:20px;background:#FCD116;border-radius:2px"></div>
-                <div style="font-size:12px;color:#0a5fab;font-family:'Sora',sans-serif;font-weight:700">Action Immédiate</div>
+                <div style="font-size:12px;color:#0a5fab;font-family:'Sora',sans-serif;font-weight:700">Action Immediate</div>
               </div>
             </div>
           </div>
@@ -1373,7 +1818,6 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
           <div class="hero-proof-card"><div class="hero-proof-k">__PROOF_THREE_LABEL__</div><div class="hero-proof-v">__PROOF_THREE_VALUE__</div></div>
         </div>
       </div>
-      <!-- Logo SAFE CONGO identique a la sidebar -->
       <div class="hero-visual" style="display:flex;align-items:center;justify-content:center;padding:18px 0 8px 20px">
         <div class="home-logo-wrap">
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
@@ -1386,7 +1830,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
   </div>
 
   <!-- CARDS -->
-  <div class="section-head" style="margin-bottom:0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);"><div class="section-label" style="font-size:1.1rem;letter-spacing:2.5px;color:#0a5fab;">Capacités clés de la plateforme</div></div>
+  <div class="section-head" style="margin-bottom:0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);"><div class="section-label" style="font-size:1.1rem;letter-spacing:2.5px;color:#0a5fab;">Capacites cles de la plateforme</div></div>
   <div class="cards-grid" style="margin-top:30px;gap:36px;">
     <div class="card card-premium" style="background:linear-gradient(135deg,#fafdff 60%,#e6f2fd 100%);border-radius:36px;box-shadow:0 22px 70px 0 rgba(26,162,226,.13),0 0 0 10px #e6f2fd1a inset;border:2.5px solid #e0eaff;align-items:center;gap:28px;animation:fadeUp .7s cubic-bezier(.22,1,.36,1);position:relative;overflow:hidden;transition:box-shadow .22s,transform .22s;min-width:310px;max-width:400px;padding:38px 28px 32px 28px;">
       <span class="c-tag-float" style="position:absolute;top:18px;right:18px;background:linear-gradient(90deg,#e6f2fd 60%,#fafdff 100%);color:#0a5fab;border:1.2px solid #c8e2f5;font-size:.89rem;font-weight:800;border-radius:999px;padding:6px 14px;box-shadow:0 2px 12px #e6f2fd80;z-index:2;">Surveillance</span>
@@ -1397,9 +1841,9 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
             <animate attributeName="stroke-dasharray" values="0,40;40,0;0,40" dur="2.2s" repeatCount="indefinite"/>
           </path>
         </svg>
-        <span style="font-size:1.19rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#0a5fab;font-family:'Sora',sans-serif;">Détection rapide</span>
+        <span style="font-size:1.19rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#0a5fab;font-family:'Sora',sans-serif;">Detection rapide</span>
       </div>
-      <div style="font-size:1.04rem;color:#4a6a8a;font-family:'Manrope',sans-serif;text-align:center;margin:12px 0 0 0;">Identification précoce des signaux d'alerte épidémiologique sur l'ensemble du territoire national.</div>
+      <div style="font-size:1.04rem;color:#4a6a8a;font-family:'Manrope',sans-serif;text-align:center;margin:12px 0 0 0;">Identification precoce des signaux d'alerte epidemiologique sur l'ensemble du territoire national.</div>
     </div>
     <div class="card card-premium" style="background:linear-gradient(135deg,#f8fcff 60%,#e6f8f0 100%);border-radius:36px;box-shadow:0 22px 70px 0 rgba(11,158,110,.13),0 0 0 10px #e6f8f01a inset;border:2.5px solid #b8e8d5;align-items:center;gap:28px;animation:fadeUp .8s .1s cubic-bezier(.22,1,.36,1);position:relative;overflow:hidden;transition:box-shadow .22s,transform .22s;min-width:310px;max-width:400px;padding:38px 28px 32px 28px;">
       <span class="c-tag-float" style="position:absolute;top:18px;right:18px;background:linear-gradient(90deg,#e6f8f0 60%,#f8fcff 100%);color:#0b9e6e;border:1.2px solid #b8e8d5;font-size:.89rem;font-weight:800;border-radius:999px;padding:6px 14px;box-shadow:0 2px 12px #e6f8f080;z-index:2;">Analyse</span>
@@ -1410,7 +1854,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
         </svg>
         <span style="font-size:1.19rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#0b9e6e;font-family:'Sora',sans-serif;">Analyse intelligente</span>
       </div>
-      <div style="font-size:1.04rem;color:#4a6a8a;font-family:'Manrope',sans-serif;text-align:center;margin:12px 0 0 0;">Traitement et visualisation des données sanitaires pour une lecture claire des tendances et risques.</div>
+      <div style="font-size:1.04rem;color:#4a6a8a;font-family:'Manrope',sans-serif;text-align:center;margin:12px 0 0 0;">Traitement et visualisation des donnees sanitaires pour une lecture claire des tendances et risques.</div>
     </div>
     <div class="card card-premium" style="background:linear-gradient(135deg,#fff7f8 60%,#fff3e0 100%);border-radius:36px;box-shadow:0 22px 70px 0 rgba(245,124,0,.13),0 0 0 10px #fff3e01a inset;border:2.5px solid #ffd6b8;align-items:center;gap:28px;animation:fadeUp .8s .2s cubic-bezier(.22,1,.36,1);position:relative;overflow:hidden;transition:box-shadow .22s,transform .22s;min-width:310px;max-width:400px;padding:38px 28px 32px 28px;">
       <span class="c-tag-float" style="position:absolute;top:18px;right:18px;background:linear-gradient(90deg,#fff7f8 60%,#fff3e0 100%);color:#f57c00;border:1.2px solid #ffd6b8;font-size:.89rem;font-weight:800;border-radius:999px;padding:6px 14px;box-shadow:0 2px 12px #fff3e080;z-index:2;">Pilotage</span>
@@ -1421,7 +1865,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
             <animate attributeName="stroke-dasharray" values="0,24;24,0;0,24" dur="2.2s" repeatCount="indefinite"/>
           </path>
         </svg>
-        <span style="font-size:1.19rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#f57c00;font-family:'Sora',sans-serif;">Réponse coordonnée</span>
+        <span style="font-size:1.19rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#f57c00;font-family:'Sora',sans-serif;">Reponse coordonnee</span>
       </div>
       <div style="font-size:1.04rem;color:#4a6a8a;font-family:'Manrope',sans-serif;text-align:center;margin:12px 0 0 0;">Alertes prioritaires et outils de pilotage pour mobiliser rapidement les ressources</div>
     </div>
@@ -1497,37 +1941,36 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 
   <!-- STEPS -->
   <div class="steps-wrap" style="margin-top:42px;">
-    <div class="steps-title" style="font-size:1.5rem;letter-spacing:1.2px;">Du signal à la réponse</div>
-    <div class="steps-sub" style="font-size:1.08rem;margin-bottom:30px;">Un processus structuré pour agir efficacement sur le terrain</div>
+    <div class="steps-title" style="font-size:1.5rem;letter-spacing:1.2px;">Du signal a la reponse</div>
+    <div class="steps-sub" style="font-size:1.08rem;margin-bottom:30px;">Un processus structure pour agir efficacement sur le terrain</div>
     <div class="steps-row home-steps-row" style="gap:32px;">
       <div class="step" style="animation:fadeUp .7s .1s cubic-bezier(.22,1,.36,1);">
         <div class="step-num" style="background:linear-gradient(135deg,#0a5fab,#1aa2e2);box-shadow:0 6px 18px rgba(10,95,171,.26);font-size:1.2rem;">1</div>
         <div class="step-t">Signalement</div>
-        <div class="step-c">Les autorités locales remontent les données de leur zone de santé.</div>
+        <div class="step-c">Les autorites locales remontent les donnees de leur zone de sante.</div>
       </div>
       <div class="step-line"></div>
       <div class="step" style="animation:fadeUp .7s .2s cubic-bezier(.22,1,.36,1);">
         <div class="step-num" style="background:linear-gradient(135deg,#0b9e6e,#3ec99a);box-shadow:0 6px 18px rgba(11,158,110,.18);font-size:1.2rem;">2</div>
         <div class="step-t">Analyse</div>
-        <div class="step-c">La plateforme détecte les anomalies et produit des visualisations.</div>
+        <div class="step-c">La plateforme detecte les anomalies et produit des visualisations.</div>
       </div>
       <div class="step-line"></div>
       <div class="step" style="animation:fadeUp .7s .3s cubic-bezier(.22,1,.36,1);">
         <div class="step-num" style="background:linear-gradient(135deg,#f57c00,#ffb74d);box-shadow:0 6px 18px rgba(245,124,0,.18);font-size:1.2rem;">3</div>
         <div class="step-t">Alerte</div>
-        <div class="step-c">Les responsables sont notifiés avec les informations nécessaires.</div>
+        <div class="step-c">Les responsables sont notifies avec les informations necessaires.</div>
       </div>
       <div class="step-line"></div>
       <div class="step" style="animation:fadeUp .7s .4s cubic-bezier(.22,1,.36,1);">
         <div class="step-num" style="background:linear-gradient(135deg,#0a5fab,#1aa2e2);box-shadow:0 6px 18px rgba(10,95,171,.26);font-size:1.2rem;">4</div>
-        <div class="step-t">Réponse</div>
+        <div class="step-t">Reponse</div>
         <div class="step-c">Coordination et mobilisation des ressources pour une intervention.</div>
       </div>
     </div>
   </div>
 
-  <!-- DRAPEAU RDC -->
-  <!-- IMPACT SECTION -->
+  <!-- IMPACT SECTION (amelioree) -->
   <div class="home-impact-shell">
     <div style="position:absolute;inset:0;background:radial-gradient(circle at 10% 18%,rgba(0,85,184,.09),transparent 20%),radial-gradient(circle at 88% 24%,rgba(252,209,22,.12),transparent 18%),radial-gradient(circle at 50% 100%,rgba(26,162,226,.08),transparent 28%);pointer-events:none"></div>
     <div class="home-impact-inner">
@@ -1550,43 +1993,29 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
       </div>
 
       <div class="home-impact-stats">
-        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#f6fbff 100%);border:1px solid rgba(10,95,171,.10);box-shadow:0 18px 40px rgba(10,60,120,.08);animation:fadeUp .9s .16s cubic-bezier(.22,1,.36,1) both, blockGlow 5.8s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
-          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#0055B8,#1aa2e2)"></div>
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
-            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(0,85,184,.10),rgba(26,162,226,.16));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a5fab" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15h3"/><path d="M7 11h6"/><path d="M7 7h10"/></svg>
-            </div>
-            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#84a7c5;font-family:'Sora',sans-serif">Couverture</div>
+        <div class="impact-card">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 15h3"/><path d="M7 11h6"/><path d="M7 7h10"/></svg>
           </div>
-          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#0055B8,#1aa2e2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 2.8s ease-in-out infinite">__IMPACT_ONE_VALUE__</div>
-          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">__IMPACT_ONE_LABEL__</div>
-          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">__IMPACT_ONE_COPY__</div>
+          <div class="impact-number">__IMPACT_ONE_VALUE__</div>
+          <div class="impact-label">Provinces suivies</div>
+          <div class="impact-desc">Une couverture provinciale complete pour structurer la lecture nationale du risque sanitaire.</div>
         </div>
-
-        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#fff7ef 100%);border:1px solid rgba(232,136,43,.18);box-shadow:0 18px 40px rgba(10,60,120,.08);animation:fadeUp .9s .28s cubic-bezier(.22,1,.36,1) both, blockGlow 6.2s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
-          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#de7f1f,#f2ad43)"></div>
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
-            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(222,127,31,.15),rgba(242,173,67,.22));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#de7f1f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4.97-4.22 8-7.44 8-11a4 4 0 0 0-7-2.65A4 4 0 0 0 4 10c0 3.56 3.03 6.78 8 11Z"/></svg>
-            </div>
-            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#c77a2d;font-family:'Sora',sans-serif">Population</div>
+        <div class="impact-card">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21c4.97-4.22 8-7.44 8-11a4 4 0 0 0-7-2.65A4 4 0 0 0 4 10c0 3.56 3.03 6.78 8 11Z"/></svg>
           </div>
-          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#de7f1f,#f2ad43);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 3.1s ease-in-out infinite">__IMPACT_TWO_VALUE__</div>
-          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">__IMPACT_TWO_LABEL__</div>
-          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">__IMPACT_TWO_COPY__</div>
+          <div class="impact-number">__IMPACT_TWO_VALUE__</div>
+          <div class="impact-label">Zones observees</div>
+          <div class="impact-desc">Une profondeur territoriale utile pour lire les tensions au plus pres des zones de sante.</div>
         </div>
-
-        <div style="position:relative;overflow:hidden;padding:28px 26px 24px;border-radius:26px;background:linear-gradient(180deg,#ffffff 0%,#f3fbf4 100%);border:1px solid rgba(54,153,88,.18);box-shadow:0 18px 40px rgba(10,60,120,.08);animation:fadeUp .9s .4s cubic-bezier(.22,1,.36,1) both, blockGlow 6.6s ease-in-out infinite;transition:transform .22s ease,box-shadow .22s ease">
-          <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#2d8a4a,#74bf6b)"></div>
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
-            <div style="width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,rgba(45,138,74,.14),rgba(116,191,107,.20));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2d8a4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>
-            </div>
-            <div style="font-size:.68rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#4d9b62;font-family:'Sora',sans-serif">Qualite</div>
+        <div class="impact-card">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m5 12 4 4L19 6"/></svg>
           </div>
-          <div style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#2d8a4a,#74bf6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;font-family:'Sora',sans-serif;line-height:1;animation:pulse 3.4s ease-in-out infinite">__IMPACT_THREE_VALUE__</div>
-          <div style="font-size:14px;color:#0a2040;font-family:'Sora',sans-serif;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">__IMPACT_THREE_LABEL__</div>
-          <div style="font-size:14px;color:#6a879f;font-family:'Manrope',sans-serif;line-height:1.7">__IMPACT_THREE_COPY__</div>
+          <div class="impact-number">__IMPACT_THREE_VALUE__</div>
+          <div class="impact-label">Maladies retenues</div>
+          <div class="impact-desc">Les modeles retenus en production soutiennent une veille plus fiable et une priorisation plus responsable.</div>
         </div>
       </div>
 
@@ -1668,53 +2097,54 @@ def build_home_hero_html(auth) -> str:
     )
     return html
 
+
 def sidebar_info():
-  with st.sidebar:
-    st.markdown(SHIELD_SIDEBAR, unsafe_allow_html=True)
-    st.markdown("---")
+    with st.sidebar:
+        st.markdown(SHIELD_SIDEBAR, unsafe_allow_html=True)
+        st.markdown("---")
 
-    st.markdown(
-      '<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Parcours editorial</p>',
-      unsafe_allow_html=True,
-    )
-    st.markdown(
-      """
-      <style>
-      [data-testid="stSidebar"] .stButton:nth-of-type(1) > button{
-        text-align:center!important;
-        justify-content:center!important;
-        padding:0 12px!important;
-      }
-      </style>
-      """,
-      unsafe_allow_html=True,
-    )
+        st.markdown(
+            '<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Parcours editorial</p>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            """
+            <style>
+            [data-testid="stSidebar"] .stButton:nth-of-type(1) > button{
+              text-align:center!important;
+              justify-content:center!important;
+              padding:0 12px!important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    if st.button("A propos de SAFE CONGO", use_container_width=True, key="nav_apropos"):
-      st.switch_page("pages/apropos.py")
-    if st.button("Perspective strategique", use_container_width=True, key="nav_mission"):
-      st.switch_page("pages/notre_mission.py")
-    if st.button("Impact national mesurable", use_container_width=True, key="nav_impact"):
-      st.switch_page("pages/impact.py")
-    if st.button("Mecanique intelligente", use_container_width=True, key="nav_fonc"):
-      st.switch_page("pages/fonctionnement.py")
-    if st.button("Alliance & coordination", use_container_width=True, key="nav_contact"):
-      st.switch_page("pages/contact.py")
+        if st.button("A propos de SAFE CONGO", use_container_width=True, key="nav_apropos"):
+            st.switch_page("pages/apropos.py")
+        if st.button("Perspective strategique", use_container_width=True, key="nav_mission"):
+            st.switch_page("pages/notre_mission.py")
+        if st.button("Impact national mesurable", use_container_width=True, key="nav_impact"):
+            st.switch_page("pages/impact.py")
+        if st.button("Mecanique intelligente", use_container_width=True, key="nav_fonc"):
+            st.switch_page("pages/fonctionnement.py")
+        if st.button("Alliance & coordination", use_container_width=True, key="nav_contact"):
+            st.switch_page("pages/contact.py")
 
-    st.markdown("---")
-    st.markdown(
-      '<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Liens officiels</p>',
-      unsafe_allow_html=True,
-    )
-    st.markdown(
-      '<p class="expander-info">'
-      '<a class="info-link" href="https://www.minisanterdc.cd" target="_blank">Minist&egrave;re de la Sant&eacute;</a>'
-      '<a class="info-link" href="https://www.who.int/fr" target="_blank">OMS</a>'
-      '<a class="info-link" href="https://www.unicef.org/drcongo" target="_blank">UNICEF RDC</a>'
-      '<a class="info-link" href="https://africacdc.org" target="_blank">Africa CDC</a>'
-      '</p>',
-      unsafe_allow_html=True,
-    )
+        st.markdown("---")
+        st.markdown(
+            '<p style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#5a9ac0;font-weight:800;padding:0 8px;margin-bottom:8px">Liens officiels</p>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<p class="expander-info">'
+            '<a class="info-link" href="https://www.minisanterdc.cd" target="_blank">Ministere de la Sante</a>'
+            '<a class="info-link" href="https://www.who.int/fr" target="_blank">OMS</a>'
+            '<a class="info-link" href="https://www.unicef.org/drcongo" target="_blank">UNICEF RDC</a>'
+            '<a class="info-link" href="https://africacdc.org" target="_blank">Africa CDC</a>'
+            '</p>',
+            unsafe_allow_html=True,
+        )
 
 
 def show_login(auth):
@@ -1739,247 +2169,111 @@ def show_login(auth):
         transform:translateY(-2px);
         box-shadow:0 20px 38px rgba(53,157,209,.15);
       }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button {
-        background:linear-gradient(135deg,#79d7f2 0%,#94e2f8 48%,#b7efff 100%);
-        color:#1d6f9c;
-      }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:hover,
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:focus,
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:active {
-        border-color:rgba(96,193,232,.28);
-        background:linear-gradient(135deg,#6fd1ee 0%,#8eddF6 46%,#aeeafb 100%);
-        color:#1d6f9c;
-      }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button {
-        background:#ffffff;
-        color:#359bc8;
-        border:2px solid rgba(96,193,232,.26);
-      }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:hover,
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:focus,
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:active {
-        background:linear-gradient(135deg,#f2fbff 0%,#fbfeff 100%);
-        color:#2c88b5;
-        border-color:#78d2ee;
-      }
-      .home-footer-shell{
-        width:100vw;
-        margin:52px calc(50% - 50vw) 0;
-        padding:0;
-        border-radius:0;
-        background:linear-gradient(135deg,#073d73 0%,#0a5ba8 44%,#1196d4 100%);
-        border-top:1px solid rgba(197,235,255,.35);
-        box-shadow:0 -14px 36px rgba(6,41,77,.26);
-        overflow:hidden;
-      }
-      .home-footer-top{
-        display:grid;
-        grid-template-columns:1fr;
-        gap:8px;
-        padding:10px min(6vw,64px) 4px;
-        background:radial-gradient(circle at top right,rgba(152,228,255,.24),transparent 44%);
-      }
-      .home-footer-badge{
-        display:inline-flex;
-        align-items:center;
-        gap:6px;
-        padding:4px 10px;
-        border-radius:999px;
-        background:rgba(255,255,255,.16);
-        border:1px solid rgba(202,236,255,.45);
-        color:#d7f2ff;
-        font:800 .68rem Sora,sans-serif;
-        letter-spacing:1.2px;
-        text-transform:uppercase;
-      }
-      .home-footer-title{margin-top:4px;font:800 1rem/1.1 Sora,sans-serif;color:#ffffff}
-      .home-footer-copy{margin-top:3px;color:#d7ecf9;font:600 .79rem/1.45 Manrope,sans-serif;max-width:760px}
-      .home-footer-copy b{color:#ffffff}
-      .home-footer-social-label{color:#d6efff;font:800 .69rem Sora,sans-serif;letter-spacing:.9px;text-transform:uppercase}
-      .home-footer-socials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
-      .home-footer-social{
-        display:flex;
-        align-items:center;
-        gap:8px;
-        padding:5px 8px;
-        border-radius:8px;
-        background:rgba(255,255,255,.12);
-        border:1px solid rgba(208,237,255,.38);
-        color:#dff3ff;
-        font:700 .69rem Manrope,sans-serif;
-      }
-      .home-footer-social svg{width:15px;height:15px;fill:#ffffff;flex:none}
-      .home-footer-social strong{display:block;color:#ffffff;font:800 .68rem Sora,sans-serif}
-      .home-footer-links{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
-      .home-footer-links a{
-        color:#f2fbff;
-        text-decoration:none;
-        padding:4px 8px;
-        border-radius:8px;
-        background:rgba(255,255,255,.16);
-        border:1px solid rgba(208,237,255,.38);
-        font:800 .69rem Manrope,sans-serif;
-        letter-spacing:.35px;
-        text-transform:uppercase;
-      }
-      .home-footer-links a:hover{background:rgba(255,255,255,.24);border-color:rgba(224,244,255,.6)}
-      .home-footer-bottom{
-        display:flex;
-        justify-content:space-between;
-        gap:10px;
-        flex-wrap:wrap;
-        align-items:center;
-        padding:5px min(6vw,64px) 6px;
-        border-top:1px solid rgba(195,233,252,.34);
-        background:rgba(2,28,58,.18);
-      }
-      .home-footer-bottom strong{color:#ffffff;font:800 .76rem Sora,sans-serif;letter-spacing:.8px;text-transform:uppercase}
-      .home-footer-bottom span{color:#d8ecfb;font:700 .72rem/1.4 Manrope,sans-serif}
-      @media(max-width:840px){
-        .home-footer-socials{grid-template-columns:1fr}
-      }
-      .home-auth-shell{
-        width:min(94vw,1020px);
-        margin:12px auto 14px auto;
-        padding:26px 24px;
-        border-radius:30px;
-        background:linear-gradient(180deg,#ffffff 0%,#f9fdff 100%);
-        border:1px solid #dceef8;
-        box-shadow:0 18px 38px rgba(53,157,209,.08);
-      }
-      .home-auth-grid{
-        display:grid;
-        grid-template-columns:1.04fr .96fr;
-        gap:18px;
-        align-items:stretch;
-      }
-      .home-auth-main{padding:4px 2px}
-      .home-auth-badge{
-        display:inline-flex;
-        align-items:center;
-        gap:8px;
-        padding:8px 14px;
-        border-radius:999px;
-        background:#f2fbff;
-        border:1px solid #d9eef8;
-        color:#43a7d1;
-        font:800 .74rem Sora,sans-serif;
-        letter-spacing:1.4px;
-        text-transform:uppercase;
-      }
-      .home-auth-title{
-        margin-top:12px;
-        font:800 1.72rem/1.2 Sora,sans-serif;
-        color:#2a82b0;
-      }
-      .home-auth-copy{
-        margin-top:9px;
-        color:#68869b;
-        font:600 .92rem/1.74 Manrope,sans-serif;
-        max-width:620px;
-      }
-      .home-auth-points{display:grid;gap:7px;margin-top:10px}
-      .home-auth-point{padding:9px 11px;border-radius:14px;background:#f8fdff;border:1px solid #e2f2fa;color:#69869b;font:600 .82rem/1.58 Manrope,sans-serif}
-      .home-auth-point strong{display:block;margin-bottom:3px;color:#3798c6;font:800 .78rem Sora,sans-serif}
-      .home-auth-side{
-        padding:18px 16px;
-        border-radius:20px;
-        background:linear-gradient(150deg,#dff5ff 0%,#edfaff 100%);
-        border:1px solid #d7edf8;
-      }
-      .home-auth-side h3{font:800 1.05rem/1.3 Sora,sans-serif;color:#2e86b3;margin-bottom:8px}
-      .home-auth-side p{color:#6a879b;font:600 .86rem/1.64 Manrope,sans-serif;margin-bottom:10px}
-      .home-auth-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-      .home-auth-tags span{padding:6px 9px;border-radius:999px;background:#ffffff;border:1px solid #d8edf8;color:#4aa9d1;font:800 .66rem Manrope,sans-serif;letter-spacing:.55px;text-transform:uppercase}
-      @media(max-width:900px){.home-auth-grid{grid-template-columns:1fr}}
     </style>
     """,
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        '''
-    <style>
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"] .stButton > button {
-        min-height:62px;
-        border-radius:18px;
-        border:1px solid rgba(10,95,171,.18);
-        font:800 1rem Sora,sans-serif;
-        letter-spacing:.2px;
-        transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
-        box-shadow:0 16px 36px rgba(10,95,171,.12);
-      }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"] .stButton > button:hover {
-        transform:translateY(-2px);
-        box-shadow:0 22px 42px rgba(10,95,171,.18);
-      }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button {
-        background:linear-gradient(135deg,#083f73 0%,#0a5fab 48%,#1aa2e2 100%);
-        color:#fff;
-      }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:hover,
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:focus,
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(2) .stButton > button:active {
-        border-color:rgba(8,63,115,.24);
-        background:linear-gradient(135deg,#07345f 0%,#0a5498 46%,#1595d3 100%);
-        color:#fff;
-      }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button {
-        background:rgba(255,255,255,.96);
-        color:#0a4e8f;
-        border:2px solid rgba(13,111,188,.34);
-      }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:hover,
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:focus,
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-of-type(3) .stButton > button:active {
-        background:linear-gradient(135deg,#eef7ff 0%,#f7fbff 100%);
-        color:#083f73;
-        border-color:#0d6fbc;
-      }
-    </style>
-    ''',
-        unsafe_allow_html=True,
-    )
+    # Bloc d'authentification modernise avec vrais boutons Streamlit.
+    left_col, right_col = st.columns([1.1, 0.9], gap="large")
 
-    st.markdown(
+    with left_col:
+        st.markdown(
         """
-    <div class="home-auth-shell">
-      <div class="home-auth-grid">
-        <div class="home-auth-main">
-          <div class="home-auth-badge">Acces securise</div>
-          <div class="home-auth-title">Choisissez votre parcours en quelques secondes.</div>
-          <div class="home-auth-copy">Une zone unique, claire et stable pour acceder a votre espace ou lancer une demande d'acces, sans perdre du temps dans la navigation.</div>
-          <div class="home-auth-points">
-            <div class="home-auth-point"><strong>Connexion immediate</strong>Entrez directement dans votre espace si votre compte est deja valide.</div>
-            <div class="home-auth-point"><strong>Demande guidee</strong>Soumettez votre acces avec un formulaire simple pour les profils habilites.</div>
-            <div class="home-auth-point"><strong>Parcours sans confusion</strong>Les deux actions critiques restent visibles au meme endroit du debut a la fin.</div>
+    <div class="auth-premium-shell" style="margin-right:0;">
+      <div class="auth-premium-left" style="min-height:100%;">
+          <div class="auth-premium-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Accès sécurisé
           </div>
-        </div>
-        <div class="home-auth-side">
-          <h3>Orientation rapide, decision facile.</h3>
-          <p>Un coup d'oeil suffit pour savoir quoi faire: se connecter ou demander un acces.</p>
-          <div class="home-auth-tags">
-            <span>Connexion</span>
-            <span>Demande d'acces</span>
-            <span>Parcours simplifie</span>
-            <span>Admin et autorites</span>
+          <div class="auth-premium-title">
+            Deux parcours, <span>une même clarté</span>
           </div>
-        </div>
+          <div class="auth-premium-desc">
+            Que vous soyez déjà membre ou que vous souhaitiez rejoindre la communauté SAFE CONGO, choisissez la voie qui vous correspond.
+          </div>
+          <div class="auth-premium-features">
+            <div class="auth-premium-feature">
+              <div class="auth-premium-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/><path d="M18 21v-2a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4v2"/></svg>
+              </div>
+              <div class="auth-premium-feature-text">
+                <strong>Connexion immédiate</strong>
+                <span>Accédez à votre espace si votre compte est déjà actif.</span>
+              </div>
+            </div>
+            <div class="auth-premium-feature">
+              <div class="auth-premium-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 12h-4l-3 9-4-18-3 9H2"/></svg>
+              </div>
+              <div class="auth-premium-feature-text">
+                <strong>Demande guidée</strong>
+                <span>Formulaire simple pour les profils habilites en quelques clics.</span>
+              </div>
+            </div>
+            <div class="auth-premium-feature">
+              <div class="auth-premium-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </div>
+              <div class="auth-premium-feature-text">
+                <strong>Parcours sans confusion</strong>
+                <span>Les deux actions critiques restent visibles et accessibles.</span>
+              </div>
+            </div>
+          </div>
       </div>
     </div>
     """,
-        unsafe_allow_html=True,
-    )
+            unsafe_allow_html=True,
+        )
 
-    _, login_col, register_col, _ = st.columns([0.45, 1, 1, 0.45], gap="medium")
-    with login_col:
-        if st.button("Ouvrir mon espace", use_container_width=True, key="open_login_middle"):
-            st.session_state.auth_view = "login"
-            st.switch_page("pages/auth.py")
-    with register_col:
-        if st.button("Demander un acces", use_container_width=True, key="open_register_middle"):
-            st.session_state.auth_view = "register"
-            st.switch_page("pages/auth.py")
+    with right_col:
+        st.markdown(
+            """
+    <div class="auth-premium-shell" style="margin-left:0;">
+      <div class="auth-premium-right" style="min-height:100%;">
+          <div class="auth-premium-badge" style="border-color:#c8e2f5;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+            Action rapide
+          </div>
+          <div class="auth-premium-title">
+            Que souhaitez-vous faire ?
+          </div>
+          <div class="auth-premium-desc">
+            Choisissez votre parcours en toute simplicité.
+          </div>
+    """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            '<a class="auth-route-button primary" href="/?auth_action=login" target="_self">Ouvrir mon espace</a>',
+            unsafe_allow_html=True,
+        )
+
+        st.markdown('<div class="auth-premium-divider"><span>ou</span></div>', unsafe_allow_html=True)
+
+        st.markdown(
+            '<a class="auth-route-button secondary" href="/?auth_action=register" target="_self">Demander un accès</a>',
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            """
+          <div class="auth-premium-tags">
+            <span class="auth-premium-tag">Connexion</span>
+            <span class="auth-premium-tag">Demande d'accès</span>
+            <span class="auth-premium-tag">Parcours simplifié</span>
+            <span class="auth-premium-tag">Admin & autorités</span>
+          </div>
+          <div style="margin-top:12px;font-size:0.7rem;color:#8aacc0;text-align:center;border-top:1px solid rgba(10,95,171,0.06);padding-top:12px;">
+            Une expérience conçue pour l'efficacité et la clarté
+          </div>
+      </div>
+    </div>
+    """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown(
         """
@@ -2031,20 +2325,16 @@ def show_login(auth):
     )
 
 
-
-
-
-
-    current_view = st.session_state.auth_view
-    if current_view is None:
-        return
-
-    st.switch_page("pages/auth.py")
-
-
 def main():
     from utils.auth import AuthSystem
 
+    # Intercepter l'action depuis les parametres d'URL
+    query_params = st.query_params
+    auth_action = query_params.get("auth_action")
+    if auth_action in ["login", "register"]:
+        st.session_state.auth_view = auth_action
+        st.switch_page("pages/auth.py")
+        return
 
     if "user" not in st.session_state:
         st.session_state.user = None
@@ -2057,7 +2347,6 @@ def main():
         show_login(auth)
         return
 
-    # Logged-in routing
     if user["role"] == "admin":
         st.switch_page("pages/admin_dashboard.py")
     else:
@@ -2068,7 +2357,7 @@ def run_hidden_navigation() -> None:
     from utils.navigation import register_navigation_pages
 
     nav_pages = {
-      "home": st.Page("pages/home.py", title="Accueil", url_path="", default=True),
+        "home": st.Page("pages/home.py", title="Accueil", url_path="", default=True),
         "auth": st.Page("pages/auth.py", title="Authentification", url_path="auth"),
         "apropos": st.Page("pages/apropos.py", title="A propos", url_path="a-propos"),
         "mission": st.Page("pages/notre_mission.py", title="Notre mission", url_path="notre-mission"),

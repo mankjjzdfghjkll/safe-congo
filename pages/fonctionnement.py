@@ -16,12 +16,12 @@ st.set_page_config(page_title="Fonctionnement — SAFE CONGO", page_icon=None, l
 SIDEBAR_KWARGS = {"active_page": "fonctionnement"} if "active_page" in inspect.signature(render_public_sidebar).parameters else {}
 
 steps = [
-    ("01", "Collecte cadree", "Les donnees de terrain sont saisies avec une structure claire: territoire, maladie, volumes, severite et evolution constatee.", "Entree normalisee"),
-    ("02", "Validation de confiance", "Chaque enregistrement est verifie, horodate et inscrit dans une chaine de tracabilite qui reduit les zones d'ombre.", "Qualite des donnees"),
-    ("03", "Lecture predictive", "Le moteur analytique compare le present a l'historique, calcule les tendances et isole les comportements epidemiologiques inhabituels.", "Modeles filtres"),
-    ("04", "Graduation du risque", "Le systeme traduit la complexite en niveaux d'alerte lisibles pour faciliter la priorisation et la mobilisation.", "Priorisation rapide"),
-    ("05", "Diffusion instantanee", "Les autorites concernees recoivent des signaux contextualises avec localisation, gravite et mesures recommandees.", "Notification utile"),
-    ("06", "Suivi executable", "Des rapports et syntheses sont prepares pour prolonger l'analyse dans les reunions, les cellules de crise et les equipes terrain.", "Rapport activable"),
+    ("01", "Collecte cadrée", "Les données de terrain sont saisies avec les informations essentielles: territoire, maladie, volume, gravité et évolution.", "Saisie claire"),
+    ("02", "Vérification", "Chaque enregistrement est contrôlé, daté et rattaché à son territoire pour garder une trace fiable.", "Qualité des données"),
+    ("03", "Analyse", "Le système compare les données récentes à l'historique et repère les comportements inhabituels.", "Lecture du risque"),
+    ("04", "Niveau d'alerte", "Le risque est traduit en niveaux simples pour faciliter la priorisation.", "Priorisation rapide"),
+    ("05", "Notification", "Les autorités concernées reçoivent un signal contextualisé: localisation, gravité et informations utiles.", "Alerte utile"),
+    ("06", "Suivi", "Les rapports et synthèses prolongent l'analyse dans les réunions, cellules de crise et équipes terrain.", "Action documentée"),
 ]
 
 apply_public_theme()
@@ -30,13 +30,13 @@ render_public_sidebar(**SIDEBAR_KWARGS)
 reference_metrics = get_public_reference_metrics()
 
 render_public_hero(
-    "Mecanique intelligente",
-  "Une chaine de decision lisible, de la saisie au signal d'alerte.",
-  "SAFE CONGO agit comme une chaine de traitement disciplinee: il capte, ordonne, analyse et restitue. L'objectif est simple: offrir a chaque acteur sanitaire une lecture plus nette, plus rapide et plus exploitable.",
+    "Fonctionnement",
+    "Un parcours simple, de la saisie terrain à l'alerte utile.",
+    "SAFE CONGO capte, vérifie, analyse et restitue les signaux sanitaires. L'objectif est de donner à chaque acteur une information claire, rapide et exploitable.",
     [
-        (str(len(steps)), "etapes structurees"),
+        (str(len(steps)), "étapes structurées"),
     (str(reference_metrics.get("diseases", 0)), "maladies retenues"),
-    (str(reference_metrics.get("zones", 0)), "zones observees"),
+    (str(reference_metrics.get("zones", 0)), "zones observées"),
     ],
     tone="flow",
 )
@@ -51,38 +51,38 @@ st.markdown(
       <div class="public-section-head">
         <div>
           <div class="public-section-kicker">Graduation</div>
-          <div class="public-section-title">Niveaux d'alerte utilises</div>
+          <div class="public-section-title">Niveaux d'alerte utilisés</div>
         </div>
-        <p class="public-section-copy">La graduation privilegie une lecture simple, compatible avec une prise de decision rapide.</p>
+        <p class="public-section-copy">Une lecture simple pour aider les équipes à agir sans perdre de temps.</p>
       </div>
       <div class="public-auto-grid">
-        <div class="public-card"><div class="public-card-title">Critique</div><p class="public-card-copy">Croissance tres elevee ou situation exigeant une intervention immediate et une mobilisation forte.</p></div>
-        <div class="public-card"><div class="public-card-title">Haute</div><p class="public-card-copy">Pression nette demandant une reaction rapide, une verification terrain et une coordination resserree.</p></div>
-        <div class="public-card"><div class="public-card-title">Moderee</div><p class="public-card-copy">Signal significatif appelant une surveillance renforcee, une lecture plus fine et un suivi structure.</p></div>
-        <div class="public-card"><div class="public-card-title">Faible</div><p class="public-card-copy">Signal encore limite mais conserve pour suivre la tendance et documenter une possible evolution.</p></div>
+        <div class="public-card"><div class="public-card-title">Critique</div><p class="public-card-copy">Situation exigeant une intervention immédiate et une mobilisation forte.</p></div>
+        <div class="public-card"><div class="public-card-title">Haute</div><p class="public-card-copy">Pression nette demandant une réaction rapide, une vérification terrain et une coordination serrée.</p></div>
+        <div class="public-card"><div class="public-card-title">Modérée</div><p class="public-card-copy">Signal significatif appelant une surveillance renforcée et un suivi structuré.</p></div>
+        <div class="public-card"><div class="public-card-title">Faible</div><p class="public-card-copy">Signal limité, mais conservé pour suivre la tendance et documenter l'évolution.</p></div>
       </div>
     </div>
     <div class="public-accent-card">
       <h3>Ce que la plateforme apporte vraiment</h3>
-      <p>Elle reduit la friction entre information, interpretation et action. Au lieu d'un simple tableau de chiffres, l'utilisateur accede a une lecture du risque plus intelligible, plus responsable et directement exploitable.</p>
+      <p>Elle réduit l'écart entre information, interprétation et action. L'utilisateur ne voit pas seulement des chiffres: il comprend mieux le niveau de risque et les priorités.</p>
     </div>
   </div>
 
   <div class="public-panel">
     <div class="public-section-head">
       <div>
-        <div class="public-section-kicker">Socle d'execution</div>
-        <div class="public-section-title">Technologies mobilisees</div>
+        <div class="public-section-kicker">Socle technique</div>
+        <div class="public-section-title">Technologies mobilisées</div>
       </div>
-      <p class="public-section-copy">Le choix technologique privilegie la lisibilite, la tracabilite et la vitesse d'operation plutot qu'une complexite demonstrative.</p>
+      <p class="public-section-copy">Des outils simples et robustes pour garder une application lisible, rapide et maintenable.</p>
     </div>
     <div class="public-auto-grid">
-      <div class="public-card"><div class="public-card-title">Python 3</div><p class="public-card-copy">Orchestre l'application et supporte les traitements analytiques avec un cadre lisible et maitrisable.</p></div>
-      <div class="public-card"><div class="public-card-title">Streamlit</div><p class="public-card-copy">Fournit une interface web directe, rapide a maintenir et adaptee au pilotage sanitaire.</p></div>
-      <div class="public-card"><div class="public-card-title">Modeles filtres</div><p class="public-card-copy">La prediction ne retient que les modeles juges assez solides pour un usage de decision.</p></div>
-      <div class="public-card"><div class="public-card-title">SQLite</div><p class="public-card-copy">Assure un stockage simple, robuste et tracable pour les flux essentiels de l'application.</p></div>
-      <div class="public-card"><div class="public-card-title">Pandas</div><p class="public-card-copy">Structure et prepare les donnees pour l'analyse, la consolidation et la restitution.</p></div>
-      <div class="public-card"><div class="public-card-title">ReportLab</div><p class="public-card-copy">Transforme les alertes et syntheses en rapports exploitables par les reunions et les cellules terrain.</p></div>
+      <div class="public-card"><div class="public-card-title">Python 3</div><p class="public-card-copy">Orchestre l'application et supporte les traitements analytiques.</p></div>
+      <div class="public-card"><div class="public-card-title">Streamlit</div><p class="public-card-copy">Fournit une interface web directe, claire et adaptée au pilotage sanitaire.</p></div>
+      <div class="public-card"><div class="public-card-title">Modèles filtrés</div><p class="public-card-copy">La prédiction ne retient que les modèles jugés assez solides pour appuyer la décision.</p></div>
+      <div class="public-card"><div class="public-card-title">SQLite</div><p class="public-card-copy">Assure un stockage simple et traçable pour les flux essentiels.</p></div>
+      <div class="public-card"><div class="public-card-title">Pandas</div><p class="public-card-copy">Structure les données pour l'analyse, la consolidation et la restitution.</p></div>
+      <div class="public-card"><div class="public-card-title">ReportLab</div><p class="public-card-copy">Transforme les alertes et synthèses en rapports exploitables.</p></div>
     </div>
   </div>
 </div>
