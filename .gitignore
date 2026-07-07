@@ -15,6 +15,7 @@ database/*.db
 =
 conn.cursor()
 tmp_*
+.test_tmp/
 scripts/_check*.py
 _test_pdf_out.txt
 

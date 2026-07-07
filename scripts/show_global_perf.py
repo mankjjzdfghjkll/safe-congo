@@ -7,9 +7,12 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from src.config import MODEL_RESULT_FILTERS
 
-ROOT = Path(__file__).resolve().parent.parent
 EVAL_DIR = ROOT / "models" / "evaluation"
 
 # --- Charger le résumé de performance
@@ -113,4 +116,3 @@ if per_disease_f1:
         print(f"    {d:<38} F1 = {f:.3f}  ({f*100:.1f}%)")
 
 print("=" * 70)
-

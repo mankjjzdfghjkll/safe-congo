@@ -214,6 +214,18 @@ class AlertSystem:
     # Levels ordered by severity
     _LEVEL_ORDER = ['INFO', 'FAIBLE', 'MODEREE', 'HAUTE', 'CRITIQUE']
 
+    _REFERENCE_PRINCIPLES = {
+        "idsr": (
+            "OMS AFRO - Technical Guidelines for Integrated Disease Surveillance "
+            "and Response in the African Region, third edition"
+        ),
+        "ihr": "Règlement Sanitaire International (RSI/IHR 2005)",
+        "implementation": (
+            "SAFE CONGO combine les seuils absolus par maladie, la croissance "
+            "hebdomadaire et la notification immédiate des maladies à tolérance zéro."
+        ),
+    }
+
     @classmethod
     def _key(cls, disease_name: str) -> str:
         """Normalise le nom de maladie pour la correspondance dictionnaire."""
@@ -255,6 +267,69 @@ class AlertSystem:
         return result
 
     @classmethod
+    def _severity_index(cls, level: str) -> int:
+        return cls._LEVEL_ORDER.index(level)
+
+    @classmethod
+    def _max_level(cls, *levels: str) -> str:
+        return max(levels, key=cls._severity_index)
+
+    @staticmethod
+    def _positive_number(value) -> bool:
+        try:
+            return float(value) > 0
+        except (TypeError, ValueError):
+            return False
+
+    @classmethod
+    def _case_level(cls, thresholds: dict, cases: int) -> str:
+        """Classe le niveau par cas absolus sans déclencher sur des seuils à zéro."""
+        cases = max(int(cases or 0), 0)
+        if cases <= 0:
+            return 'INFO'
+
+        if thresholds.get('zero_tolerance'):
+            return 'CRITIQUE'
+
+        if cls._positive_number(thresholds.get('critical_cases')) and cases >= thresholds['critical_cases']:
+            return 'CRITIQUE'
+        if cls._positive_number(thresholds.get('high_cases')) and cases >= thresholds['high_cases']:
+            return 'HAUTE'
+        if cls._positive_number(thresholds.get('moderate_cases')) and cases >= thresholds['moderate_cases']:
+            return 'MODEREE'
+        if cls._positive_number(thresholds.get('faible_cases')) and cases >= thresholds['faible_cases']:
+            return 'FAIBLE'
+        return 'INFO'
+
+    @classmethod
+    def _growth_level(cls, thresholds: dict, growth_rate: float) -> str:
+        """Classe le niveau par croissance hebdomadaire."""
+        try:
+            growth_rate = float(growth_rate or 0.0)
+        except (TypeError, ValueError):
+            growth_rate = 0.0
+
+        if growth_rate <= 0:
+            return 'INFO'
+        if growth_rate >= thresholds['critical_growth']:
+            return 'CRITIQUE'
+        if growth_rate >= thresholds['high_growth']:
+            return 'HAUTE'
+        if growth_rate >= thresholds['moderate_growth']:
+            return 'MODEREE'
+        return 'FAIBLE'
+
+    def get_threshold_audit(self, disease_name: str) -> dict:
+        """Retourne les seuils et les références utilisées pour une maladie."""
+        thresholds = self.get_thresholds_for_disease(disease_name)
+        return {
+            "disease": disease_name,
+            "normalized_key": self._key(disease_name),
+            "thresholds": thresholds,
+            "references": dict(self._REFERENCE_PRINCIPLES),
+        }
+
+    @classmethod
     def classify_alert_level(cls, disease_name: str, cases: int, growth_rate: float) -> str:
         """
         Classe l'alerte selon les seuils OMS/IDSR.
@@ -267,36 +342,10 @@ class AlertSystem:
         inst = cls.__new__(cls)
         t = inst.get_thresholds_for_disease(disease_name)
 
-        # --- Niveau basé sur les cas absolus ---
-        if t.get('zero_tolerance') and cases >= 1:
-            level_cases = 'CRITIQUE'
-        elif cases >= t['critical_cases']:
-            level_cases = 'CRITIQUE'
-        elif cases >= t['high_cases']:
-            level_cases = 'HAUTE'
-        elif cases >= t['moderate_cases']:
-            level_cases = 'MODEREE'
-        elif cases >= t['faible_cases'] and t['faible_cases'] > 0:
-            level_cases = 'FAIBLE'
-        else:
-            level_cases = 'INFO'
-
-        # --- Niveau basé sur la croissance ---
-        if growth_rate >= t['critical_growth']:
-            level_growth = 'CRITIQUE'
-        elif growth_rate >= t['high_growth']:
-            level_growth = 'HAUTE'
-        elif growth_rate >= t['moderate_growth']:
-            level_growth = 'MODEREE'
-        elif growth_rate > 0:
-            level_growth = 'FAIBLE'
-        else:
-            level_growth = 'INFO'
-
         # Retourne le niveau le plus sévère
-        idx_cases  = cls._LEVEL_ORDER.index(level_cases)
-        idx_growth = cls._LEVEL_ORDER.index(level_growth)
-        return cls._LEVEL_ORDER[max(idx_cases, idx_growth)]
+        level_cases = cls._case_level(t, cases)
+        level_growth = cls._growth_level(t, growth_rate)
+        return cls._max_level(level_cases, level_growth)
     
     def detect_alerts(self, predictions, historical_data, model_performances=None):
         """
