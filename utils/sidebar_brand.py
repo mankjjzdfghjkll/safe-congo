@@ -74,30 +74,30 @@ PUBLIC_SIDEBAR_THEME = """
   pointer-events:none!important;
 }
 [data-testid="stSidebar"]{
-  background:linear-gradient(180deg,#eef6ff 0%,#e6f2fd 52%,#f0f8ff 100%)!important;
+  background:linear-gradient(180deg,#f7fbff 0%,#edf6ff 56%,#ffffff 100%)!important;
   border-right:1px solid rgba(117,171,215,.32)!important;
-  box-shadow:2px 0 18px rgba(10,60,140,.07)!important;
+  box-shadow:2px 0 24px rgba(10,60,140,.08)!important;
 }
 [data-testid="stSidebar"] *{color:#0a2c5a!important}
 [data-testid="stSidebar"] .stButton > button{
-  background:rgba(255,255,255,.72)!important;
-  border:1px solid rgba(151,195,228,.75)!important;
-  border-radius:16px!important;
-  min-height:48px!important;
-  box-shadow:0 8px 22px rgba(26,91,160,.08)!important;
-  color:#0a4a8a!important;
-  font-size:.86rem!important;
-  font-weight:700!important;
+  background:#ffffff!important;
+  border:1px solid rgba(151,195,228,.70)!important;
+  border-radius:10px!important;
+  min-height:44px!important;
+  box-shadow:0 8px 20px rgba(26,91,160,.06)!important;
+  color:#0b3f72!important;
+  font-size:.84rem!important;
+  font-weight:800!important;
   letter-spacing:.2px!important;
   text-align:left!important;
   justify-content:flex-start!important;
-  padding:0 16px!important;
+  padding:0 14px!important;
   transition:all .22s ease!important;
 }
 [data-testid="stSidebar"] .stButton > button:hover{
-  transform:translateX(4px)!important;
+  transform:translateX(3px)!important;
   border-color:#0a84d0!important;
-  background:linear-gradient(135deg,#ffffff,#e8f4ff)!important;
+  background:linear-gradient(135deg,#ffffff,#edf7ff)!important;
   box-shadow:0 12px 28px rgba(10,132,208,.14)!important;
 }
 [data-testid="stSidebar"] .stButton > button:focus-visible,
@@ -109,17 +109,17 @@ PUBLIC_SIDEBAR_THEME = """
   transform:translateX(2px)!important;
 }
 [data-testid="stSidebar"] .public-sidebar-label{
-  margin:4px 0 10px 2px;
+  margin:4px 0 10px 4px;
   font-size:.7rem;
   font-weight:800;
-  letter-spacing:1.9px;
+  letter-spacing:1.5px;
   text-transform:uppercase;
-  color:#5d86a8!important;
+  color:#557c9c!important;
 }
 [data-testid="stSidebar"] .public-sidebar-active-card{
   margin-top:6px;
-  padding:16px 16px 15px;
-  border-radius:18px;
+  padding:14px 14px 13px;
+  border-radius:10px;
   background:linear-gradient(135deg,#083f73 0%,#0a5fab 52%,#1aa2e2 100%);
   border:1px solid rgba(12,86,149,.45);
   box-shadow:0 16px 36px rgba(10,95,171,.24);
@@ -212,9 +212,10 @@ def render_sidebar_active_button(button_index: int) -> None:
         f"""
 <style>
 [data-testid="stSidebar"] .stButton:nth-of-type({button_index}) > button{{
-  background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;
+  background:linear-gradient(135deg,#083f73,#0a5fab 62%,#1aa2e2)!important;
   color:#ffffff!important;
   border-color:#0a5fab!important;
+  border-radius:10px!important;
   box-shadow:0 0 0 3px rgba(26,162,226,.18),0 10px 24px rgba(10,95,171,.28)!important;
 }}
 </style>

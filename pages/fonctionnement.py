@@ -1,10 +1,17 @@
 import inspect
+import importlib
 import sys
 from pathlib import Path
 
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import utils.public_ui as public_ui
+import utils.sidebar_brand as sidebar_brand
+
+importlib.reload(public_ui)
+importlib.reload(sidebar_brand)
 
 from utils.public_ui import apply_public_theme, get_public_reference_metrics, render_public_hero, render_public_steps
 from utils.sidebar_brand import render_public_sidebar

@@ -109,6 +109,128 @@ PUBLIC_THEME = """
 .public-accent-card .public-section-kicker{background:rgba(255,255,255,.14)!important;color:#ffffff!important}
 .public-accent-card .public-section-title,.public-accent-card .public-section-copy,.public-accent-card .public-copy{color:#ffffff!important}
 .public-accent-card .public-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#ffffff!important}
+
+/* Refonte premium des pages publiques */
+.public-page{gap:24px}
+.public-hero{
+    border-radius:18px;
+    padding:44px;
+    border:1px solid rgba(255,255,255,.30);
+    box-shadow:0 24px 70px rgba(8,41,73,.20);
+    min-height:360px;
+}
+.public-hero::before{
+    background:
+        linear-gradient(115deg,rgba(3,20,42,.28),rgba(3,20,42,.08) 42%,rgba(255,255,255,.10) 100%),
+        radial-gradient(circle at 78% 22%,rgba(255,255,255,.22),transparent 26%);
+}
+.public-hero::after{display:none}
+.public-hero-layout{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.1fr) 330px;gap:34px;align-items:center}
+.public-hero-copy{min-width:0}
+.public-kicker{
+    background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.34);
+    border-radius:999px;
+    color:#ffffff!important;
+}
+.public-title{font-size:2.55rem;letter-spacing:0;max-width:820px}
+.public-sub{color:rgba(255,255,255,.92)!important;font-weight:500}
+.public-metric-grid{grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:12px;margin-top:24px}
+.public-metric{
+    border-radius:8px;
+    background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.25);
+    padding:15px 16px;
+}
+.public-metric-value{font-size:1.42rem;color:#ffffff!important}
+.public-metric-label{color:rgba(255,255,255,.82)!important;font-size:.68rem}
+.public-hero-visual{
+    min-height:270px;
+    border-radius:16px;
+    background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.08));
+    border:1px solid rgba(255,255,255,.24);
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.public-hero-visual::before{
+    content:'';
+    width:170px;
+    height:170px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.30);
+    box-shadow:0 0 0 26px rgba(255,255,255,.06),0 0 0 54px rgba(255,255,255,.035);
+}
+.public-hero-visual::after{
+    content:'SAFE';
+    position:absolute;
+    inset:auto auto 34px auto;
+    padding:8px 16px;
+    border-radius:999px;
+    background:#ffffff;
+    color:#0a5fab;
+    font-family:'Sora',sans-serif;
+    font-size:.78rem;
+    letter-spacing:2px;
+    font-weight:800;
+}
+.public-signal-card{
+    position:absolute;
+    left:24px;
+    right:24px;
+    top:24px;
+    display:grid;
+    gap:10px;
+}
+.public-signal-line{
+    height:10px;
+    border-radius:999px;
+    background:rgba(255,255,255,.20);
+    overflow:hidden;
+}
+.public-signal-line span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ffffff,#f0c44e)}
+.public-panel{
+    border-radius:10px;
+    padding:28px;
+    background:rgba(255,255,255,.94);
+    border:1px solid rgba(158,195,226,.50);
+    box-shadow:0 18px 44px rgba(35,91,150,.08);
+}
+.public-panel::before{width:3px}
+.public-card{
+    border-radius:8px;
+    background:#ffffff;
+    border:1px solid rgba(166,204,233,.62);
+    box-shadow:0 10px 28px rgba(35,91,150,.06);
+}
+.public-card::before{left:0;right:0;height:3px;border-radius:0;background:linear-gradient(90deg,#0a5fab,#1aa2e2,#f0c44e)}
+.public-card-title{color:#0b3f72!important}
+.public-card-copy{color:#4d6a86!important}
+.public-accent-card{
+    border-radius:10px;
+    background:linear-gradient(145deg,#083f73 0%,#0a5fab 62%,#1483d6 100%);
+    border:1px solid rgba(255,255,255,.22);
+    box-shadow:0 20px 46px rgba(10,95,171,.22);
+}
+.public-accent-card,.public-accent-card *{color:#ffffff!important}
+.public-accent-card p,.public-accent-card .public-copy,.public-accent-card .public-section-copy{color:rgba(255,255,255,.92)!important}
+.public-accent-card .public-pill{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.28)!important}
+.public-band{
+    border-radius:10px;
+    background:linear-gradient(135deg,#082949 0%,#0a5fab 76%,#f0c44e 150%);
+    border:1px solid rgba(255,255,255,.20);
+}
+.public-band,.public-band *{color:#ffffff!important}
+.public-note{border-radius:8px;background:#f7fbff;color:#4d6a86!important}
+.public-chip{border-radius:8px}
+.public-step-body{border-radius:8px;background:#ffffff}
+.public-step-index{border-radius:12px;background:linear-gradient(135deg,#0a5fab,#1aa2e2)}
+.public-step-tag{background:#eef7ff;color:#0a5fab}
+.public-section-title{letter-spacing:0;color:#0b3f72!important}
+.public-copy,.public-panel p,.public-panel li{color:#4d6a86!important}
+.public-partner-link{color:#0a5fab!important}
 @media (max-width: 1100px){
     .block-container{padding-left:1rem;padding-right:1rem}
     .public-hero{padding:42px 28px}
@@ -118,6 +240,8 @@ PUBLIC_THEME = """
     .public-band{padding:24px 22px}
 }
 @media (max-width: 900px){
+  .public-hero-layout{grid-template-columns:1fr}
+  .public-hero-visual{min-height:190px}
   .public-hero{padding:38px 24px}
   .public-title{font-size:2.15rem}
   .public-grid-2,.public-grid-3{grid-template-columns:1fr}
@@ -146,6 +270,8 @@ PUBLIC_THEME = """
     .public-step-body{padding:18px 16px;border-radius:20px}
     .public-section-title{font-size:1.22rem}
     .public-accent-card{padding:18px 16px;border-radius:20px}
+    .public-hero-layout{gap:18px}
+    .public-hero-visual{display:none}
 }
 </style>
 """
@@ -219,10 +345,21 @@ def render_public_hero(
     st.markdown(
         f"""
 <div class="public-hero" style="background:{gradient}">
-  <div class="public-kicker">{escape(eyebrow)}</div>
-  <div class="public-title">{escape(title)}</div>
-  <p class="public-sub">{escape(subtitle)}</p>
-  <div class="public-metric-grid">{metric_markup}</div>
+  <div class="public-hero-layout">
+    <div class="public-hero-copy">
+      <div class="public-kicker">{escape(eyebrow)}</div>
+      <div class="public-title">{escape(title)}</div>
+      <p class="public-sub">{escape(subtitle)}</p>
+      <div class="public-metric-grid">{metric_markup}</div>
+    </div>
+    <div class="public-hero-visual" aria-hidden="true">
+      <div class="public-signal-card">
+        <div class="public-signal-line"><span style="width:82%"></span></div>
+        <div class="public-signal-line"><span style="width:58%"></span></div>
+        <div class="public-signal-line"><span style="width:70%"></span></div>
+      </div>
+    </div>
+  </div>
 </div>
 """,
         unsafe_allow_html=True,
