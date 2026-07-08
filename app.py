@@ -828,16 +828,16 @@ html, body, .stApp, .main, .block-container {
   text-transform: uppercase;
 }
 
-/* ---- FOOTER RESPONSIVE (amélioré) ---- */
+/* ---- FOOTER CLASSIQUE ET LISIBLE ---- */
 .home-footer-shell {
   width: 100% !important;
-  max-width: 1200px;
-  margin: 40px auto 0 !important;
+  max-width: 1240px;
+  margin: 52px auto 0 !important;
   padding: 0 !important;
-  border-radius: 30px !important;
-  background: linear-gradient(145deg, #0a4d8a 0%, #0f6eb0 50%, #1a8acf 100%) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(145deg, #083f73 0%, #0a5fab 48%, #117fc8 100%) !important;
   border: 1px solid rgba(197,235,255,.4) !important;
-  box-shadow: 0 16px 48px rgba(6,41,77,.22) !important;
+  box-shadow: 0 20px 56px rgba(6,41,77,.24) !important;
   overflow: hidden !important;
   position: relative;
 }
@@ -850,9 +850,9 @@ html, body, .stApp, .main, .block-container {
 }
 .home-footer-top {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  padding: 32px 32px 16px;
+  grid-template-columns: 1.15fr 1fr .9fr;
+  gap: 28px;
+  padding: 38px 42px 28px;
   background: radial-gradient(circle at top right, rgba(152,228,255,.20), transparent 50%);
 }
 .home-footer-badge {
@@ -870,14 +870,14 @@ html, body, .stApp, .main, .block-container {
 }
 .home-footer-title {
   margin-top: 6px;
-  font: 800 1.4rem/1.2 Sora, sans-serif;
+  font: 800 1.55rem/1.2 Sora, sans-serif;
   color: #ffffff;
 }
 .home-footer-copy {
-  margin-top: 4px;
+  margin-top: 10px;
   color: #d7ecf9;
-  font: 500 .85rem/1.6 Manrope, sans-serif;
-  max-width: 760px;
+  font: 600 .9rem/1.72 Manrope, sans-serif;
+  max-width: 520px;
 }
 .home-footer-copy b { color: #ffffff; }
 .home-footer-social-label {
@@ -888,19 +888,19 @@ html, body, .stApp, .main, .block-container {
 }
 .home-footer-socials {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 .home-footer-social {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(208,237,255,.30);
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(208,237,255,.34);
   color: #dff3ff;
-  font: 600 .75rem Manrope, sans-serif;
+  font: 650 .78rem Manrope, sans-serif;
 }
 .home-footer-social svg {
   width: 20px;
@@ -914,32 +914,31 @@ html, body, .stApp, .main, .block-container {
   font: 800 .7rem Sora, sans-serif;
 }
 .home-footer-links {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 6px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 10px;
 }
 .home-footer-links a {
   color: #f2fbff;
   text-decoration: none;
-  padding: 6px 12px;
+  padding: 10px 13px;
   border-radius: 10px;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(208,237,255,.30);
-  font: 800 .7rem Manrope, sans-serif;
-  letter-spacing: .4px;
-  text-transform: uppercase;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(208,237,255,.34);
+  font: 800 .78rem Manrope, sans-serif;
+  letter-spacing: .2px;
 }
 .home-footer-links a:hover { background: rgba(255,255,255,.22); border-color: rgba(224,244,255,.6); }
 .home-footer-bottom {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 18px;
   flex-wrap: wrap;
   align-items: center;
-  padding: 14px 28px 16px;
+  padding: 18px 42px 20px;
   border-top: 1px solid rgba(195,233,252,.34);
-  background: rgba(2,28,58,.20);
+  background: rgba(2,28,58,.26);
 }
 .home-footer-bottom strong {
   color: #ffffff;
@@ -951,11 +950,25 @@ html, body, .stApp, .main, .block-container {
   color: #d8ecfb;
   font: 600 .76rem/1.4 Manrope, sans-serif;
 }
+.home-footer-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(208,237,255,.26);
+  color: #e7f6ff;
+  font: 650 .8rem/1.55 Manrope, sans-serif;
+}
+.home-blue-card,
+.home-blue-card *,
+.home-impact-aside,
+.home-impact-aside * {
+  color: #ffffff !important;
+}
 
 @media (max-width: 840px) {
-  .home-footer-socials { grid-template-columns: 1fr; }
+  .home-footer-top { grid-template-columns: 1fr; gap: 18px; padding: 26px 20px 18px; }
   .home-footer-shell { margin: 20px 12px 0 !important; border-radius: 20px !important; }
-  .home-footer-top { padding: 20px 16px 12px; }
   .home-footer-bottom { padding: 10px 16px 12px; flex-direction: column; align-items: flex-start; }
 }
 
@@ -2282,10 +2295,11 @@ def show_login(auth):
         <div>
           <div class="home-footer-badge">SAFE CONGO • RDC</div>
           <div class="home-footer-title">Veille sanitaire nationale</div>
-          <div class="home-footer-copy">Restez connecte aux <b>canaux officiels</b> de SAFE CONGO pour la communication sanitaire publique et la diffusion des messages essentiels.</div>
+          <div class="home-footer-copy">SAFE CONGO accompagne la lecture des signaux épidémiologiques, la diffusion des alertes et la coordination des décisions sanitaires sur le territoire congolais.</div>
+          <div class="home-footer-note">Plateforme conçue pour soutenir la surveillance, l'anticipation et la réponse rapide face aux risques épidémiques.</div>
         </div>
         <div>
-          <div class="home-footer-social-label">Reseaux sociaux</div>
+          <div class="home-footer-social-label">Canaux de communication</div>
           <div class="home-footer-socials" style="margin-top:4px">
             <div class="home-footer-social">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.6 1.7-1.6H17V3.8c-.3 0-1.2-.1-2.4-.1-2.4 0-4 1.4-4 4.2V10H8v3h2.6v8h2.9Z"/></svg>
@@ -2305,19 +2319,19 @@ def show_login(auth):
             </div>
           </div>
         </div>
-      </div>
-      <div style="padding:0 min(6vw,64px) 6px;">
-        <div class="home-footer-social-label">Liens officiels</div>
-        <div class="home-footer-links" style="margin-top:4px;">
-          <a href="https://www.minisanterdc.cd" target="_blank">Ministere de la Sante</a>
-          <a href="https://www.who.int/fr" target="_blank">OMS</a>
-          <a href="https://www.unicef.org/drcongo" target="_blank">UNICEF RDC</a>
-          <a href="https://africacdc.org" target="_blank">Africa CDC</a>
+        <div>
+          <div class="home-footer-social-label">Liens officiels</div>
+          <div class="home-footer-links">
+            <a href="https://www.minisanterdc.cd" target="_blank">Ministère de la Santé</a>
+            <a href="https://www.who.int/fr" target="_blank">Organisation mondiale de la Santé</a>
+            <a href="https://www.unicef.org/drcongo" target="_blank">UNICEF RDC</a>
+            <a href="https://africacdc.org" target="_blank">Africa CDC</a>
+          </div>
         </div>
       </div>
       <div class="home-footer-bottom">
         <strong>SAFE CONGO</strong>
-        <span>Service de veille sanitaire disponible 24/24 • Republique Democratique du Congo</span>
+        <span>Service de veille sanitaire disponible 24/24 • République Démocratique du Congo • Données, alertes et coordination</span>
       </div>
     </div>
     """,

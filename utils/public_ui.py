@@ -109,6 +109,24 @@ PUBLIC_THEME = """
 .public-accent-card .public-section-kicker{background:rgba(255,255,255,.14)!important;color:#ffffff!important}
 .public-accent-card .public-section-title,.public-accent-card .public-section-copy,.public-accent-card .public-copy{color:#ffffff!important}
 .public-accent-card .public-pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#ffffff!important}
+.public-hero .public-section-title,
+.public-hero .public-section-copy,
+.public-hero .public-copy,
+.public-hero p,
+.public-hero span,
+.public-band h1,
+.public-band h2,
+.public-band h3,
+.public-band h4,
+.public-band p,
+.public-band span,
+.public-accent-card h1,
+.public-accent-card h2,
+.public-accent-card h3,
+.public-accent-card h4,
+.public-accent-card a {
+    color:#ffffff!important;
+}
 
 /* Refonte premium des pages publiques */
 .public-page{gap:24px}
@@ -217,6 +235,7 @@ PUBLIC_THEME = """
 .public-accent-card,.public-accent-card *{color:#ffffff!important}
 .public-accent-card p,.public-accent-card .public-copy,.public-accent-card .public-section-copy{color:rgba(255,255,255,.92)!important}
 .public-accent-card .public-pill{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.28)!important}
+.public-accent-card a{color:#ffffff!important;text-decoration:underline;text-underline-offset:3px}
 .public-band{
     border-radius:10px;
     background:linear-gradient(135deg,#082949 0%,#0a5fab 76%,#f0c44e 150%);
