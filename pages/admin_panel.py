@@ -28,7 +28,7 @@ from utils.navigation import switch_to_home_page
 
 def _format_growth_label(row: pd.Series) -> str:
     if not bool(row.get("has_comparable_growth", True)):
-        return "Non comparee"
+        return "Non comparée"
     value = float(row.get("growth_rate", 0.0) or 0.0)
     return f"{value:+.1f}%" if value > 0 else f"{value:.1f}%"
 
@@ -43,14 +43,14 @@ def _system_pulse_chart(entries_df: pd.DataFrame, alerts_df: pd.DataFrame, users
     entries = prepare_periodic_entries(entries_df)
     alerts = prepare_periodic_alerts(alerts_df)
     if entries.empty and alerts.empty:
-        return empty_state_figure("Pulse systeme", "Le systeme attend encore des signaux recents pour composer ce pulse.", make_plotly_layout)
+        return empty_state_figure("Pulse système", "Le système attend encore des signaux récents pour composer ce pulse.", make_plotly_layout)
 
     entry_counts = entries.groupby("period", as_index=False).size().rename(columns={"size": "entries"}) if not entries.empty else pd.DataFrame(columns=["period", "entries"])
     alert_counts = alerts.groupby("period", as_index=False).size().rename(columns={"size": "alerts"}) if not alerts.empty and "period" in alerts.columns else pd.DataFrame(columns=["period", "alerts"])
     pulse = entry_counts.merge(alert_counts, on="period", how="outer").fillna(0)
     pulse = pulse.sort_values("period").tail(12)
     if pulse.empty:
-        return empty_state_figure("Pulse systeme", "Aucune semaine consolidee disponible.", make_plotly_layout)
+        return empty_state_figure("Pulse système", "Aucune semaine consolidée disponible.", make_plotly_layout)
 
     fig = go.Figure()
     fig.add_trace(
@@ -74,7 +74,7 @@ def _system_pulse_chart(entries_df: pd.DataFrame, alerts_df: pd.DataFrame, users
         )
     )
     fig.update_layout(hovermode="x unified")
-    return make_plotly_layout(fig, "Pulse systeme")
+    return make_plotly_layout(fig, "Pulse système")
 
 
 def _coverage_chart(users_df: pd.DataFrame) -> go.Figure:
@@ -115,9 +115,9 @@ def _recent_login_table(users_df: pd.DataFrame) -> pd.DataFrame:
     return table_df[["Nom complet", "username", "role", "province", "last_login", "Statut"]].rename(
         columns={
             "username": "Identifiant",
-            "role": "Role",
+            "role": "Rôle",
             "province": "Province",
-            "last_login": "Derniere connexion",
+            "last_login": "Dernière connexion",
         }
     )
 
@@ -126,9 +126,9 @@ def _render_action_ribbon() -> None:
     st.markdown(
         """
 <div class="admin-grid-3">
-  <div class="admin-mini-card"><h4>Executif national</h4><p>Basculer vers la lecture macro des courbes, de la pression territoriale et des signaux critiques.</p></div>
-  <div class="admin-mini-card"><h4>Saisie et IA</h4><p>Declencher une nouvelle projection terrain sans quitter la couche de commandement.</p></div>
-  <div class="admin-mini-card"><h4>Gouvernance utilisateurs</h4><p>Ouvrir ou restreindre le maillage institutionnel selon la pression operationnelle du moment.</p></div>
+  <div class="admin-mini-card"><h4>Exécutif national</h4><p>Basculer vers la lecture macro des courbes, de la pression territoriale et des signaux critiques.</p></div>
+  <div class="admin-mini-card"><h4>Saisie et IA</h4><p>Déclencher une nouvelle projection terrain sans quitter la couche de commandement.</p></div>
+  <div class="admin-mini-card"><h4>Gouvernance utilisateurs</h4><p>Ouvrir ou restreindre le maillage institutionnel selon la pression opérationnelle du moment.</p></div>
 </div>
 """,
         unsafe_allow_html=True,
@@ -138,7 +138,7 @@ def _render_action_ribbon() -> None:
         if st.button("Ouvrir le dashboard", use_container_width=True, key="panel_to_dashboard"):
             st.switch_page("pages/admin_dashboard.py")
     with col2:
-        if st.button("Lancer une prediction", use_container_width=True, key="panel_to_entry"):
+        if st.button("Lancer une prédiction", use_container_width=True, key="panel_to_entry"):
             st.switch_page("pages/admin_data_entry.py")
     with col3:
         if st.button("Piloter les comptes", use_container_width=True, key="panel_to_users"):
@@ -172,10 +172,10 @@ def main() -> None:
     render_admin_sidebar(user, active_item=4, show_logo=False)
     _, admin_unread = admin_notifications_snapshot(auth, user["id"])
     render_admin_hero(
-        title="Centre de pilotage systeme",
-        subtitle="Une vue de supervision qui rassemble rythme de production, pression d'alerte, disponibilite du reseau et raccourcis d'action dans une seule salle de controle.",
+        title="Centre de pilotage système",
+        subtitle="Une vue de supervision qui rassemble rythme de production, pression d'alerte, disponibilité du réseau et raccourcis d'action dans une seule salle de contrôle.",
         chips=["Commandement central", "Vue temps court", "Actions rapides"],
-        eyebrow="Pilotage systeme",
+        eyebrow="Pilotage système",
         notification_count=admin_unread,
         auth=auth,
         user_id=user["id"],
@@ -195,10 +195,10 @@ def main() -> None:
     render_kpi_cards(
         [
             {
-                "label": "Base systeme",
-                "value": "Active" if db_is_available else "A verifier",
+                "label": "Base système",
+                "value": "Active" if db_is_available else "À vérifier",
                 "delta": "Stockage local",
-                "copy": "Etat general du socle de donnees utilise par la plateforme en exploitation.",
+                "copy": "État général du socle de données utilisé par la plateforme en exploitation.",
                 "accent": "#0a5fab",
                 "accent_soft": "#49acef",
                 "pill": "rgba(10,95,171,.12)",
@@ -206,26 +206,26 @@ def main() -> None:
             {
                 "label": "Comptes actifs",
                 "value": f"{active_users}",
-                "delta": "Reseau disponible",
-                "copy": "Presence immediate des operateurs et administrateurs capables d'agir dans la plateforme.",
+                "delta": "Réseau disponible",
+                "copy": "Présence immédiate des opérateurs et administrateurs capables d'agir dans la plateforme.",
                 "accent": "#059669",
                 "accent_soft": "#34d399",
                 "pill": "rgba(5,150,105,.12)",
             },
             {
-                "label": "Alertes recentes",
+                "label": "Alertes récentes",
                 "value": f"{len(alerts_df)}",
                 "delta": f"Pic {peak_growth:.1f}%",
-                "copy": "Le centre retient la densite d'alertes et la pointe de croissance la plus haute sur la fenetre recente.",
+                "copy": "Le centre retient la densité d'alertes et la pointe de croissance la plus haute sur la fenêtre récente.",
                 "accent": "#d97706",
                 "accent_soft": "#fcd116",
                 "pill": "rgba(217,119,6,.12)",
             },
             {
-                "label": "Production recente",
+                "label": "Production récente",
                 "value": f"{len(entries_df)}",
-                "delta": "Fenetre 200 lignes",
-                "copy": "Le volume de saisies reelles permet de sentir le rythme de remontee terrain et admin.",
+                "delta": "Fenêtre 200 lignes",
+                "copy": "Le volume de saisies réelles permet de sentir le rythme de remontée terrain et admin.",
                 "accent": "#7c3aed",
                 "accent_soft": "#a78bfa",
                 "pill": "rgba(124,58,237,.12)",
@@ -236,9 +236,9 @@ def main() -> None:
     st.markdown(
         f"""
 <div class="admin-grid-3">
-  <div class="admin-mini-card"><h4>Pression actuelle</h4><p>{'Escalade active' if peak_growth >= 30 else 'Sous tension' if peak_growth >= 10 else 'Sous controle'} avec un pic de croissance mesure a <strong>{peak_growth:.1f}%</strong>.</p></div>
-  <div class="admin-highlight"><strong>Socle unifie</strong><span>Cette page reprend le meme langage visuel que le dashboard executif pour eviter toute rupture de lecture.</span></div>
-  <div class="admin-mini-card"><h4>Navigation tactique</h4><p>Chaque bloc privilegie une information courte, puis une action directe vers la bonne page admin.</p></div>
+  <div class="admin-mini-card"><h4>Pression actuelle</h4><p>{'Escalade active' if peak_growth >= 30 else 'Sous tension' if peak_growth >= 10 else 'Sous contrôle'} avec un pic de croissance mesuré à <strong>{peak_growth:.1f}%</strong>.</p></div>
+  <div class="admin-highlight"><strong>Socle unifié</strong><span>Cette page reprend le même langage visuel que le dashboard exécutif pour éviter toute rupture de lecture.</span></div>
+  <div class="admin-mini-card"><h4>Navigation tactique</h4><p>Chaque bloc privilégie une information courte, puis une action directe vers la bonne page admin.</p></div>
 </div>
 """,
         unsafe_allow_html=True,
@@ -252,10 +252,10 @@ def main() -> None:
         st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-        panel_title("Connexions et disponibilite")
+        panel_title("Connexions et disponibilité")
         logins_df = _recent_login_table(users_df)
         if logins_df.empty:
-            st.markdown('<div class="admin-empty-state">Aucune connexion recente disponible dans la base.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="admin-empty-state">Aucune connexion récente disponible dans la base.</div>', unsafe_allow_html=True)
         else:
             st.dataframe(logins_df.head(15), use_container_width=True, hide_index=True, height=340)
         st.markdown("</div>", unsafe_allow_html=True)
@@ -270,9 +270,9 @@ def main() -> None:
         _render_action_ribbon()
         st.markdown("</div>", unsafe_allow_html=True)
 
-    section_label("Veille operationnelle")
+    section_label("Veille opérationnelle")
     st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-    panel_title("Dernieres alertes pour arbitrage")
+    panel_title("Dernières alertes pour arbitrage")
     if alerts_df.empty:
         st.markdown('<div class="admin-empty-state">Aucune alerte disponible dans la base.</div>', unsafe_allow_html=True)
     else:

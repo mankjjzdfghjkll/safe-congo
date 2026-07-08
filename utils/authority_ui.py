@@ -31,15 +31,15 @@ AUTHORITY_THEME = """
 *{font-family:'Manrope',sans-serif;box-sizing:border-box}
 #MainMenu,footer{visibility:hidden}
 [data-testid="stHeader"]{background:transparent!important}
-[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;opacity:1!important;color:#0b4d95!important;background:rgba(255,255,255,.96)!important;border:1px solid rgba(11,77,149,.16)!important;border-radius:14px!important;box-shadow:0 10px 28px rgba(15,23,42,.12)!important}
-[data-testid="collapsedControl"] svg{fill:#0b4d95!important}
+[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;opacity:1!important;color:#0b4d95!important;background:rgba(255,255,255,.98)!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;align-items:center!important;justify-content:center!important;padding:0!important;border:2px solid rgba(10,95,171,.28)!important;border-radius:12px!important;box-shadow:0 10px 28px rgba(15,23,42,.13)!important}
+[data-testid="collapsedControl"] svg{fill:#0b4d95!important;stroke:#0b4d95!important;width:22px!important;height:22px!important}
 [data-testid="stSidebarNav"]{display:none}
 @keyframes fadeIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 .stApp{background:linear-gradient(180deg,#edf6ff 0%,#e7f2ff 48%,#f7fbff 100%)!important}
 [data-testid="stAppViewContainer"] .main .block-container{max-width:1160px!important;padding-top:1.45rem!important;padding-bottom:1.4rem!important}
 [data-testid="stSidebar"]{background:linear-gradient(180deg,#ffffff 0%,#eff7ff 100%)!important;border-right:1px solid rgba(176,208,233,.55)!important;box-shadow:3px 0 18px rgba(10,60,120,.06)!important}
 [data-testid="stSidebar"] *{color:#0f2542!important}
-[data-testid="stSidebar"] .stButton>button{background:rgba(255,255,255,.86)!important;color:#0a5fab!important;border:1px solid #c8dff0!important;border-radius:12px!important;padding:9px 13px!important;font-weight:700!important;font-size:.8rem!important;transition:all .22s ease!important;width:100%!important;justify-content:flex-start!important;box-shadow:0 8px 22px rgba(10,60,120,.06)!important}
+[data-testid="stSidebar"] .stButton>button{background:rgba(255,255,255,.9)!important;color:#0a5fab!important;border:1px solid #c8dff0!important;border-radius:12px!important;min-height:42px!important;padding:9px 13px!important;font-weight:800!important;font-size:.8rem!important;transition:all .22s ease!important;width:100%!important;justify-content:flex-start!important;box-shadow:0 8px 22px rgba(10,60,120,.06)!important}
 [data-testid="stSidebar"] .stButton>button:hover{background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;color:#fff!important;transform:translateX(4px)!important;box-shadow:0 10px 22px rgba(10,95,171,.22)!important}
 [data-testid="stSidebar"] .stButton>button:focus-visible,[data-testid="stSidebar"] .stButton>button:active{background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;color:#fff!important;border-color:#0a5fab!important;transform:translateX(2px)!important;box-shadow:0 0 0 3px rgba(26,162,226,.18),0 10px 22px rgba(10,95,171,.22)!important}
 .stButton>button,.stDownloadButton>button{background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;color:#fff!important;border:0!important;border-radius:10px!important;padding:8px 12px!important;font-weight:800!important;font-size:.78rem!important;box-shadow:0 8px 18px rgba(10,95,171,.22)!important;transition:all .22s ease!important}
@@ -174,8 +174,9 @@ AUTHORITY_THEME = """
 [data-testid="stExpander"] summary{padding:.25rem 0!important;font-weight:800!important;color:#103d6f!important}
 [data-testid="stExpander"] summary:hover{color:#0a5fab!important}
 [data-testid="stDataFrame"]{border-radius:16px!important;overflow:hidden!important;border:1px solid #e2edf8!important}
+[data-testid="stDataFrame"] *{font-size:.8rem!important}
 .stTabs [data-baseweb="tab-list"]{gap:8px}
-.stTabs [data-baseweb="tab"]{background:#f2f8ff;border:1px solid #d7e7f6;border-radius:999px;padding:9px 14px;font-weight:700;color:#0f4d8c}
+.stTabs [data-baseweb="tab"]{background:#f2f8ff;border:1px solid #d7e7f6;border-radius:999px;padding:9px 14px;font-weight:800;color:#0f4d8c;white-space:normal!important;min-height:40px}
 .stTabs [aria-selected="true"]{background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;color:#fff!important;border-color:#0a5fab!important}
 [data-baseweb="button-group"]{background:linear-gradient(180deg,#edf6ff 0%,#f7fbff 100%);padding:4px;border:1px solid #d6e6f5;border-radius:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
 [data-baseweb="button-group"] button{border-radius:12px!important;border:1px solid rgba(170,205,233,.75)!important;background:linear-gradient(180deg,#f2f8ff 0%,#e8f3ff 100%)!important;color:#0f4d8c!important;font-weight:800!important;font-size:.74rem!important;min-height:40px!important;padding:0 14px!important;box-shadow:0 4px 10px rgba(10,95,171,.06)!important}
@@ -199,22 +200,22 @@ def render_authority_sidebar(user: dict, auth, active_item: int) -> None:
         st.markdown(
             f"""
 <div class="authority-sidebar-user-card">
-  <div class="authority-sidebar-role">Autorite sanitaire</div>
+  <div class="authority-sidebar-role">Autorité sanitaire</div>
   <div class="authority-sidebar-name">{user['full_name']}</div>
-    <div class="authority-sidebar-meta">Province: {user.get('province', '—')}<br/>Zone de sante: {user.get('zone_sante', '—')}</div>
+    <div class="authority-sidebar-meta">Province : {user.get('province', '—')}<br/>Zone de santé : {user.get('zone_sante', '—')}</div>
 </div>
 """,
             unsafe_allow_html=True,
         )
         render_sidebar_active_button(active_item)
-        if st.button("  Mon tableau de bord", use_container_width=True, key=f"authority_dashboard_{active_item}"):
+        if st.button("Mon tableau de bord", use_container_width=True, key=f"authority_dashboard_{active_item}"):
             st.switch_page("pages/authority_dashboard.py")
-        if st.button("  Mes alertes", use_container_width=True, key=f"authority_alerts_{active_item}"):
+        if st.button("Mes alertes", use_container_width=True, key=f"authority_alerts_{active_item}"):
             st.switch_page("pages/authority_alerts.py")
         st.markdown("---")
-        if st.button("  Retour accueil", use_container_width=True, key=f"authority_home_{active_item}"):
+        if st.button("Retour à l'accueil", use_container_width=True, key=f"authority_home_{active_item}"):
             st.switch_page("pages/home.py")
-        if st.button("  Deconnexion", use_container_width=True, key=f"authority_logout_{active_item}"):
+        if st.button("Déconnexion", use_container_width=True, key=f"authority_logout_{active_item}"):
             st.session_state.user = None
             st.switch_page("pages/auth.py")
 
@@ -250,12 +251,12 @@ def render_authority_hero(
     if notification_count is not None and auth is not None and user_id is not None:
         state_key = f"{inbox_key_prefix}_open"
         n = int(notification_count)
-        unread_label = "Aucune notification en attente." if n == 0 else f"<strong>{n}</strong> message(s) prioritaire(s) a consulter."
+        unread_label = "Aucune notification en attente." if n == 0 else f"<strong>{n}</strong> message(s) prioritaire(s) à consulter."
         count_class = "has-unread" if n > 0 else "no-unread"
         bell_svg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#ffffff"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>'
         with bell_col:
             st.markdown(
-                f'<div class="authority-hero-actions"><div class="authority-bell-wrap"><div class="authority-bell-panel"><div class="authority-bell-head"><span class="authority-bell-kicker"><span class="authority-bell-icon-wrap">{bell_svg}</span>Messagerie SAFE</span><span class="authority-bell-count {count_class}">{n}</span></div><div class="authority-bell-divider"></div><div class="authority-bell-note">{unread_label}</div><div class="authority-bell-status-row"><span class="authority-bell-status-dot"></span>Canal autorite sanitaire securise</div></div></div></div>',
+                f'<div class="authority-hero-actions"><div class="authority-bell-wrap"><div class="authority-bell-panel"><div class="authority-bell-head"><span class="authority-bell-kicker"><span class="authority-bell-icon-wrap">{bell_svg}</span>Messagerie SAFE</span><span class="authority-bell-count {count_class}">{n}</span></div><div class="authority-bell-divider"></div><div class="authority-bell-note">{unread_label}</div><div class="authority-bell-status-row"><span class="authority-bell-status-dot"></span>Canal autorité sanitaire sécurisé</div></div></div></div>',
                 unsafe_allow_html=True,
             )
             st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)

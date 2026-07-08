@@ -26,3 +26,8 @@ TP machine learning/
 # Dossiers de logs et rapports volumineux
 logs/
 rapport_pipeline_ML_SAFE_CONGO.pdf
+
+# Archives et dossiers de mémoire générés localement
+memoire_SAFE_CONGO_final_corrige*.zip
+memoire_latex_final/
+memoire_latex_work/

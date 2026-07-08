@@ -19,8 +19,8 @@ html { zoom: 1 !important; }
 *{font-family:'Manrope',sans-serif;box-sizing:border-box}
 #MainMenu,footer{visibility:hidden}
 [data-testid="stHeader"]{background:transparent!important}
-[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;opacity:1!important;color:#0b4d95!important;background:rgba(255,255,255,.96)!important;border:1px solid rgba(11,77,149,.16)!important;border-radius:14px!important;box-shadow:0 10px 28px rgba(15,23,42,.12)!important}
-[data-testid="collapsedControl"] svg{fill:#0b4d95!important}
+[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;opacity:1!important;color:#0b4d95!important;background:rgba(255,255,255,.98)!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;align-items:center!important;justify-content:center!important;padding:0!important;border:2px solid rgba(10,95,171,.28)!important;border-radius:12px!important;box-shadow:0 10px 28px rgba(15,23,42,.13)!important}
+[data-testid="collapsedControl"] svg{fill:#0b4d95!important;stroke:#0b4d95!important;width:22px!important;height:22px!important}
 [data-testid="stSidebarNav"]{display:none}
 @keyframes fadeIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 @keyframes shimmer{0%{background-position:-1200px 0}100%{background-position:1200px 0}}
@@ -30,6 +30,9 @@ html { zoom: 1 !important; }
 [data-testid="stAppViewContainer"] .main .block-container{max-width:1280px!important;padding-top:1.5rem!important;padding-bottom:1.5rem!important}
 [data-testid="stSidebar"]{background:linear-gradient(180deg,#ffffff 0%,#f4f9ff 100%)!important;border-right:1px solid rgba(176,208,233,.55)!important;box-shadow:2px 0 12px rgba(10,60,120,.04)!important}
 [data-testid="stSidebar"] *{color:#0f2542!important}
+[data-testid="stSidebar"] .stButton>button{background:rgba(255,255,255,.9)!important;color:#0a5fab!important;border:1px solid #c8dff0!important;border-radius:12px!important;min-height:42px!important;padding:9px 13px!important;font-weight:800!important;font-size:.8rem!important;transition:all .22s ease!important;width:100%!important;justify-content:flex-start!important;box-shadow:0 8px 22px rgba(10,60,120,.06)!important}
+[data-testid="stSidebar"] .stButton>button:hover{background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;color:#fff!important;transform:translateX(4px)!important;box-shadow:0 10px 22px rgba(10,95,171,.22)!important}
+[data-testid="stSidebar"] .stButton>button:focus-visible,[data-testid="stSidebar"] .stButton>button:active{background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;color:#fff!important;border-color:#0a5fab!important;transform:translateX(2px)!important;box-shadow:0 0 0 3px rgba(26,162,226,.18),0 10px 22px rgba(10,95,171,.22)!important}
 .stButton>button,.stFormSubmitButton>button,.stDownloadButton>button{
 background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;
 color:#ffffff!important;
@@ -188,10 +191,11 @@ box-shadow:none!important;
 .admin-info-item strong{display:block;font-size:.68rem;letter-spacing:1px;text-transform:uppercase;color:#0a5fab;margin-bottom:4px}
 .admin-info-item span{display:block;font-size:.79rem;line-height:1.56;color:#647c95}
 [data-testid="stDataFrame"]{border-radius:10px!important;overflow:hidden!important;border:1px solid #e2edf8!important}
+[data-testid="stDataFrame"] *{font-size:.8rem!important}
 .stTabs [data-baseweb="tab-list"]{gap:8px}
-.stTabs [data-baseweb="tab"]{background:#f2f8ff;border:1px solid #d7e7f6;border-radius:999px;padding:9px 14px;font-weight:700;color:#0f4d8c;font-size:.8rem}
+.stTabs [data-baseweb="tab"]{background:#f2f8ff;border:1px solid #d7e7f6;border-radius:999px;padding:9px 14px;font-weight:800;color:#0f4d8c;font-size:.8rem;white-space:normal!important;min-height:40px}
 .stTabs [aria-selected="true"]{background:linear-gradient(135deg,#0a5fab,#1aa2e2)!important;color:#fff!important;border-color:#0a5fab!important}
-.stTextInput>div>div>input,.stSelectbox>div>div,.stNumberInput>div>div>input,.stTextArea textarea{border-radius:10px!important;border:1px solid #d6e6f5!important;font-size:.82rem!important}
+.stTextInput>div>div>input,.stSelectbox>div>div,.stNumberInput>div>div>input,.stTextArea textarea{border-radius:10px!important;border:1px solid #d6e6f5!important;font-size:.82rem!important;color:#0f2542!important;background:#ffffff!important}
 .stTextInput>div>div>input:focus,.stNumberInput>div>div>input:focus{border-color:#0a5fab!important;box-shadow:0 0 0 2px rgba(26,162,226,.08)!important}
 @media (max-width: 1100px){.admin-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-grid-2{grid-template-columns:1fr}.admin-hero-top{flex-direction:column}.admin-hero-actions{width:100%}.admin-bell-wrap{max-width:none;margin-left:0}.admin-shell{padding:0 .35rem}}
 @media (max-width: 720px){.admin-kpi-grid,.admin-grid-3,.admin-form-grid,.admin-form-stats{grid-template-columns:1fr}.admin-hero{padding:18px 16px}.admin-title{font-size:1.6rem}.admin-panel{padding:12px}.admin-form-hero{grid-template-columns:1fr}.admin-chip-row{gap:6px}.admin-bell-panel{padding:10px}.admin-bell-note{font-size:.68rem;line-height:1.4}}
@@ -214,7 +218,7 @@ def render_admin_sidebar(user: dict, active_item: int, show_logo: bool = True) -
 <div class="admin-sidebar-user-card">
   <div class="admin-sidebar-role">Administrateur</div>
   <div class="admin-sidebar-name">{user['full_name']}</div>
-  <div class="admin-sidebar-meta">Console de supervision SAFE CONGO<br/>Acces central aux operations et a la gouvernance.</div>
+  <div class="admin-sidebar-meta">Console de supervision SAFE CONGO<br/>Accès central aux opérations et à la gouvernance.</div>
 </div>
 <div class="admin-sidebar-separator"></div>
 """,
@@ -222,18 +226,18 @@ def render_admin_sidebar(user: dict, active_item: int, show_logo: bool = True) -
         )
         render_sidebar_active_button(active_item)
         page_suffix = f"_{active_item}" if active_item is not None else ""
-        if st.button("  Tableau de bord executif", use_container_width=True, key=f"sidebar_dashboard_btn{page_suffix}"):
+        if st.button("Tableau de bord exécutif", use_container_width=True, key=f"sidebar_dashboard_btn{page_suffix}"):
             st.switch_page("pages/admin_dashboard.py")
-        if st.button("  Saisie & intelligence", use_container_width=True, key=f"sidebar_data_entry_btn{page_suffix}"):
+        if st.button("Saisie & intelligence", use_container_width=True, key=f"sidebar_data_entry_btn{page_suffix}"):
             st.switch_page("pages/admin_data_entry.py")
-        if st.button("  Gouvernance utilisateurs", use_container_width=True, key=f"sidebar_users_btn{page_suffix}"):
+        if st.button("Gouvernance utilisateurs", use_container_width=True, key=f"sidebar_users_btn{page_suffix}"):
             st.switch_page("pages/admin_users.py")
-        if st.button("  Centre de pilotage", use_container_width=True, key=f"sidebar_panel_btn{page_suffix}"):
+        if st.button("Centre de pilotage", use_container_width=True, key=f"sidebar_panel_btn{page_suffix}"):
             st.switch_page("pages/admin_panel.py")
         st.markdown("---")
-        if st.button("  Retour accueil", use_container_width=True, key=f"sidebar_home_btn{page_suffix}"):
+        if st.button("Retour à l'accueil", use_container_width=True, key=f"sidebar_home_btn{page_suffix}"):
             switch_to_home_page()
-        if st.button("  Deconnexion", use_container_width=True, key=f"sidebar_logout_btn{page_suffix}"):
+        if st.button("Déconnexion", use_container_width=True, key=f"sidebar_logout_btn{page_suffix}"):
             st.session_state.user = None
             st.switch_page("pages/auth.py")
 

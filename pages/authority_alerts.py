@@ -51,7 +51,7 @@ def _normalize_alert_levels(alerts_df: pd.DataFrame) -> pd.DataFrame:
 
 def _level_distribution_chart(alerts_df) -> go.Figure:
     if alerts_df.empty:
-        return empty_state_figure("Repartition des niveaux", "Aucune alerte ciblee pour composer la distribution.", make_plotly_layout)
+        return empty_state_figure("Répartition des niveaux", "Aucune alerte ciblée pour composer la distribution.", make_plotly_layout)
     grouped = _normalize_alert_levels(alerts_df).groupby("alert_level", as_index=False).size().rename(columns={"size": "count"})
     chart_df = (
         pd.DataFrame({"alert_level": VISIBLE_ALERT_LEVELS})
@@ -70,7 +70,7 @@ def _level_distribution_chart(alerts_df) -> go.Figure:
             hovertemplate="<b>%{y}</b><br>Alertes: %{x}<extra></extra>",
         )
     )
-    return make_plotly_layout(fig, "Repartition des niveaux")
+    return make_plotly_layout(fig, "Répartition des niveaux")
 
 
 def _is_terrain_signal(message: str) -> bool:
@@ -126,11 +126,11 @@ def _display_alert_message(row: pd.Series, hide_growth: bool) -> str:
         cleaned = cleaned[:-1].rstrip()
     if not cleaned.endswith("."):
         cleaned += "."
-    return f"{cleaned} Croissance non comparee faute de base historique locale."
+    return f"{cleaned} Croissance non comparée faute de base historique locale."
 
 
 def main() -> None:
-    st.set_page_config(page_title="Alertes autorite | SAFE CONGO", layout="wide")
+    st.set_page_config(page_title="Alertes autorité | SAFE CONGO", layout="wide")
     apply_authority_theme()
     st.markdown(
         """
@@ -160,10 +160,10 @@ def main() -> None:
     unread_count = auth.get_unread_count(user["id"])
 
     render_authority_hero(
-        title="Centre d'alertes ciblees",
-        subtitle="Toutes les alertes ci-dessous vous ont ete explicitement diffusees. La page se concentre sur l'action, le niveau de gravite et les sorties PDF terrain.",
+        title="Centre d'alertes ciblées",
+        subtitle="Toutes les alertes ci-dessous vous ont été explicitement diffusées. La page se concentre sur l'action, le niveau de gravité et les sorties PDF terrain.",
         chips=["Urgence lisible", user.get("province", "—")],
-        eyebrow="Alertes adressees",
+        eyebrow="Alertes adressées",
         auth=auth,
         user_id=user["id"],
         notification_count=unread_count,
@@ -180,8 +180,8 @@ def main() -> None:
             {
                 "label": "Alertes totales",
                 "value": str(len(alerts_df)),
-                "delta": "Ciblees pour votre compte",
-                "copy": "Le flux d'alerte regroupe les signaux qui vous sont assignes, y compris si leur origine depasse votre seul territoire de reference.",
+                "delta": "Ciblées pour votre compte",
+                "copy": "Le flux d'alerte regroupe les signaux qui vous sont assignés, y compris si leur origine dépasse votre seul territoire de référence.",
                 "accent": "#0a5fab",
                 "accent_soft": "#49acef",
                 "pill": "rgba(10,95,171,.12)",
@@ -189,8 +189,8 @@ def main() -> None:
             {
                 "label": "Critiques",
                 "value": str(critique_count),
-                "delta": "Priorite maximale",
-                "copy": "Les signaux critiques remontent en premier pour accelerer la decision sanitaire et la coordination locale.",
+                "delta": "Priorité maximale",
+                "copy": "Les signaux critiques remontent en premier pour accélérer la décision sanitaire et la coordination locale.",
                 "accent": "#dc2626",
                 "accent_soft": "#fca5a5",
                 "pill": "rgba(220,38,38,.12)",
@@ -198,7 +198,7 @@ def main() -> None:
             {
                 "label": "Hautes",
                 "value": str(haute_count),
-                "delta": f"{moderee_count} moderees",
+                "delta": f"{moderee_count} modérées",
                 "copy": "Les alertes hautes exigent une lecture rapide, meme si elles ne sont pas encore au niveau critique.",
                 "accent": "#ea580c",
                 "accent_soft": "#fdba74",
@@ -209,14 +209,14 @@ def main() -> None:
 
     authority_section_label("Lecture et action")
     if alerts_df.empty:
-        st.markdown('<div class="authority-empty-state">Aucune alerte ne vous a encore ete assignee.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="authority-empty-state">Aucune alerte ne vous a encore été assignée.</div>', unsafe_allow_html=True)
         return
 
     st.markdown(
         """
 <div class="authority-grid-2">
-  <div class="authority-highlight"><strong>Filtrer, lire, agir</strong><span>Le niveau, le statut de lecture, la carte detaillee et le telechargement PDF restent dans le meme parcours sans rupture de page.</span></div>
-  <div class="authority-mini-card"><h4>PDF terrain</h4><p>Chaque alerte peut produire directement une fiche de mesures barrieres prete a partager sur le terrain.</p></div>
+  <div class="authority-highlight"><strong>Filtrer, lire, agir</strong><span>Le niveau, le statut de lecture, la carte détaillée et le téléchargement PDF restent dans le même parcours sans rupture de page.</span></div>
+  <div class="authority-mini-card"><h4>PDF terrain</h4><p>Chaque alerte peut produire directement une fiche de mesures barrières prête à partager sur le terrain.</p></div>
 </div>
 """,
         unsafe_allow_html=True,
@@ -226,7 +226,7 @@ def main() -> None:
     controls_left, controls_right = st.columns([1.5, 0.5], gap="large")
     with controls_left:
         authority_panel_title("Affiner le flux d'alertes")
-        st.markdown('<div class="authority-support-copy">Filtrez par niveau puis parcourez les cartes detaillees sans multiplier les blocs vides. Les mesures barrieres restent telechargeables depuis chaque alerte.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="authority-support-copy">Filtrez par niveau puis parcourez les cartes détaillées sans multiplier les blocs vides. Les mesures barrières restent téléchargeables depuis chaque alerte.</div>', unsafe_allow_html=True)
         if hasattr(st, "segmented_control"):
             filter_level = st.segmented_control(
                 "Niveau d'alerte",
@@ -246,7 +246,7 @@ def main() -> None:
             )
     with controls_right:
         st.markdown('<div style="height:2.2rem"></div>', unsafe_allow_html=True)
-        if st.button("Rafraichir mes alertes", use_container_width=True, key="authority_refresh_alerts"):
+        if st.button("Rafraîchir mes alertes", use_container_width=True, key="authority_refresh_alerts"):
             st.rerun()
         if st.button("Réinitialiser le filtre", use_container_width=True, key="authority_reset_filter"):
             if hasattr(st.session_state, 'authority_alert_filter'):
@@ -255,9 +255,9 @@ def main() -> None:
     with st.expander("📋 Voir le referentiel OMS/IDSR des niveaux d'alerte", expanded=False):
         st.markdown(
             "<p style='font-size:.88rem;color:#566f88;margin-bottom:.8rem'>"
-            "Les niveaux d'alerte SAFE CONGO suivent le cadre <strong>OMS IDSR 3e edition (2019)</strong> "
-            "et le <strong>Reglement Sanitaire International (RSI 2005)</strong>. Chaque seuil combine un critere absolu "
-            "et un critere de croissance hebdomadaire pour accelerer la decision terrain."
+            "Les niveaux d'alerte SAFE CONGO suivent le cadre <strong>OMS IDSR 3e édition (2019)</strong> "
+            "et le <strong>Règlement Sanitaire International (RSI 2005)</strong>. Chaque seuil combine un critère absolu "
+            "et un critère de croissance hebdomadaire pour accélérer la décision terrain."
             "</p>",
             unsafe_allow_html=True,
         )
@@ -278,11 +278,11 @@ def main() -> None:
     filtered_df = alerts_df if filter_level == "Toutes" else alerts_df.loc[alerts_df["alert_level"] == filter_level].copy()
 
     if filtered_df.empty:
-        st.markdown('<div class="authority-empty-state">Aucune alerte ne correspond au filtre selectionne. Passez sur "Toutes" ou choisissez un autre niveau.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="authority-empty-state">Aucune alerte ne correspond au filtre sélectionné. Passez sur "Toutes" ou choisissez un autre niveau.</div>', unsafe_allow_html=True)
         authority_section_label("Assistance")
         st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
         authority_panel_title("Aide et contact")
-        st.markdown('<div class="authority-support-copy">Pour toute question sur la gestion des alertes ou pour signaler un probleme technique, contactez l\'administration SAFE CONGO et suivez votre circuit de coordination provincial.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="authority-support-copy">Pour toute question sur la gestion des alertes ou pour signaler un problème technique, contactez l\'administration SAFE CONGO et suivez votre circuit de coordination provincial.</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         return
 
@@ -302,7 +302,7 @@ def main() -> None:
         terrain_signal = _is_terrain_signal(row.get("message", ""))
         hide_growth = _should_hide_terrain_growth(row)
         if hide_growth:
-            growth_label = "Non comparee"
+            growth_label = "Non comparée"
         fallback_prediction = _is_fallback_prediction(row)
         if terrain_signal:
             projection_value_label = "Non disponible"
@@ -335,7 +335,7 @@ def main() -> None:
                     year=int(row["year"]),
                 )
                 st.download_button(
-                    "Telecharger la fiche barrieres",
+                    "Télécharger la fiche barrières",
                     pdf_bytes,
                     file_name=f"alerte_{row['disease']}_{int(row['week'])}_{int(row['year'])}.pdf",
                     mime="application/pdf",
@@ -348,7 +348,7 @@ def main() -> None:
     authority_section_label("Assistance")
     st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
     authority_panel_title("Aide et contact")
-    st.markdown('<div class="authority-support-copy">Pour toute question sur la gestion des alertes ou pour signaler un probleme technique, contactez l\'administration SAFE CONGO et suivez votre circuit de coordination provincial. La page Contact reprend deja les partenaires de reference et le parcours d\'activation de l\'application.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="authority-support-copy">Pour toute question sur la gestion des alertes ou pour signaler un problème technique, contactez l\'administration SAFE CONGO et suivez votre circuit de coordination provincial. La page Contact reprend déjà les partenaires de référence et le parcours d\'activation de l\'application.</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 

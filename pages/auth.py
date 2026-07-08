@@ -77,6 +77,11 @@ CSS = """
   -webkit-text-security:disc!important;
   text-security:disc!important;
 }
+.stTextInput input[type="password"][aria-label*="Mot de passe"],
+.stTextInput input[type="password"][aria-label*="Confirmer"]{
+  -webkit-text-security:disc!important;
+  text-security:disc!important;
+}
 .stTextInput input[type="text"][aria-label*="Mot de passe"],
 .stTextInput input[type="text"][aria-label*="Confirmer"]{
   -webkit-text-security:none!important;
@@ -84,11 +89,14 @@ CSS = """
 }
 .stTextInput button[aria-label*="password"],
 .stTextInput button[aria-label*="Password"],
-.stTextInput button[aria-label*="mot de passe"]{
+.stTextInput button[aria-label*="mot de passe"],
+.stTextInput button[aria-label*="Mot de passe"]{
   color:#0a5fab!important;
   background:#eef7ff!important;
   border:1px solid #c8dce6!important;
   border-radius:10px!important;
+  min-width:38px!important;
+  min-height:38px!important;
 }
 .stTextInput>div>div>input:focus{
   border-color:#0a84d0!important;

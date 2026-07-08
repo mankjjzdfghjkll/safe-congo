@@ -28,7 +28,7 @@ from utils.navigation import switch_to_home_page
 def _build_weekly_trend(entries_df: pd.DataFrame) -> go.Figure:
     prepared = prepare_periodic_entries(entries_df, required_columns={"total_deaths", "province", "disease"})
     if prepared.empty:
-        return empty_state_figure("Trajectoire epidemiologique nationale", "Aucune dynamique recente disponible.", make_plotly_layout)
+        return empty_state_figure("Trajectoire épidémiologique nationale", "Aucune dynamique récente disponible.", make_plotly_layout)
 
     trend_df = (
         prepared.groupby(["year", "week", "period"], as_index=False)[["total_cases", "total_deaths"]]
@@ -57,10 +57,10 @@ def _build_weekly_trend(entries_df: pd.DataFrame) -> go.Figure:
             x=trend_df["period"],
             y=trend_df["deaths"],
             mode="lines+markers",
-            name="Deces",
+            name="Décès",
             line=dict(color="#ce1126", width=2.5, dash="dot"),
             marker=dict(size=7, color="#ce1126"),
-            hovertemplate="<b>%{x}</b><br>Deces: %{y}<extra></extra>",
+            hovertemplate="<b>%{x}</b><br>Décès: %{y}<extra></extra>",
         )
     )
     fig.update_layout(hovermode="x unified")
@@ -74,7 +74,7 @@ def _build_prediction_gap(alerts_df: pd.DataFrame) -> go.Figure:
     if not prepared.empty and "prediction_available" in prepared.columns:
         prepared = prepared.loc[prepared["prediction_available"]]
     if prepared.empty:
-        return empty_state_figure("Prediction IA vs terrain", "Aucune alerte recente exploitable.", make_plotly_layout)
+        return empty_state_figure("Prédiction IA vs terrain", "Aucune alerte récente exploitable.", make_plotly_layout)
 
     forecast_df = (
         prepared.groupby(["year", "week", "period"], as_index=False)[["current_cases", "predicted_cases"]]
@@ -114,7 +114,7 @@ def _build_prediction_gap(alerts_df: pd.DataFrame) -> go.Figure:
 def _build_top_provinces(entries_df: pd.DataFrame) -> go.Figure:
     prepared = prepare_periodic_entries(entries_df, required_columns={"province"})
     if prepared.empty:
-        return empty_state_figure("Charge par province", "Aucune couverture provinciale recente.", make_plotly_layout)
+        return empty_state_figure("Charge par province", "Aucune couverture provinciale récente.", make_plotly_layout)
 
     province_df = (
         prepared.groupby("province", as_index=False)["total_cases"]
@@ -138,7 +138,7 @@ def _build_top_provinces(entries_df: pd.DataFrame) -> go.Figure:
             hovertemplate="<b>%{y}</b><br>Cas cumules: %{x}<extra></extra>",
         )
     )
-    fig.update_xaxes(title="Cas recents")
+    fig.update_xaxes(title="Cas récents")
     fig.update_layout(height=390)
     return make_plotly_layout(fig, "Charge par province")
 
@@ -146,7 +146,7 @@ def _build_top_provinces(entries_df: pd.DataFrame) -> go.Figure:
 def _build_top_diseases(entries_df: pd.DataFrame) -> go.Figure:
     prepared = prepare_periodic_entries(entries_df, required_columns={"disease"})
     if prepared.empty:
-        return empty_state_figure("Pathologies dominantes", "Aucune repartition pathologique recente.", make_plotly_layout)
+        return empty_state_figure("Pathologies dominantes", "Aucune répartition pathologique récente.", make_plotly_layout)
 
     disease_df = (
         prepared.groupby("disease", as_index=False)["total_cases"]
@@ -221,10 +221,10 @@ def main() -> None:
     render_kpi_cards(
         [
             {
-                "label": "Charge recente",
+                "label": "Charge récente",
                 "value": f"{latest_cases}",
                 "delta": "Cas consolides",
-                "copy": "Volume cumule sur la fenetre recente retenue pour le pilotage executif.",
+                "copy": "Volume cumulé sur la fenêtre récente retenue pour le pilotage exécutif.",
                 "accent": "#0a5fab",
                 "accent_soft": "#49acef",
                 "pill": "rgba(10,95,171,.12)",

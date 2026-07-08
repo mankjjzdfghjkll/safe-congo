@@ -86,10 +86,10 @@ def _historical_trend_chart(history_df: pd.DataFrame) -> go.Figure:
                 x=chart_df["label"],
                 y=chart_df["TOTALDECES"],
                 mode="lines+markers",
-                name="Deces",
+                name="Décès",
                 line=dict(color="#ce1126", width=2.5, dash="dot"),
                 marker=dict(size=7, color="#ce1126"),
-                hovertemplate="<b>%{x}</b><br>Deces: %{y}<extra></extra>",
+                hovertemplate="<b>%{x}</b><br>Décès: %{y}<extra></extra>",
             )
         )
     fig.update_layout(hovermode="x unified")
@@ -99,7 +99,7 @@ def _historical_trend_chart(history_df: pd.DataFrame) -> go.Figure:
 def _top_diseases_chart(history_df: pd.DataFrame) -> go.Figure:
     prepared = _prepare_history(history_df)
     if prepared.empty or "MALADIE" not in prepared.columns or "TOTALCAS" not in prepared.columns:
-        return empty_state_figure("Pathologies dominantes", "Aucune repartition pathologique recente.", make_plotly_layout)
+        return empty_state_figure("Pathologies dominantes", "Aucune répartition pathologique récente.", make_plotly_layout)
 
     chart_df = (
         prepared.groupby("MALADIE", as_index=False)["TOTALCAS"]
@@ -124,7 +124,7 @@ def _top_diseases_chart(history_df: pd.DataFrame) -> go.Figure:
 def _assigned_levels_chart(alerts_df: pd.DataFrame) -> go.Figure:
     prepared = _prepare_alerts(alerts_df)
     if prepared.empty:
-        return empty_state_figure("Intensite des alertes", "Aucune alerte ciblee disponible.", make_plotly_layout)
+        return empty_state_figure("Intensité des alertes", "Aucune alerte ciblée disponible.", make_plotly_layout)
 
     grouped = prepared.groupby("alert_level", as_index=False).size().rename(columns={"size": "count"})
     chart_df = pd.DataFrame({"alert_level": VISIBLE_ALERT_LEVELS}).merge(grouped, on="alert_level", how="left").fillna(0)
@@ -140,7 +140,7 @@ def _assigned_levels_chart(alerts_df: pd.DataFrame) -> go.Figure:
             hovertemplate="<b>%{y}</b><br>Alertes: %{x}<extra></extra>",
         )
     )
-    return make_plotly_layout(fig, "Intensite des alertes")
+    return make_plotly_layout(fig, "Intensité des alertes")
 
 
 def _province_summary(auth: AuthSystem, province: str) -> tuple[int, int, int]:
@@ -163,7 +163,7 @@ def _province_summary(auth: AuthSystem, province: str) -> tuple[int, int, int]:
 
 
 def main() -> None:
-    st.set_page_config(page_title="Tableau de bord autorite | SAFE CONGO", layout="wide")
+    st.set_page_config(page_title="Tableau de bord autorité | SAFE CONGO", layout="wide")
     apply_authority_theme()
     st.markdown(
         """
@@ -186,7 +186,7 @@ def main() -> None:
     render_authority_sidebar(user, auth, active_item=1)
     render_authority_hero(
         title="Tableau de bord territorial",
-        subtitle="Une console territoriale plus nette pour lire vos alertes ciblees, replacer les signaux dans le contexte provincial et accelerer les decisions de terrain.",
+        subtitle="Une console territoriale plus nette pour lire vos alertes ciblées, replacer les signaux dans le contexte provincial et accélérer les décisions de terrain.",
         chips=["Veille locale", user.get("province", "—"), user.get("zone_sante", "—")],
         eyebrow="Surveillance territoriale",
         auth=auth,
@@ -207,10 +207,10 @@ def main() -> None:
     render_authority_kpis(
         [
             {
-                "label": "Alertes recues",
+                "label": "Alertes reçues",
                 "value": str(len(assigned_alerts_df)),
                 "delta": "Flux cible pour votre compte",
-                "copy": "La vue se concentre sur les alertes reellement adressees a votre compte, pas sur un simple filtre provincial brut.",
+                "copy": "La vue se concentre sur les alertes réellement adressées à votre compte, pas sur un simple filtre provincial brut.",
                 "accent": "#0a5fab",
                 "accent_soft": "#49acef",
                 "pill": "rgba(10,95,171,.12)",
@@ -218,8 +218,8 @@ def main() -> None:
             {
                 "label": "Cas provinciaux",
                 "value": f"{prov_cases:,}",
-                "delta": f"{prov_deaths:,} deces suivis",
-                "copy": "Le contexte provincial reste visible pour eviter qu'une alerte ciblee soit lue hors de sa realite locale.",
+                "delta": f"{prov_deaths:,} décès suivis",
+                "copy": "Le contexte provincial reste visible pour éviter qu'une alerte ciblée soit lue hors de sa réalité locale.",
                 "accent": "#d97706",
                 "accent_soft": "#fcd116",
                 "pill": "rgba(217,119,6,.12)",
@@ -228,7 +228,7 @@ def main() -> None:
                 "label": "Saisies suivies",
                 "value": str(prov_entries),
                 "delta": f"{critical_count} critiques",
-                "copy": "Le stock d'entrees et le nombre de critiques donnent une lecture rapide de la pression territoriale actuelle.",
+                "copy": "Le stock d'entrées et le nombre de critiques donnent une lecture rapide de la pression territoriale actuelle.",
                 "accent": "#7c3aed",
                 "accent_soft": "#a78bfa",
                 "pill": "rgba(124,58,237,.12)",
@@ -254,17 +254,17 @@ def main() -> None:
 
         st.markdown('<div class="authority-panel">', unsafe_allow_html=True)
         authority_panel_title("Capsule terrain")
-        pressure_label = "Escalade active" if max_growth >= 30 else "Sous tension" if max_growth >= 10 else "Sous controle"
+        pressure_label = "Escalade active" if max_growth >= 30 else "Sous tension" if max_growth >= 10 else "Sous contrôle"
         st.markdown(
             f'<div class="authority-highlight"><strong>Province : {user.get("province", "—")}</strong>'
-            f'<span>Zone de sante : {user.get("zone_sante", "—")} &nbsp;|&nbsp; {pressure_label} (pic +{max_growth:.0f}%)</span></div>'
+            f'<span>Zone de santé : {user.get("zone_sante", "—")} &nbsp;|&nbsp; {pressure_label} (pic +{max_growth:.0f}%)</span></div>'
             f'<div style="height:10px"></div>'
-            f'<div class="authority-highlight"><strong>{len(assigned_alerts_df)} alertes a suivre</strong>'
+            f'<div class="authority-highlight"><strong>{len(assigned_alerts_df)} alertes à suivre</strong>'
             f'<span>{critical_count} critique(s) dans votre file.</span></div>',
             unsafe_allow_html=True,
         )
         st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
-        if st.button("Ouvrir mes alertes detaillees", use_container_width=True, key="authority_to_alerts"):
+        if st.button("Ouvrir mes alertes détaillées", use_container_width=True, key="authority_to_alerts"):
             st.switch_page("pages/authority_alerts.py")
         st.markdown('</div>', unsafe_allow_html=True)
 

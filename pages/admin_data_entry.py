@@ -304,7 +304,7 @@ def predict_cases_for_date(auth: AuthSystem, disease: str, province: str, zone: 
 
             selected = list(model_info.get("features", []))
             if not selected:
-                raise ValueError("Aucune feature n'est disponible pour le modele charge.")
+                raise ValueError("Aucune variable d'entrée n'est disponible pour le modèle chargé.")
             for f in selected:
                 if f not in feat.columns:
                     feat[f] = 0.0
@@ -335,7 +335,7 @@ def predict_cases_for_date(auth: AuthSystem, disease: str, province: str, zone: 
                 "source": "model",
             }
         except Exception as _pred_exc:
-            logger.warning("Echec prediction modele pour '%s' (semaine %s/%s) : %s", disease, week_num, iso_year, _pred_exc)
+            logger.warning("Échec prédiction modèle pour '%s' (semaine %s/%s) : %s", disease, week_num, iso_year, _pred_exc)
     lag_1_value = float(recent[-1])
     predicted = max(int(round(float(np.mean(recent)))), 0)
     return {
@@ -378,8 +378,8 @@ def _projection_unavailable_reason(auth: AuthSystem, disease: str, province: str
     """Explique a l'autorite pourquoi aucune projection IA n'accompagne l'alerte."""
     if not all([disease, province, zone, target_date]):
         return (
-            "Projection IA indisponible : informations de localisation ou de date incompletes. "
-            "L'alerte repose uniquement sur les cas observes sur le terrain."
+            "Projection IA indisponible : informations de localisation ou de date incomplètes. "
+            "L'alerte repose uniquement sur les cas observés sur le terrain."
         )
 
     readiness = _history_readiness(auth, disease, province, zone, target_date)
@@ -389,8 +389,8 @@ def _projection_unavailable_reason(auth: AuthSystem, disease: str, province: str
         return (
             f"Projection IA indisponible : seulement {available} semaine(s) d'historique disponible(s) "
             f"pour {disease} a {zone} ({province}), alors que {MIN_HISTORY_WEEKS} semaines consecutives sont "
-            f"requises pour entrainer une prevision fiable. Cette zone n'a pas encore assez de profondeur "
-            f"d'historique : l'alerte repose donc uniquement sur les cas observes sur le terrain."
+            f"requises pour entraîner une prévision fiable. Cette zone n'a pas encore assez de profondeur "
+            f"d'historique : l'alerte repose donc uniquement sur les cas observés sur le terrain."
         )
 
     models = _load_prediction_models()
@@ -398,13 +398,13 @@ def _projection_unavailable_reason(auth: AuthSystem, disease: str, province: str
     model_key = next((k for k in models.keys() if _normalize_text(k) == normalized_d), None)
     if not model_key:
         return (
-            f"Projection IA indisponible : aucun modele predictif n'est entraine pour {disease}. "
-            f"L'alerte repose uniquement sur les cas observes sur le terrain."
+            f"Projection IA indisponible : aucun modèle prédictif n'est entraîné pour {disease}. "
+            f"L'alerte repose uniquement sur les cas observés sur le terrain."
         )
 
     return (
-        f"Projection IA indisponible pour {disease} a {zone} ({province}) malgre un historique suffisant. "
-        f"L'alerte repose uniquement sur les cas observes sur le terrain."
+        f"Projection IA indisponible pour {disease} à {zone} ({province}) malgré un historique suffisant. "
+        f"L'alerte repose uniquement sur les cas observés sur le terrain."
     )
 
 
@@ -470,7 +470,7 @@ def generate_prediction_alert(auth: AuthSystem, emitting_user: dict, disease: st
         raise ValueError("Choisissez une province cible pour cette diffusion.")
     if not recipient_ids:
         conn.close()
-        raise ValueError(f"Aucune autorite sanitaire active n'est rattachee a {dest_label or 'la province ciblee'}.")
+        raise ValueError(f"Aucune autorité sanitaire active n'est rattachée à {dest_label or 'la province ciblée'}.")
 
     message = f"Prévision SAFE CONGO : {disease} à {zone} ({province}), S{week}/{year}. Dernier: {prev} cas, Projection: {pred} cas."
 
@@ -484,12 +484,12 @@ def generate_prediction_alert(auth: AuthSystem, emitting_user: dict, disease: st
                        (uid, alert_id, f"ALERTE {level} - {disease}", notif_msg))
 
     admin_message = (
-        f"Votre alerte {level} pour {disease} a bien ete diffusee vers {dest_label}. "
-        f"{len(recipient_ids)} autorite(s) sanitaire(s) ciblee(s), projection {pred} cas contre {prev} observes."
+        f"Votre alerte {level} pour {disease} a bien été diffusée vers {dest_label}. "
+        f"{len(recipient_ids)} autorité(s) sanitaire(s) ciblée(s), projection {pred} cas contre {prev} observés."
     )
     cursor.execute(
         "INSERT INTO notifications (user_id, alert_id, title, message) VALUES (?,?,?,?)",
-        (int(emitting_user["id"]), alert_id, f"Diffusion confirmee - {disease}", admin_message),
+        (int(emitting_user["id"]), alert_id, f"Diffusion confirmée - {disease}", admin_message),
     )
     
     conn.commit()
@@ -520,7 +520,7 @@ def generate_observed_entry_alert(
     justification = (justification or "").strip()
     message = (
         f"Nouveau signal terrain SAFE CONGO : {disease} a {zone} ({province}), "
-        f"S{week}/{year}. Cas observes: {observed_cases}, deces observes: {observed_deaths}, croissance estimee: {growth:+.1f}%."
+        f"S{week}/{year}. Cas observés : {observed_cases}, décès observés : {observed_deaths}, croissance estimée : {growth:+.1f}%."
     )
     if justification:
         message = f"{message} {justification}"
@@ -539,13 +539,13 @@ def generate_observed_entry_alert(
             )
 
     admin_message = (
-        f"Votre saisie terrain pour {disease} a {zone} ({province}) a ete enregistree au niveau {level} et diffusee vers {len(recipient_ids)} autorite(s) sanitaire(s) pour {dest_label}."
+        f"Votre saisie terrain pour {disease} à {zone} ({province}) a été enregistrée au niveau {level} et diffusée vers {len(recipient_ids)} autorité(s) sanitaire(s) pour {dest_label}."
         if recipient_ids
-        else f"Votre saisie terrain pour {disease} a {zone} ({province}) a ete enregistree, mais aucune autorite active n'est rattachee a {dest_label or province}."
+        else f"Votre saisie terrain pour {disease} à {zone} ({province}) a été enregistrée, mais aucune autorité active n'est rattachée à {dest_label or province}."
     )
     cursor.execute(
         "INSERT INTO notifications (user_id, alert_id, title, message) VALUES (?,?,?,?)",
-        (int(emitting_user["id"]), alert_id, f"Saisie terrain confirmee - {disease}", admin_message),
+        (int(emitting_user["id"]), alert_id, f"Saisie terrain confirmée - {disease}", admin_message),
     )
 
     conn.commit()
@@ -557,7 +557,7 @@ def _entry_mix_chart(df: pd.DataFrame) -> go.Figure:
     if df.empty:
         return empty_state_figure(
             "Top maladies saisies",
-            "Aucune remontee terrain disponible pour structurer cette vue.",
+            "Aucune remontée terrain disponible pour structurer cette vue.",
             make_plotly_layout,
         )
     df = df.groupby("disease")["total_cases"].sum().nlargest(8).reset_index()
@@ -569,7 +569,7 @@ def _province_chart(df: pd.DataFrame) -> go.Figure:
     if df.empty:
         return empty_state_figure(
             "Top provinces",
-            "Aucune couverture terrain recente pour comparer les provinces.",
+            "Aucune couverture terrain récente pour comparer les provinces.",
             make_plotly_layout,
         )
     df = df.groupby("province")["total_cases"].sum().nlargest(8).reset_index()
@@ -632,8 +632,8 @@ def main() -> None:
     entry_warning_flash = st.session_state.pop("admin_entry_warning_flash", "")
     
     render_admin_hero(
-        title="Pilotage strategique et prediction",
-        subtitle="L'interface admin projette les cas a partir d'une date cible, controle la fiabilite globale du modele et diffuse des alertes sans casser la coherence du cockpit global.",
+        title="Pilotage stratégique et prédiction",
+        subtitle="L'interface admin projette les cas à partir d'une date cible, contrôle la fiabilité globale du modèle et diffuse des alertes sans casser la cohérence du cockpit global.",
         chips=["Prediction guidee", "R2 global", "Diffusion ciblee"],
         eyebrow="Saisie et IA",
         notification_count=admin_unread,
@@ -650,14 +650,14 @@ def main() -> None:
         st.success(delivery_flash)
 
     render_kpi_cards([
-        {"label": "Saisies terrain", "value": str(len(ent_df)), "delta": "Donnees observees", "copy": "Les remontees terrain sont maintenant persistées dans la table epidemiologique sans melanger l'observe et la prevision.", "accent": "#0a5fab", "accent_soft": "#49acef", "pill": "rgba(10,95,171,.12)"},
-        {"label": "Previsions recentes", "value": str(len(prediction_runs_df)), "delta": "Trace backend", "copy": "Chaque execution de prediction validee est historisee separement pour garder une piste d'audit claire.", "accent": "#2563eb", "accent_soft": "#60a5fa", "pill": "rgba(37,99,235,.12)"},
-        {"label": "Alertes recentes", "value": str(len(recent_alerts)), "delta": "Diffusion active", "copy": "Chaque prediction transformee en alerte reste visible pour l'arbitrage et le suivi institutionnel.", "accent": "#d97706", "accent_soft": "#fcd116", "pill": "rgba(217,119,6,.12)"},
-        {"label": "Provinces activables", "value": str(len(available_target_provinces)), "delta": "Referentiel national", "copy": "Le ciblage d'alerte s'appuie sur les provinces du referentiel sanitaire national.", "accent": "#d97706", "accent_soft": "#fcd116", "pill": "rgba(217,119,6,.12)"},
+        {"label": "Saisies terrain", "value": str(len(ent_df)), "delta": "Données observées", "copy": "Les remontées terrain sont maintenant persistées dans la table épidémiologique sans mélanger l'observé et la prévision.", "accent": "#0a5fab", "accent_soft": "#49acef", "pill": "rgba(10,95,171,.12)"},
+        {"label": "Prévisions récentes", "value": str(len(prediction_runs_df)), "delta": "Trace backend", "copy": "Chaque exécution de prédiction validée est historisée séparément pour garder une piste d'audit claire.", "accent": "#2563eb", "accent_soft": "#60a5fa", "pill": "rgba(37,99,235,.12)"},
+        {"label": "Alertes récentes", "value": str(len(recent_alerts)), "delta": "Diffusion active", "copy": "Chaque prédiction transformée en alerte reste visible pour l'arbitrage et le suivi institutionnel.", "accent": "#d97706", "accent_soft": "#fcd116", "pill": "rgba(217,119,6,.12)"},
+        {"label": "Provinces activables", "value": str(len(available_target_provinces)), "delta": "Référentiel national", "copy": "Le ciblage d'alerte s'appuie sur les provinces du référentiel sanitaire national.", "accent": "#d97706", "accent_soft": "#fcd116", "pill": "rgba(217,119,6,.12)"},
     ])
 
-    section_label("Saisie terrain et prediction")
-    tabs = st.tabs(["Saisie terrain", "Nouvelle prevision", "Historique", "Referentiel"])
+    section_label("Saisie terrain et prédiction")
+    tabs = st.tabs(["Saisie terrain", "Nouvelle prévision", "Historique", "Référentiel"])
 
     with tabs[0]:
         st.markdown(
@@ -666,7 +666,7 @@ def main() -> None:
     <div class="admin-form-banner">
         <div class="terrain-form-kicker">Collecte terrain</div>
         <div class="terrain-form-title-lg">Formulaire terrain prioritaire</div>
-        <div class="terrain-form-subtitle">Cette zone sert a enregistrer des donnees observees propres, a verifier la diffusion d'alerte et a declencher la projection automatique seulement quand le contexte est exploitable.</div>
+        <div class="terrain-form-subtitle">Cette zone sert à enregistrer des données observées propres, à vérifier la diffusion d'alerte et à déclencher la projection automatique seulement quand le contexte est exploitable.</div>
     </div>
     <div class="admin-form-stats">
         <div class="admin-form-stat"><strong>{len(ent_df)}</strong><span>Saisies terrain</span></div>
@@ -692,7 +692,7 @@ def main() -> None:
                 delivery_col_1, delivery_col_2 = st.columns(2)
                 with delivery_col_1:
                     if st.button(
-                        "Autorite de la province de saisie",
+                        "Autorité de la province de saisie",
                         key="observed_delivery_province_button",
                         type="primary" if current_observed_delivery_mode == "Province de la saisie" else "secondary",
                         use_container_width=True,
@@ -709,18 +709,18 @@ def main() -> None:
                         st.session_state["observed_delivery_mode"] = "Toutes les provinces"
                         st.rerun()
                 observed_delivery_mode = st.session_state.get("observed_delivery_mode", "Province de la saisie")
-                observed_delivery_label = observed_province if observed_delivery_mode == "Province de la saisie" and observed_province else "toutes les provinces" if observed_delivery_mode == "Toutes les provinces" else "la province selectionnee"
+                observed_delivery_label = observed_province if observed_delivery_mode == "Province de la saisie" and observed_province else "toutes les provinces" if observed_delivery_mode == "Toutes les provinces" else "la province sélectionnée"
                 observed_zone_options = _zone_options(ref_df, observed_province)
                 st.markdown(
-                    f'<div class="context-box"><div style="font-size:0.72rem; color:#0369a1; font-weight:700;">SOURCE OBSERVEE</div><div style="font-size:1.02rem; font-weight:800;">{observed_province or "Choisissez une province"}</div><div style="margin-top:.35rem; color:#475569; font-size:.88rem;">Alerte terrain orientee vers <strong>{observed_delivery_label}</strong>. La date calcule automatiquement la semaine epidemiologique. Les champs cas et deces sont requis pour alimenter correctement l\'historique de prediction. La donnee est mise a jour si une observation existe deja pour la meme maladie, semaine, province et zone.</div></div>',
+                    f'<div class="context-box"><div style="font-size:0.72rem; color:#0369a1; font-weight:700;">SOURCE OBSERVÉE</div><div style="font-size:1.02rem; font-weight:800;">{observed_province or "Choisissez une province"}</div><div style="margin-top:.35rem; color:#475569; font-size:.88rem;">Alerte terrain orientée vers <strong>{observed_delivery_label}</strong>. La date calcule automatiquement la semaine épidémiologique. Les champs cas et décès sont requis pour alimenter correctement l\'historique de prédiction. La donnée est mise à jour si une observation existe déjà pour la même maladie, semaine, province et zone.</div></div>',
                     unsafe_allow_html=True,
                 )
                 c1, c2 = st.columns(2)
                 observed_date = c2.date_input("Date d'observation", value=datetime.now().date(), key="observed_date")
                 c3, c4 = st.columns(2)
-                observed_cases = c3.number_input("Cas observes", min_value=1, step=1, value=1, key="observed_cases")
-                observed_deaths = c4.number_input("Deces observes", min_value=0, step=1, value=0, key="observed_deaths")
-                observed_zone = st.selectbox("Zone de sante", [""] + observed_zone_options, key=f"observed_zone_{observed_province or 'none'}")
+                observed_cases = c3.number_input("Cas observés", min_value=1, step=1, value=1, key="observed_cases")
+                observed_deaths = c4.number_input("Décès observés", min_value=0, step=1, value=0, key="observed_deaths")
+                observed_zone = st.selectbox("Zone de santé", [""] + observed_zone_options, key=f"observed_zone_{observed_province or 'none'}")
                 observed_disease_options = _disease_options_for_scope(
                     ref_df,
                     ent_df,
@@ -740,7 +740,7 @@ def main() -> None:
                     observed_disease_options = _disease_options(ref_df, ent_df)
                 observed_predictable_options = observed_disease_options
                 observed_disease = c1.selectbox(
-                    "Maladie observee",
+                    "Maladie observée",
                     [""] + observed_disease_options,
                     key=f"observed_disease_{observed_province or 'none'}_{observed_zone or 'none'}",
                 )
@@ -764,8 +764,8 @@ def main() -> None:
                 if observed_history_status:
                     if observed_history_status["ready"] and not observed_prediction_issue:
                         st.success(
-                            f"Projection automatique prete pour S{observed_history_status['target_week']}/{observed_history_status['target_year']} : "
-                            f"{observed_history_status['available_weeks']} semaines d'historique trouvees sur {MIN_HISTORY_WEEKS} requises ({', '.join(observed_history_status['weeks_list'])})."
+                            f"Projection automatique prête pour S{observed_history_status['target_week']}/{observed_history_status['target_year']} : "
+                            f"{observed_history_status['available_weeks']} semaines d'historique trouvées sur {MIN_HISTORY_WEEKS} requises ({', '.join(observed_history_status['weeks_list'])})."
                         )
                 if observed_zone and observed_predictable_options:
                     st.caption(
@@ -773,7 +773,7 @@ def main() -> None:
                         + ", ".join(observed_predictable_options[:12])
                         + ("..." if len(observed_predictable_options) > 12 else "")
                     )
-                observed_submit = st.button("ENREGISTRER LA DONNEE TERRAIN", use_container_width=True, key="observed_entry_submit")
+                observed_submit = st.button("Enregistrer la donnée terrain", use_container_width=True, key="observed_entry_submit")
 
                 if observed_submit:
                     missing_fields = []
@@ -827,8 +827,8 @@ def main() -> None:
                                     ),
                                 )
                                 st.session_state["admin_entry_flash"] = (
-                                    f"Donnee terrain enregistree ({result['action']}) pour {result['disease']} a {result['zone_sante']} - "
-                                    f"S{result['week']}/{result['year']}. Alerte terrain {observed_level} diffusee vers {observed_sent} autorite(s) pour {observed_label}."
+                                    f"Donnée terrain enregistrée ({result['action']}) pour {result['disease']} à {result['zone_sante']} - "
+                                    f"S{result['week']}/{result['year']}. Alerte terrain {observed_level} diffusée vers {observed_sent} autorité(s) pour {observed_label}."
                                 )
                             else:
                                 try:
@@ -869,9 +869,9 @@ def main() -> None:
                                         alert_id=alert_id,
                                     )
                                     st.session_state["admin_entry_flash"] = (
-                                        f"Donnee terrain enregistree ({result['action']}) pour {result['disease']} a {result['zone_sante']} - "
+                                        f"Donnée terrain enregistrée ({result['action']}) pour {result['disease']} à {result['zone_sante']} - "
                                         f"S{result['week']}/{result['year']}. Projection automatique S{forecast['week']}/{forecast['year']} : "
-                                        f"{forecast['predicted_cases']} cas ({gr:+.1f}%). Diffusion confirmee vers {n_sent} autorite(s) pour {lbl}."
+                                        f"{forecast['predicted_cases']} cas ({gr:+.1f}%). Diffusion confirmée vers {n_sent} autorité(s) pour {lbl}."
                                     )
                                 except Exception:
                                     _, observed_level, observed_sent, observed_label = generate_observed_entry_alert(
@@ -894,8 +894,8 @@ def main() -> None:
                                         ),
                                     )
                                     st.session_state["admin_entry_flash"] = (
-                                        f"Donnee terrain enregistree ({result['action']}) pour {result['disease']} a {result['zone_sante']} - "
-                                        f"S{result['week']}/{result['year']}. Projection indisponible, alerte terrain {observed_level} diffusee vers {observed_sent} autorite(s) pour {observed_label}."
+                                        f"Donnée terrain enregistrée ({result['action']}) pour {result['disease']} à {result['zone_sante']} - "
+                                        f"S{result['week']}/{result['year']}. Projection indisponible, alerte terrain {observed_level} diffusée vers {observed_sent} autorité(s) pour {observed_label}."
                                     )
                             st.rerun()
                         else:
@@ -904,16 +904,16 @@ def main() -> None:
 
         with r:
             st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-            panel_title("Repere operateur")
-            st.markdown("<div class='terrain-side-note'>La saisie terrain repose sur la date, la maladie, la localisation, les cas et les deces observes. La semaine epidemiologique est deduite automatiquement, puis l'observation rejoint l'historique qui sert a la prediction.</div>", unsafe_allow_html=True)
+            panel_title("Repère opérateur")
+            st.markdown("<div class='terrain-side-note'>La saisie terrain repose sur la date, la maladie, la localisation, les cas et les décès observés. La semaine épidémiologique est déduite automatiquement, puis l'observation rejoint l'historique qui sert à la prédiction.</div>", unsafe_allow_html=True)
             if not ent_df.empty:
                 st.plotly_chart(_entry_mix_chart(ent_df), use_container_width=True, key="admin_entry_mix_chart_help")
             st.markdown("</div>", unsafe_allow_html=True)
 
             st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-            panel_title("Dernieres remontees")
+            panel_title("Dernières remontées")
             if ent_df.empty:
-                st.markdown('<div class="admin-empty-state">Aucune donnee terrain enregistree pour le moment.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="admin-empty-state">Aucune donnée terrain enregistrée pour le moment.</div>', unsafe_allow_html=True)
             else:
                 latest_entries = ent_df.sort_values("entry_date", ascending=False).head(6).copy()
                 latest_entries[["total_cases", "total_deaths"]] = latest_entries[["total_cases", "total_deaths"]].fillna("-")
@@ -925,16 +925,16 @@ def main() -> None:
         with l:
             with st.container():
                 st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-                panel_title("Parametres d'analyse predictive")
+                panel_title("Paramètres d'analyse prédictive")
                 province = st.selectbox("Province source", [""] + _province_options(ref_df, ent_df), key="prediction_province_selector")
                 mode = st.radio("Destinataires", ["Province de la saisie", "Province spécifique", "Toutes les provinces"], index=2, horizontal=True, key="prediction_delivery_mode")
                 prediction_zone_options = _zone_options(ref_df, province)
-                effective_destination = province if mode == "Province de la saisie" else (st.session_state.get("prediction_target_province") or "A choisir") if mode == "Province spécifique" else "Toutes les provinces"
+                effective_destination = province if mode == "Province de la saisie" else (st.session_state.get("prediction_target_province") or "À choisir") if mode == "Province spécifique" else "Toutes les provinces"
                 st.markdown(
-                    f'<div class="context-box"><div style="font-size:0.72rem; color:#0369a1; font-weight:700;">PORTEE DE DIFFUSION</div><div style="font-size:1.02rem; font-weight:800;">{effective_destination}</div><div style="margin-top:.35rem; color:#475569; font-size:.88rem;">Le formulaire principal est maintenant soumis en bloc pour eviter les reruns a chaque champ. Seuls la province source et le mode de diffusion recalculent la vue.</div></div>',
+                    f'<div class="context-box"><div style="font-size:0.72rem; color:#0369a1; font-weight:700;">PORTÉE DE DIFFUSION</div><div style="font-size:1.02rem; font-weight:800;">{effective_destination}</div><div style="margin-top:.35rem; color:#475569; font-size:.88rem;">Le formulaire principal est soumis en bloc pour éviter les reruns à chaque champ. Seuls la province source et le mode de diffusion recalculent la vue.</div></div>',
                     unsafe_allow_html=True,
                 )
-                prediction_zone = st.selectbox("Zone de Sante", [""] + prediction_zone_options, key=f"prediction_zone_{province or 'none'}")
+                prediction_zone = st.selectbox("Zone de santé", [""] + prediction_zone_options, key=f"prediction_zone_{province or 'none'}")
                 prediction_disease_options = _disease_options_for_scope(
                     ref_df,
                     ent_df,
@@ -982,7 +982,7 @@ def main() -> None:
                             f'<div class="admin-form-note">Diffusion active : <strong>{effective_destination}</strong>. Aucun champ vide inutile n\'est affiche quand la cible est deja determinee par le mode choisi.</div>',
                             unsafe_allow_html=True,
                         )
-                    predict_submit = st.form_submit_button("EXECUTER LA PREVISION", use_container_width=True)
+                    predict_submit = st.form_submit_button("Exécuter la prévision", use_container_width=True)
 
                 if predict_submit:
                     missing_fields = []
@@ -1020,7 +1020,7 @@ def main() -> None:
                                         emitted_by=user["id"],
                                         alert_id=alert_id,
                                     )
-                                    st.session_state["admin_delivery_flash"] = f"Alerte {lvl} emise. Projection: {f['predicted_cases']} cas ({gr:+.1f}%). Diffusion confirmee vers {n_sent} autorite(s) sanitaire(s) pour {lbl}. Le suivi est disponible dans la cloche de reception."
+                                    st.session_state["admin_delivery_flash"] = f"Alerte {lvl} émise. Projection : {f['predicted_cases']} cas ({gr:+.1f}%). Diffusion confirmée vers {n_sent} autorité(s) sanitaire(s) pour {lbl}. Le suivi est disponible dans la cloche de réception."
                                     st.rerun()
                                 except Exception:
                                     st.caption("Projection indisponible actuellement.")
@@ -1036,9 +1036,9 @@ def main() -> None:
 
     with tabs[2]:
         st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-        panel_title("Historique des donnees terrain")
+        panel_title("Historique des données terrain")
         if ent_df.empty:
-            st.markdown('<div class="admin-empty-state">Aucune donnee terrain enregistree pour le moment.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="admin-empty-state">Aucune donnée terrain enregistrée pour le moment.</div>', unsafe_allow_html=True)
         else:
             history_entries = ent_df.sort_values("entry_date", ascending=False).copy()
             history_entries[["total_cases", "total_deaths"]] = history_entries[["total_cases", "total_deaths"]].fillna("-")
@@ -1046,20 +1046,20 @@ def main() -> None:
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-        panel_title("Historique recent des previsions")
+        panel_title("Historique récent des prévisions")
         if prediction_runs_df.empty:
-            st.markdown('<div class="admin-empty-state">Aucune prevision historisee pour le moment.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="admin-empty-state">Aucune prévision historisée pour le moment.</div>', unsafe_allow_html=True)
         else:
             st.dataframe(prediction_runs_df.sort_values("created_at", ascending=False), use_container_width=True, hide_index=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with tabs[3]:
         st.markdown('<div class="admin-panel">', unsafe_allow_html=True)
-        panel_title("Referentiel province / zone")
+        panel_title("Référentiel province / zone")
         if not ref_df.empty:
             st.dataframe(ref_df[["PROVINCE", "ZONE_SANTE"]].drop_duplicates().sort_values(["PROVINCE", "ZONE_SANTE"]), use_container_width=True, hide_index=True)
         else:
-            st.markdown('<div class="admin-empty-state">Le referentiel province / zone est vide pour le moment.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="admin-empty-state">Le référentiel province / zone est vide pour le moment.</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
