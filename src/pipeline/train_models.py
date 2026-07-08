@@ -25,6 +25,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 from src.config import MODEL_RESULT_FILTERS
+from utils.model_io import load_joblib_compatible
 
 try:
     from statsmodels.tsa.holtwinters import ExponentialSmoothing as HoltWinters
@@ -36,6 +37,8 @@ except ImportError:
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
+
+MODEL_N_JOBS = 1
 
 
 class _HoltWintersWrapper:
@@ -182,7 +185,7 @@ class DiseasePredictor:
             importances = pd.Series(1.0, index=feature_cols)
             return feature_cols, importances
         selector = RandomForestRegressor(
-            n_estimators=50, random_state=42, n_jobs=-1
+            n_estimators=50, random_state=42, n_jobs=MODEL_N_JOBS
         )
         selector.fit(X_train, y_train)
         importances = pd.Series(selector.feature_importances_, index=feature_cols)
@@ -234,7 +237,7 @@ class DiseasePredictor:
             ]),
             "Random Forest": RandomForestRegressor(
                 n_estimators=200, max_depth=10, min_samples_leaf=2,
-                random_state=42, n_jobs=-1,
+                random_state=42, n_jobs=MODEL_N_JOBS,
             ),
             "Gradient Boosting": GradientBoostingRegressor(
                 n_estimators=200, learning_rate=0.05, max_depth=4,
@@ -274,7 +277,7 @@ class DiseasePredictor:
         if model_name == "Random Forest":
             return RandomForestRegressor(
                 n_estimators=200, max_depth=10, min_samples_leaf=2,
-                random_state=42, n_jobs=-1,
+                random_state=42, n_jobs=MODEL_N_JOBS,
             )
         if model_name == "Gradient Boosting":
             return GradientBoostingRegressor(
@@ -293,7 +296,7 @@ class DiseasePredictor:
             ])
         return RandomForestRegressor(
             n_estimators=200, max_depth=10, min_samples_leaf=2,
-            random_state=42, n_jobs=-1,
+            random_state=42, n_jobs=MODEL_N_JOBS,
         )
 
     def train_for_disease(self, disease_data, disease_name):
@@ -662,7 +665,7 @@ class DiseasePredictor:
 
     def load_models(self, path="models/trained/models.pkl"):
         try:
-            data = joblib.load(path)
+            data = load_joblib_compatible(path)
             self.best_models = data.get("best_models", {})
             self.results = data.get("results", {})
             self.comparison_results = data.get("comparison_results", {})

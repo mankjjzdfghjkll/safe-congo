@@ -1000,7 +1000,10 @@ html, body, .stApp, .main, .block-container {
   padding: 24px 20px 20px;
   box-shadow: 0 8px 28px rgba(10,60,120,.08);
   transition: transform 0.2s;
+  position: relative;
+  overflow: hidden;
 }
+.impact-card::before{content:'';position:absolute;left:18px;right:18px;top:0;height:4px;border-radius:999px;background:linear-gradient(90deg,#0a5fab,#1aa2e2)}
 .impact-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 36px rgba(10,60,120,.14);
@@ -1018,6 +1021,12 @@ html, body, .stApp, .main, .block-container {
   stroke: #0a5fab;
   stroke-width: 2;
 }
+.home-impact-stats .impact-card:nth-child(2)::before{background:linear-gradient(90deg,#0b9e6e,#3ec99a)}
+.home-impact-stats .impact-card:nth-child(2) .icon-wrap{background:#e6f8f0}
+.home-impact-stats .impact-card:nth-child(2) .icon-wrap svg{stroke:#0b9e6e}
+.home-impact-stats .impact-card:nth-child(3)::before{background:linear-gradient(90deg,#ce1126,#f0c44e)}
+.home-impact-stats .impact-card:nth-child(3) .icon-wrap{background:#fff3e0}
+.home-impact-stats .impact-card:nth-child(3) .icon-wrap svg{stroke:#ce1126}
 
 /* ---- Espace d'authentification modernisé ---- */
 .auth-premium-shell {
@@ -1648,7 +1657,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .hero,.hero *{color:#ffffff}
 .hero-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.11) 1px,transparent 1px);background-size:26px 26px;pointer-events:none}
 .hero-glow{position:absolute;inset:0;background:radial-gradient(ellipse at 78% 18%,rgba(255,255,255,.16),transparent 34%),radial-gradient(ellipse at 12% 82%,rgba(0,40,100,.22),transparent 30%);pointer-events:none}
-.hero-inner{position:relative;z-index:2;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
+.hero-inner{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr);gap:34px;align-items:center}
 .hero-kicker{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font-size:.7rem;font-weight:800;letter-spacing:1.7px;color:rgba(255,255,255,.95);text-transform:uppercase;margin-bottom:16px}
 .kicker-dot{width:7px;height:7px;border-radius:50%;background:#72f5c0;animation:pulse 2.2s ease-in-out infinite}
 .hero-title{font-family:'Sora',sans-serif;font-size:3.2rem;font-weight:800;line-height:1.06;letter-spacing:-1.4px;color:#ffffff;margin-bottom:14px}
@@ -1663,6 +1672,24 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
 .hero-proof-k{font-size:.66rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:rgba(255,255,255,.68)}
 .hero-proof-v{margin-top:6px;font-size:.88rem;line-height:1.45;color:#fff;font-weight:700}
 .hero-visual{animation:float 5.5s ease-in-out infinite;filter:drop-shadow(0 18px 36px rgba(0,0,0,.16))}
+.hero-action-card{width:100%;max-width:430px;justify-self:end;padding:24px 24px 22px;border-radius:26px;background:linear-gradient(155deg,rgba(255,255,255,.20),rgba(255,255,255,.10) 52%,rgba(8,63,115,.18));border:1px solid rgba(255,255,255,.28);box-shadow:0 22px 54px rgba(0,35,90,.18),inset 0 1px 0 rgba(255,255,255,.28);backdrop-filter:blur(18px);color:#ffffff!important;animation:fadeUp .68s .16s cubic-bezier(.22,1,.36,1) both}
+.hero-action-card *{color:#ffffff}
+.hero-action-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
+.hero-action-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.24);color:#ffffff!important;font-size:.68rem;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;font-family:'Sora',sans-serif}
+.hero-action-dot{width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,#0b9e6e,#4ade80);box-shadow:0 0 0 5px rgba(11,158,110,.12)}
+.hero-action-icon{width:46px;height:46px;border-radius:16px;background:linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,.10));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(0,40,90,.16);border:1px solid rgba(255,255,255,.24);flex:0 0 auto}
+.hero-action-icon svg{width:24px;height:24px;stroke:#fff}
+.hero-action-title{font-family:'Sora',sans-serif;font-size:1.45rem;line-height:1.18;font-weight:900;letter-spacing:-.4px;margin-bottom:7px;color:#ffffff!important}
+.hero-action-desc{font-size:.9rem;line-height:1.55;color:rgba(255,255,255,.82)!important;margin-bottom:16px}
+.hero-action-button{display:flex;align-items:center;justify-content:center;width:100%;min-height:58px;border-radius:18px;font-family:'Sora',sans-serif;font-weight:950;font-size:1rem;text-decoration:none!important;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,filter .18s ease;margin-top:10px;letter-spacing:.2px}
+.hero-action-button.primary{background:linear-gradient(135deg,#ffffff 0%,#dff4ff 100%);color:#083f73!important;box-shadow:0 14px 30px rgba(0,52,110,.22),0 7px 18px rgba(0,35,90,.16);border:1px solid rgba(255,255,255,.78)}
+.hero-action-button.secondary{background:linear-gradient(135deg,rgba(26,162,226,.28),rgba(255,255,255,.12));color:#ffffff!important;border:1px solid rgba(190,235,255,.42);box-shadow:0 10px 24px rgba(0,30,80,.13)}
+.hero-action-button:hover{transform:translateY(-2px);filter:saturate(1.08);box-shadow:0 20px 38px rgba(0,35,90,.22)}
+.hero-action-divider{display:flex;align-items:center;gap:10px;margin:12px 0 2px;color:rgba(255,255,255,.64)!important;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:1px}
+.hero-action-divider::before,.hero-action-divider::after{content:'';height:1px;background:rgba(255,255,255,.22);flex:1}
+.hero-action-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:15px}
+.hero-action-tag{padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.20);color:rgba(255,255,255,.92)!important;font-size:.64rem;font-weight:900;letter-spacing:.5px;text-transform:uppercase}
+.hero-action-note{margin-top:13px;padding-top:12px;border-top:1px solid rgba(255,255,255,.18);text-align:center;font-size:.72rem;line-height:1.45;color:rgba(255,255,255,.76)!important}
 
 .section-head{margin:0 0 32px 0;animation:fadeUp .8s cubic-bezier(.22,1,.36,1);}
 .section-label{font-size:.7rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#3a7ebf;padding-left:2px}
@@ -1719,6 +1746,7 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
   .hero-title{font-size:2.35rem}
   .hero-title em{font-size:1.95rem}
   .hero-proof{grid-template-columns:1fr}
+  .hero-action-card{justify-self:stretch;max-width:none}
 }
 
 @media (max-width: 1100px){
@@ -1831,13 +1859,28 @@ html,body{background:#eef6ff;font-family:'Manrope',sans-serif;min-height:100%;ov
           <div class="hero-proof-card"><div class="hero-proof-k">__PROOF_THREE_LABEL__</div><div class="hero-proof-v">__PROOF_THREE_VALUE__</div></div>
         </div>
       </div>
-      <div class="hero-visual" style="display:flex;align-items:center;justify-content:center;padding:18px 0 8px 20px">
-        <div class="home-logo-wrap">
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-            <div class="home-logo-glow"></div>
+      <div class="hero-action-card">
+        <div class="hero-action-top">
+          <div class="hero-action-badge"><span class="hero-action-dot"></span>Action rapide</div>
+          <div class="hero-action-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M9 12l2 2 4-5"/>
+            </svg>
           </div>
-          <img class="home-logo-img" src="__HERO_LOGO_SRC__" alt="Logo SAFE CONGO" />
         </div>
+        <div class="hero-action-title">Que souhaitez-vous faire ?</div>
+        <div class="hero-action-desc">Choisissez votre parcours en toute simplicité. Les espaces admin et autorités restent accessibles en un clic.</div>
+        <a class="hero-action-button primary" href="/auth?auth_action=login" target="_parent">Ouvrir mon espace</a>
+        <div class="hero-action-divider">ou</div>
+        <a class="hero-action-button secondary" href="/auth?auth_action=register" target="_parent">Demander un accès</a>
+        <div class="hero-action-tags">
+          <span class="hero-action-tag">Connexion</span>
+          <span class="hero-action-tag">Demande d'accès</span>
+          <span class="hero-action-tag">Parcours simplifié</span>
+          <span class="hero-action-tag">Admin & autorités</span>
+        </div>
+        <div class="hero-action-note">Une expérience conçue pour l'efficacité, la clarté et l'orientation rapide des utilisateurs.</div>
       </div>
     </div>
   </div>
@@ -2061,7 +2104,7 @@ def build_home_hero_html(auth) -> str:
     html = html.replace("__RDC_FLAG_SRC__", RDC_FLAG_DATA_URI)
     html = html.replace("__HERO_LOGO_SRC__", HERO_LOGO_DATA_URI)
     html = html.replace("__HERO_KICKER__", "Dispositif national de veille sanitaire")
-    html = html.replace("__HERO_TITLE_MAIN__", "Veiller avec clarte")
+    html = html.replace("__HERO_TITLE_MAIN__", "Veiller avec clarté")
     html = html.replace("__HERO_TITLE_EMPHASIS__", "agir avec coordination.")
     html = html.replace(
         "__HERO_SUBTEXT__",
@@ -2165,128 +2208,6 @@ def show_login(auth):
         st.session_state.auth_view = None
 
     st.html(build_home_hero_html(auth))
-
-    st.markdown(
-        """
-    <style>
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"] .stButton > button {
-        min-height:60px;
-        border-radius:18px;
-        border:1px solid rgba(96,193,232,.24);
-        font:800 1rem Sora,sans-serif;
-        letter-spacing:.2px;
-        transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
-        box-shadow:0 14px 30px rgba(53,157,209,.10);
-      }
-      div[data-testid="stHorizontalBlock"] div[data-testid="column"] .stButton > button:hover {
-        transform:translateY(-2px);
-        box-shadow:0 20px 38px rgba(53,157,209,.15);
-      }
-    </style>
-    """,
-        unsafe_allow_html=True,
-    )
-
-    # Bloc d'authentification modernise avec vrais boutons Streamlit.
-    left_col, right_col = st.columns([1.1, 0.9], gap="large")
-
-    with left_col:
-        st.markdown(
-        """
-    <div class="auth-premium-shell" style="margin-right:0;">
-      <div class="auth-premium-left" style="min-height:100%;">
-          <div class="auth-premium-badge">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Accès sécurisé
-          </div>
-          <div class="auth-premium-title">
-            Deux parcours, <span>une même clarté</span>
-          </div>
-          <div class="auth-premium-desc">
-            Que vous soyez déjà membre ou que vous souhaitiez rejoindre la communauté SAFE CONGO, choisissez la voie qui vous correspond.
-          </div>
-          <div class="auth-premium-features">
-            <div class="auth-premium-feature">
-              <div class="auth-premium-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/><path d="M18 21v-2a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4v2"/></svg>
-              </div>
-              <div class="auth-premium-feature-text">
-                <strong>Connexion immédiate</strong>
-                <span>Accédez à votre espace si votre compte est déjà actif.</span>
-              </div>
-            </div>
-            <div class="auth-premium-feature">
-              <div class="auth-premium-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 12h-4l-3 9-4-18-3 9H2"/></svg>
-              </div>
-              <div class="auth-premium-feature-text">
-                <strong>Demande guidée</strong>
-                <span>Formulaire simple pour les profils habilites en quelques clics.</span>
-              </div>
-            </div>
-            <div class="auth-premium-feature">
-              <div class="auth-premium-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-              </div>
-              <div class="auth-premium-feature-text">
-                <strong>Parcours sans confusion</strong>
-                <span>Les deux actions critiques restent visibles et accessibles.</span>
-              </div>
-            </div>
-          </div>
-      </div>
-    </div>
-    """,
-            unsafe_allow_html=True,
-        )
-
-    with right_col:
-        st.markdown(
-            """
-    <div class="auth-premium-shell" style="margin-left:0;">
-      <div class="auth-premium-right" style="min-height:100%;">
-          <div class="auth-premium-badge" style="border-color:#c8e2f5;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-            Action rapide
-          </div>
-          <div class="auth-premium-title">
-            Que souhaitez-vous faire ?
-          </div>
-          <div class="auth-premium-desc">
-            Choisissez votre parcours en toute simplicité.
-          </div>
-    """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown(
-            '<a class="auth-route-button primary" href="/?auth_action=login" target="_self">Ouvrir mon espace</a>',
-            unsafe_allow_html=True,
-        )
-
-        st.markdown('<div class="auth-premium-divider"><span>ou</span></div>', unsafe_allow_html=True)
-
-        st.markdown(
-            '<a class="auth-route-button secondary" href="/?auth_action=register" target="_self">Demander un accès</a>',
-            unsafe_allow_html=True,
-        )
-
-        st.markdown(
-            """
-          <div class="auth-premium-tags">
-            <span class="auth-premium-tag">Connexion</span>
-            <span class="auth-premium-tag">Demande d'accès</span>
-            <span class="auth-premium-tag">Parcours simplifié</span>
-            <span class="auth-premium-tag">Admin & autorités</span>
-          </div>
-          <div style="margin-top:12px;font-size:0.7rem;color:#8aacc0;text-align:center;border-top:1px solid rgba(10,95,171,0.06);padding-top:12px;">
-            Une expérience conçue pour l'efficacité et la clarté
-          </div>
-      </div>
-    </div>
-    """,
-            unsafe_allow_html=True,
-        )
 
     st.markdown(
         """

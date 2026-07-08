@@ -25,6 +25,7 @@ from utils.admin_ui import (
 )
 from utils.auth import AuthSystem, require_auth
 from utils.chart_helpers import empty_state_figure
+from utils.model_io import load_joblib_compatible
 from utils.navigation import switch_to_home_page
 from src.config import MODEL_RESULT_FILTERS
 from src.config import TRAINING_CONFIG
@@ -195,7 +196,7 @@ def _zone_options(reference_df: pd.DataFrame, province: str) -> list[str]:
 def _load_prediction_models() -> dict[str, dict]:
     if not MODELS_PATH.exists(): return {}
     try:
-        data = joblib.load(MODELS_PATH)
+        data = load_joblib_compatible(MODELS_PATH)
         return data.get("best_models", {})
     except Exception:
         return {}
